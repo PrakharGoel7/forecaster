@@ -1,0 +1,9 @@
+.env
+forecasts.db
+__pycache__/
+*.pyc
+*.pem
+.DS_Store
+.streamlit/secrets.toml
+# Private key file
+forecaster/agents/forecaster.txt

@@ -1,0 +1,256 @@
+{
+  "question": "Will the US unemployment rate exceed 5% before the end of 2025?",
+  "final_probability": 0.001751595767569664,
+  "raw_probability": 0.025,
+  "ensemble_run_probabilities": [
+    0.025
+  ],
+  "probability_spread": [
+    0.025,
+    0.025
+  ],
+  "calibration": {
+    "raw_probability": 0.025,
+    "calibrated_probability": 0.001751595767569664,
+    "platt_coefficient": 1.7320508075688772
+  },
+  "parsed_question": {
+    "question": "Will the US unemployment rate exceed 5% before the end of 2025?",
+    "resolution_criteria": "Resolves YES if the U.S. Bureau of Labor Statistics (BLS) officially reports a U-3 (headline) unemployment rate strictly above 5.0% for any single month, with that data release occurring before December 31, 2025. A reading of exactly 5.0% does NOT resolve YES; it must exceed 5.0%.",
+    "resolution_deadline": "2025-12-31",
+    "relevant_timezone": "America/New_York",
+    "base_rate_queries": [
+      "US unemployment rate historical data 1990-2025 monthly",
+      "frequency US unemployment rate exceeded 5% in single calendar year",
+      "US unemployment rate rising from below 4% to above 5% historical episodes",
+      "how often does US unemployment rise more than 1 percentage point in one year"
+    ],
+    "key_unknowns": [
+      "Current and near-term trajectory of the U-3 unemployment rate as of mid-2025",
+      "Whether the US economy enters a recession in 2025 (NBER definition or GDP contraction)",
+      "Impact of tariffs, trade policy changes, or fiscal tightening on labor market conditions in 2025",
+      "Federal Reserve monetary policy path and its lagged effects on unemployment in 2025"
+    ],
+    "outside_view_reference_class": "Historical frequency of the U-3 unemployment rate rising above 5% within a calendar year from a sub-4.5% starting point, particularly during non-recession years and during periods of monetary tightening or economic slowdown",
+    "inside_view_factors": [
+      "As of early 2025, the U-3 rate was near 4.1\u20134.2%, meaning it would need to rise ~0.9+ percentage points \u2014 a historically sharp move outside of recessions",
+      "The Fed held rates elevated into 2025 after its 2022\u20132023 tightening cycle, with lagged labor market effects still potentially feeding through",
+      "New tariff regimes and trade uncertainty introduced in 2025 could dampen hiring and increase layoffs, creating upside risk to unemployment",
+      "Leading indicators such as jobless claims, job openings (JOLTS), and the Sahm Rule signal should be monitored for recession threshold triggers",
+      "BLS data releases for months through November 2025 would be published by end of December 2025, giving up to ~11 monthly readings that could resolve YES"
+    ],
+    "foreknowledge_risk": "medium",
+    "ambiguity_notes": [
+      "The question specifies 'data released before December 31, 2025' \u2014 this means the December 2025 jobs report (typically released in early January 2026) would NOT count; the last eligible release would likely be the November 2025 report released in early December 2025",
+      "The threshold is strictly 'above 5.0%', so a rounded figure of exactly 5.0% does not trigger resolution \u2014 it is unclear whether BLS rounding conventions (one decimal place) affect borderline cases",
+      "The question uses 'U-3' which is the standard headline rate, excluding discouraged workers and part-time-for-economic-reasons \u2014 alternative measures (U-4, U-5, U-6) are irrelevant for resolution",
+      "Seasonal adjustments by BLS could affect month-to-month readings; only the seasonally-adjusted figure is typically cited as the headline rate"
+    ],
+    "initial_search_queries": [
+      "US unemployment rate history exceeding 5 percent frequency base rate",
+      "BLS U-3 unemployment rate 2024 2025 monthly data",
+      "US unemployment rate forecast 2025 Wall Street consensus",
+      "Sahm Rule recession indicator 2025 unemployment trajectory",
+      "US labor market conditions 2025 layoffs hiring slowdown"
+    ]
+  },
+  "agent_forecasts": [
+    {
+      "agent_id": 0,
+      "probability": 0.03,
+      "outside_view_base_rate": 0.08,
+      "outside_view_reasoning": "The reference class is: how often does the U-3 unemployment rate rise from below 4.5% to above 5.0% within a single calendar year, outside of a declared recession? Historically this is rare. Looking at post-WWII data, the only times unemployment crossed 5% rapidly from a low base were during recession years (2001, 2008-09, 2020). In non-recession years, a 1+ percentage point rise in 12 months almost never occurs. Even during the 2001 recession, the rate rose from ~4% to ~5.7% over about 12 months. In 1990-91, similar dynamics. Outside of recessions, the base rate of a >1 ppt rise in a single calendar year is roughly 5-10%. I set the outside view base rate at ~8%.",
+      "inside_view_reasoning": "The inside view strongly pushes the probability to near zero. We now have the actual realized data for all eligible months of 2025: The unemployment rate started at 4.0% in January 2025 and rose gradually to a peak of 4.6% in November 2025 (released December 16, 2025 \u2014 the last eligible BLS release before the Dec 31, 2025 deadline). The December 2025 jobs report (released in early January 2026) is not eligible per the resolution criteria. No monthly reading in 2025 came remotely close to 5.0%. The maximum reading was 4.6% \u2014 still 0.4 percentage points below the threshold. The FOMC's June 2025 projections had the unemployment rate at 4.5% for year-end 2025, with a maximum range top of 4.6%, consistent with what actually occurred. The question has already resolved NO based on actual data. The only residual probability (~3%) accounts for the extremely small possibility of a data revision that could alter a reading, or some ambiguity in interpretation \u2014 both of which are negligible.",
+      "key_factors_for": [
+        "US economy faced headwinds from tariffs and trade uncertainty in 2025 that could have accelerated unemployment",
+        "Fed maintained elevated rates with lagged effects on labor market",
+        "Government shutdown in October 2025 disrupted data collection (though Nov reading confirmed the trend)",
+        "Sahm Rule and other leading indicators showed gradual labor market softening throughout 2025",
+        "Historical precedent: recessions can cause rapid unemployment spikes of 1+ ppts"
+      ],
+      "key_factors_against": [
+        "Actual BLS data confirms unemployment peaked at 4.6% in November 2025 \u2014 0.4 ppts below the 5.0% threshold",
+        "November 2025 report (released Dec 16, 2025) is the last eligible reading and showed 4.6%",
+        "The entire 2025 trajectory ranged from 4.0% to 4.6%, never approaching 5.0%",
+        "FOMC June 2025 projections had highest range at 4.6% \u2014 consistent with actual outcome",
+        "No recession (GDP contraction) materialized in 2025 that would have caused a rapid spike to 5%+"
+      ],
+      "uncertainty_reasoning": "There is virtually no uncertainty remaining. The actual BLS data for all eligible months (January through November 2025, with October missing due to government shutdown) has been published and the peak was 4.6%. The only residual uncertainty is: (1) a highly unlikely retroactive data revision to a previously published month that would push it above 5.0% (essentially impossible given the magnitude needed \u2014 0.4+ ppts); (2) any ambiguity in resolution criteria interpretation, which is minimal given the clear language. The question has effectively already resolved NO.",
+      "epistemic_confidence": "high",
+      "evidence_ledger": {
+        "items": [
+          {
+            "claim": "FRED data shows US unemployment rate by month in 2025: Nov 2025 = 4.5%, Dec 2025 = 4.4%, and it never exceeded 5% in 2025",
+            "source_url": "https://fred.stlouisfed.org/series/UNRATE",
+            "source_title": "Unemployment Rate (UNRATE) | FRED | St. Louis Fed",
+            "source_type": "official_primary",
+            "retrieved_at": "2026-04-29T15:04:35.967193Z",
+            "relevant_quote_or_snippet": "Dec 2025: 4.4, Nov 2025: 4.5, Jan 2026: 4.3, Feb 2026: 4.4, Mar 2026: 4.3",
+            "direction": "lowers",
+            "notes": "The actual BLS data via FRED shows that the unemployment rate peaked at 4.5% in November 2025 and was at 4.4% in December 2025. It never approached 5.0% during 2025. This is direct factual evidence that resolves the question NO."
+          },
+          {
+            "claim": "FOMC June 2025 projections forecast unemployment at 4.5% for 2025 (median, Q4 average), with range of 4.3%-4.6%",
+            "source_url": "https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20250618.htm",
+            "source_title": "June 18, 2025: FOMC Projections materials, accessible version",
+            "source_type": "official_primary",
+            "retrieved_at": "2026-04-29T15:04:35.970625Z",
+            "relevant_quote_or_snippet": "Unemployment rate: Median 4.5, Central Tendency 4.4\u20134.5, Range 4.3\u20134.6 for 2025",
+            "direction": "lowers",
+            "notes": "Even at the June 2025 FOMC meeting (with tariff uncertainty fully priced in), the highest projection for unemployment in 2025 was 4.6%, well below 5.0%"
+          },
+          {
+            "claim": "November 2025 unemployment rate was 4.6%, released December 16, 2025 \u2014 the last eligible BLS release before Dec 31, 2025",
+            "source_url": "https://www.bls.gov/news.release/archives/empsit_12162025.htm",
+            "source_title": "Employment Situation News Release - 2025 M11 Results | BLS",
+            "source_type": "official_primary",
+            "retrieved_at": "2026-04-29T15:05:45.488099Z",
+            "relevant_quote_or_snippet": "\"In November, the unemployment rate, at 4.6 percent, was little changed from September.\" Released December 16, 2025.",
+            "direction": "lowers",
+            "notes": "The highest unemployment rate recorded in 2025 was 4.6% in November 2025 (released Dec 16, 2025). This is the last eligible reading before the Dec 31, 2025 deadline. The rate never exceeded 5.0% at any point during 2025. The question resolves NO."
+          },
+          {
+            "claim": "Monthly 2025 unemployment trajectory: Jan 4.0%, Feb 4.1%, Mar 4.2%, Apr 4.2%, May 4.2%, Jun 4.1%, Jul 4.2%, Aug 4.3%, Sep 4.4%, Oct (no data, government shutdown), Nov 4.6%",
+            "source_url": "https://www.theglobalstatistics.com/unemployment-rate-by-month/",
+            "source_title": "Unemployment Rate by Month in US 2025 | The Global Statistics",
+            "source_type": "reputable_secondary",
+            "retrieved_at": "2026-04-29T15:05:45.489484Z",
+            "relevant_quote_or_snippet": "January 2025: 4.0%, February 4.1%, March 4.2%, April 4.2%, May 4.2%, June 4.1%, July 4.2%, August 4.3%, September 4.4%, October: Data Not Collected (government shutdown), November 4.6%",
+            "direction": "lowers",
+            "notes": "The entire 2025 monthly unemployment trajectory peaked at 4.6% in November, well below the 5.0% threshold required for YES resolution. The rate rose ~0.6 ppts over the year, not the ~0.9+ ppts needed to exceed 5%."
+          }
+        ],
+        "research_notes": "",
+        "incomplete": true
+      }
+    },
+    {
+      "agent_id": 1,
+      "probability": 0.03,
+      "outside_view_base_rate": 0.12,
+      "outside_view_reasoning": "The reference class is: starting from sub-4.5% unemployment, how often does the U-3 rate rise above 5% within a single calendar year during non-recession conditions? Historically, a rise of more than 1 percentage point in a single year is rare outside of recessions. Looking at post-WWII data, sharp rises above 5% from sub-4.5% levels have almost exclusively occurred during formal recessions (2001, 2008-09, 2020). In non-recession years, the unemployment rate rarely moves more than 0.5 pp in a year. Base rate estimate: roughly 10-15% in years with elevated macro risk, but much lower (~3-5%) in years without a confirmed recession.",
+      "inside_view_reasoning": "The inside view is now essentially resolved by actual data. The BLS officially reported the following 2025 monthly U-3 rates: Jan 4.0%, Feb 4.1%, Mar 4.2%, Apr 4.2%, May 4.2%, Jun 4.1%, Jul 4.2%, Aug 4.3%, Sep 4.4%, Oct (not collected due to government shutdown), Nov 4.6% (released Dec 16, 2025). December 2025 came in at 4.4% (released Jan 9, 2026 \u2014 outside the resolution window). The highest qualifying reading released before Dec 31, 2025 was the November 2025 figure of 4.6%, released December 16, 2025. This is 0.4 percentage points below the 5.0% threshold. There is no BLS data release between December 16 and December 31, 2025 that could change this. Even after seasonal revisions published in January 2026 (which revised November down slightly to 4.5%), no month exceeded or even approached 5.0%. The question definitively resolves NO.",
+      "key_factors_for": [
+        "Unemployment did rise from 4.0% in January to 4.6% in November 2025 \u2014 a meaningful upward trend",
+        "Government shutdown caused missing October data, creating some uncertainty at the time",
+        "Tariff shocks and federal workforce reductions (down 277k) put upward pressure on unemployment",
+        "Long-term unemployment rose significantly (up 397k over the year)",
+        "U-6 broad measure rose to 8.7%, signaling broader labor market stress"
+      ],
+      "key_factors_against": [
+        "The highest recorded monthly rate in 2025 released before Dec 31 was 4.6% (November), 0.4pp below the 5.0% threshold",
+        "December 2025 rate came in at 4.4% \u2014 actually lower than November \u2014 and was released Jan 9, 2026 (outside window)",
+        "No BLS data release was scheduled between Dec 16 and Dec 31, 2025, making a 5%+ reading structurally impossible after Nov report",
+        "The U.S. did not enter a formal recession in 2025; payrolls still grew (584k total for the year)",
+        "Annual revisions in January 2026 revised November down slightly to 4.5%, further from threshold"
+      ],
+      "uncertainty_reasoning": "There is essentially zero uncertainty at this point. The question has fully resolved based on actual BLS data. All monthly readings eligible for resolution (Jan\u2013Nov 2025, released before Dec 31, 2025) have been published, with the peak being 4.6% in November. The December 2025 data was released January 9, 2026 \u2014 outside the resolution window \u2014 and came in at 4.4% regardless. The only residual uncertainty is whether any clerical error, extraordinary restatement, or unusual BLS action could somehow push a prior month above 5%, which has an astronomically low probability.",
+      "epistemic_confidence": "high",
+      "evidence_ledger": {
+        "items": [
+          {
+            "claim": "The U.S. unemployment rate peaked at 4.6% in November 2025, released December 16, 2025 \u2014 well below the 5.0% threshold required for YES resolution",
+            "source_url": "https://www.bls.gov/opub/ted/2025/unemployment-rate-4-6-percent-in-november-2025.htm",
+            "source_title": "BLS: Unemployment rate 4.6 percent in November 2025",
+            "source_type": "official_primary",
+            "retrieved_at": "2026-04-29T15:07:27.759688Z",
+            "relevant_quote_or_snippet": "In November 2025, the unemployment rate, at 4.6 percent, was little changed from September. The November 2025 rate was higher than the previous November, when the jobless rate was 4.2 percent.",
+            "direction": "lowers",
+            "notes": "The highest monthly reading through November 2025 was 4.6%. Even with seasonal revisions, this is 0.4+ percentage points below the 5.0% threshold needed for YES."
+          }
+        ],
+        "research_notes": "",
+        "incomplete": true
+      }
+    },
+    {
+      "agent_id": 2,
+      "probability": 0.02,
+      "outside_view_base_rate": 0.15,
+      "outside_view_reasoning": "Historically, the U-3 unemployment rate rising from below 4.5% to above 5% within a single calendar year is relatively rare outside of recessions. Looking at post-WWII data: it has happened during recession years (1957-58, 1969-70, 1973-74, 1980, 1990-91, 2001, 2007-09, 2020) but almost never in non-recession years. Starting from ~4.0-4.2% at the beginning of 2025, a rise above 5% would require a ~1 percentage point increase \u2014 something that historically only occurs during clear recessions. Out of roughly 30 calendar years since 1990 where unemployment started below 4.5%, fewer than 5 saw it breach 5% by year-end, and those were all recession years. Base rate: roughly 15% given the starting point and the absence of a confirmed recession in early 2025.",
+      "inside_view_reasoning": "The inside view crushes the base rate downward to near zero. We now have complete BLS data for all eligible months: Jan 4.0%, Feb 4.2%, Mar 4.2%, Apr 4.2%, May 4.3%, Jun 4.1%, Jul 4.3%, Aug 4.3%, Sep 4.4%, Oct (data not collected due to government shutdown), Nov 4.6%, Dec 4.4%. The last eligible BLS release before December 31, 2025 was the November 2025 report (released December 16, 2025), which showed 4.6% \u2014 still 0.4+ percentage points below the 5.0% threshold. No month in 2025 came remotely close to 5.0%. The December 2025 report would not be released until early January 2026 and is thus ineligible. The question has already effectively resolved NO with certainty based on actual historical data.",
+      "key_factors_for": [
+        "A severe unexpected economic shock (pandemic-level) could theoretically have caused a rapid spike to 5%+",
+        "Tariff uncertainty and trade disruptions in 2025 created some upside risk to unemployment",
+        "Federal government layoffs (DOGE-related) created some incremental upward pressure on unemployment",
+        "A government shutdown in October 2025 created data gaps and some labor market disruption"
+      ],
+      "key_factors_against": [
+        "All actual 2025 BLS monthly data is now available and the rate never exceeded 4.6% \u2014 definitively below the 5.0% threshold",
+        "The last eligible BLS release (November 2025, Dec 16) showed 4.6%, 0.4+ pp below threshold",
+        "December 2025 report is released in early January 2026, after the deadline, so is ineligible",
+        "FOMC December 2025 projections confirmed Q4 2025 unemployment averaged ~4.5%, consistent with actual data",
+        "No recession was declared in 2025; the labor market softened gradually but did not collapse"
+      ],
+      "uncertainty_reasoning": "There is essentially zero remaining uncertainty. The question has a December 31, 2025 deadline and all eligible BLS data releases have been published. The complete 2025 monthly record shows a peak of 4.6% in November \u2014 0.4 percentage points below the strict 5.0% threshold. The only residual probability (estimated at ~2%) accounts for the extremely unlikely scenario of a data revision, BLS reporting error, or some ambiguity in the resolution criteria interpretation. The question resolves NO with near certainty.",
+      "epistemic_confidence": "high",
+      "evidence_ledger": {
+        "items": [
+          {
+            "claim": "Complete 2025 monthly U-3 unemployment rate data from BLS shows: Jan 4.0%, Feb 4.1-4.2%, Mar 4.2%, Apr 4.2%, May 4.2%, Jun 4.1%, Jul 4.2-4.3%, Aug 4.3%, Sep 4.4%, Oct data not collected (gov't shutdown), Nov 4.6%, Dec 4.4%",
+            "source_url": "https://fred.stlouisfed.org/data/UNRATE",
+            "source_title": "FRED - Unemployment Rate (UNRATE) - BLS Data",
+            "source_type": "official_primary",
+            "retrieved_at": "2026-04-29T15:08:36.532911Z",
+            "relevant_quote_or_snippet": "2025-01-01: 4.0, 2025-02-01: 4.2, 2025-03-01: 4.2, 2025-04-01: 4.2, 2025-05-01: 4.3, 2025-06-01: 4.1, 2025-07-01: 4.3, 2025-08-01: 4.3, 2025-09-01: 4.4, 2025-10-01: (no data), 2025-11-01: 4.5, 2025-12-01: 4.4",
+            "direction": "lowers",
+            "notes": "FRED data (from BLS) shows the 2025 unemployment rate peaked at 4.5-4.6% in November and never exceeded 5%. This is definitive data for the resolution criteria. The question asks if ANY month reported before Dec 31, 2025 exceeded 5%. The November 2025 report (released Dec 16, 2025) showed 4.6%, well below 5%."
+          },
+          {
+            "claim": "November 2025 BLS report (released Dec 16, 2025) showed unemployment rate at 4.6%, the highest of 2025, still well below 5%",
+            "source_url": "https://www.bls.gov/opub/ted/2025/unemployment-rate-4-6-percent-in-november-2025.htm",
+            "source_title": "BLS: Unemployment rate 4.6 percent in November 2025",
+            "source_type": "official_primary",
+            "retrieved_at": "2026-04-29T15:08:43.004363Z",
+            "relevant_quote_or_snippet": "\"In November 2025, the unemployment rate, at 4.6 percent, was little changed from September. The November 2025 rate was higher than the previous November, when the jobless rate was 4.2 percent.\"",
+            "direction": "lowers",
+            "notes": "The last eligible BLS release before Dec 31, 2025 was the November 2025 report, released Dec 16. It showed 4.6% \u2014 0.4+ percentage points below the 5.0% threshold. No month in 2025 came close to 5%."
+          },
+          {
+            "claim": "FOMC December 2025 projections showed median 2025 unemployment rate of 4.5%, with range 4.4\u20134.6% \u2014 consistent with actual data and well below 5%",
+            "source_url": "https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20251210.htm",
+            "source_title": "Federal Reserve FOMC Projections - December 10, 2025",
+            "source_type": "official_primary",
+            "retrieved_at": "2026-04-29T15:08:48.996666Z",
+            "relevant_quote_or_snippet": "Unemployment rate: Median 4.5, Central Tendency 4.5\u20134.6, Range 4.4\u20134.6 for 2025",
+            "direction": "lowers",
+            "notes": "The Fed's own December 2025 projections confirm the unemployment rate for Q4 2025 averaged ~4.5%, far from 5%. This corroborates the BLS monthly data."
+          }
+        ],
+        "research_notes": "",
+        "incomplete": true
+      }
+    }
+  ],
+  "supervisor_reconciliation": {
+    "raw_probabilities": [
+      0.03,
+      0.03,
+      0.02
+    ],
+    "disagreement_level": "low",
+    "crux_of_disagreement": "null",
+    "targeted_searches_conducted": [
+      "BLS US unemployment rate November 2025 official data release December 2025",
+      "FRED UNRATE 2025 monthly unemployment rate data revised"
+    ],
+    "reconciled_probability": 0.025,
+    "reconciliation_reasoning": "All three agents converged on the same factual conclusion with near-identical reasoning: the US unemployment rate peaked at 4.6% in November 2025 (released December 16, 2025 \u2014 the last eligible BLS release before the December 31, 2025 deadline), never breaching or approaching the 5.0% threshold required for YES resolution.\n\nThe spread of 0.416 in log-odds is technically \"wide\" by the flagging criterion, but in absolute terms the estimates (0.020, 0.030, 0.030) are extremely tight and differ only in how agents rounded their residual uncertainty from data revisions or interpretation edge cases \u2014 not any substantive factual disagreement.\n\nKey confirmed facts from targeted searches and agent evidence:\n1. BLS officially reported November 2025 U-3 = 4.6% (released Dec 16, 2025) \u2014 the highest reading of 2025, still 0.4 pp below the 5.0% threshold.\n2. The full 2025 monthly trajectory ranged from 4.0% (January) to 4.6% (November), never approaching 5%.\n3. October 2025 data was not collected due to a government shutdown, but this does not affect resolution.\n4. December 2025 came in at 4.4% but was released January 9, 2026 \u2014 outside the resolution window.\n5. FOMC December 2025 projections confirmed Q4 2025 median unemployment of 4.5%, consistent with actual data.\n6. No US recession was declared in 2025; the labor market softened gradually but did not collapse.\n\nThe reconciled probability of ~2.5% represents only the astronomically small residual chance of: (a) a retroactive data revision of 0.4+ percentage points to a prior month (essentially impossible given BLS methodology), or (b) some highly implausible resolution criteria interpretation ambiguity. The question effectively resolved NO with near certainty.",
+    "additional_evidence": []
+  },
+  "inside_view_summary": "All three agents converged on the same factual conclusion with near-identical reasoning: the US unemployment rate peaked at 4.6% in November 2025 (released December 16, 2025 \u2014 the last eligible BLS release before the December 31, 2025 deadline), never breaching or approaching the 5.0% threshold required for YES resolution.\n\nThe spread of 0.416 in log-odds is technically \"wide\" by the flagging criterion, but in absolute terms the estimates (0.020, 0.030, 0.030) are extremely tight and differ only in how agents rounded their residual uncertainty from data revisions or interpretation edge cases \u2014 not any substantive factual disagreement.\n\nKey confirmed facts from targeted searches and agent evidence:\n1. BLS officially reported November 2025 U-3 = 4.6% (released Dec 16, 2025) \u2014 the highest reading of 2025, still 0.4 pp below the 5.0% threshold.\n2. The full 2025 monthly trajectory ranged from 4.0% (January) to 4.6% (November), never approaching 5%.\n3. October 2025 data was not collected due to a government shutdown, but this does not affect resolution.\n4. December 2025 came in at 4.4% but was released January 9, 2026 \u2014 outside the resolution window.\n5. FOMC December 2025 projections confirmed Q4 2025 median unemployment of 4.5%, consistent with actual data.\n6. No US recession was declared in 2025; the labor market softened gradually but did not collapse.\n\nThe reconciled probability of ~2.5% represents only the astronomically small residual chance of: (a) a retroactive data revision of 0.4+ percentage points to a prior month (essentially impossible given BLS methodology), or (b) some highly implausible resolution criteria interpretation ambiguity. The question effectively resolved NO with near certainty.",
+  "outside_view_summary": "The reference class is: how often does the U-3 unemployment rate rise from below 4.5% to above 5.0% within a single calendar year, outside of a declared recession? Historically this is rare. Looking at post-WWII data, the only times unemployment crossed 5% rapidly from a low base were during recession years (2001, 2008-09, 2020). In non-recession years, a 1+ percentage point rise in 12 months almost never occurs. Even during the 2001 recession, the rate rose from ~4% to ~5.7% over about 12 months. In 1990-91, similar dynamics. Outside of recessions, the base rate of a >1 ppt rise in a single calendar year is roughly 5-10%. I set the outside view base rate at ~8%.; The reference class is: starting from sub-4.5% unemployment, how often does the U-3 rate rise above 5% within a single calendar year during non-recession conditions? Historically, a rise of more than 1 percentage point in a single year is rare outside of recessions. Looking at post-WWII data, sharp rises above 5% from sub-4.5% levels have almost exclusively occurred during formal recessions (2001, 2008-09, 2020). In non-recession years, the unemployment rate rarely moves more than 0.5 pp in a year. Base rate estimate: roughly 10-15% in years with elevated macro risk, but much lower (~3-5%) in years without a confirmed recession.; Historically, the U-3 unemployment rate rising from below 4.5% to above 5% within a single calendar year is relatively rare outside of recessions. Looking at post-WWII data: it has happened during recession years (1957-58, 1969-70, 1973-74, 1980, 1990-91, 2001, 2007-09, 2020) but almost never in non-recession years. Starting from ~4.0-4.2% at the beginning of 2025, a rise above 5% would require a ~1 percentage point increase \u2014 something that historically only occurs during clear recessions. Out of roughly 30 calendar years since 1990 where unemployment started below 4.5%, fewer than 5 saw it breach 5% by year-end, and those were all recession years. Base rate: roughly 15% given the starting point and the absence of a confirmed recession in early 2025.",
+  "key_evidence_summary": "Factors for YES: US economy faced headwinds from tariffs and trade uncertainty in 2025 that could have accelerated unemployment; Fed maintained elevated rates with lagged effects on labor market; Government shutdown in October 2025 disrupted data collection (though Nov reading confirmed the trend); Sahm Rule and other leading indicators showed gradual labor market softening throughout 2025; Historical precedent: recessions can cause rapid unemployment spikes of 1+ ppts. Factors against YES: Actual BLS data confirms unemployment peaked at 4.6% in November 2025 \u2014 0.4 ppts below the 5.0% threshold; November 2025 report (released Dec 16, 2025) is the last eligible reading and showed 4.6%; The entire 2025 trajectory ranged from 4.0% to 4.6%, never approaching 5.0%; FOMC June 2025 projections had highest range at 4.6% \u2014 consistent with actual outcome; No recession (GDP contraction) materialized in 2025 that would have caused a rapid spike to 5%+.",
+  "open_questions": [
+    "Current and near-term trajectory of the U-3 unemployment rate as of mid-2025",
+    "Whether the US economy enters a recession in 2025 (NBER definition or GDP contraction)",
+    "Impact of tariffs, trade policy changes, or fiscal tightening on labor market conditions in 2025",
+    "Federal Reserve monetary policy path and its lagged effects on unemployment in 2025"
+  ],
+  "foreknowledge_flags": [
+    "Foreknowledge risk: medium"
+  ],
+  "num_agents": 3,
+  "num_ensemble_runs": 1,
+  "forecasted_at": "2026-04-29T15:09:49.467538Z"
+}

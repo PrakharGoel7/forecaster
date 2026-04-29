@@ -1,0 +1,6 @@
+{
+  "question": "Will the US unemployment rate exceed 5% before the end of 2025?",
+  "context": "Resolves YES if the Bureau of Labor Statistics reports a U-3 unemployment rate above 5.0% for any month with data released before December 31, 2025.",
+  "agents": 3,
+  "runs": 1
+}
