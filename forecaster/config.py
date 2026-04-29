@@ -5,7 +5,7 @@ import os
 
 @dataclass
 class ForecasterConfig:
-    model: str = "anthropic/claude-sonnet-4-6"
+    model: str = "openai/gpt-4o"
     api_key: str = field(default_factory=lambda: os.environ.get("OPENROUTER_API_KEY", ""))
 
     # M independent agents per ensemble run

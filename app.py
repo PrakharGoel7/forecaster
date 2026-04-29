@@ -502,7 +502,7 @@ elif st.session_state.page == "detail":
                     Run the forecaster to get an independent AI probability estimate
                     and compare it against the Kalshi market price.
                     <div style='margin-top:12px;font-size:11px;color:#9b9790;font-family:JetBrains Mono,monospace;'>
-                        3 agents · claude-sonnet-4-6
+                        3 agents · gpt-4o
                     </div>
                 </div>""", unsafe_allow_html=True)
 
@@ -518,7 +518,6 @@ elif st.session_state.page == "detail":
 
                             # Save to DB
                             if not st.session_state.forecast_saved:
-                                ev_ref = st.session_state.selected_event
                                 db.save_forecast(
                                     ticker=mkt.ticker,
                                     event_title=ev_title,
@@ -537,9 +536,9 @@ elif st.session_state.page == "detail":
                                     },
                                 )
                                 st.session_state.forecast_saved = True
+                            st.rerun()
                         except Exception as ex:
                             st.error(str(ex))
-                    st.rerun()
 
             else:
                 # Show results
