@@ -507,16 +507,31 @@ elif st.session_state.page == "detail":
                 </div>""", unsafe_allow_html=True)
 
                 if st.button("run forecaster →", use_container_width=True):
-                    with st.spinner("Forecasting — takes 1–3 minutes…"):
+                    with st.status("Collecting evidence (0%)", expanded=False) as status:
                         try:
                             config = ForecasterConfig()
+
+                            def on_step(name, stage):
+                                if "Agent" in name:
+                                    try:
+                                        i, n = map(int, name.split("Agent ")[1].split("/"))
+                                        if stage == "done":
+                                            if i < n:
+                                                status.update(label=f"Collecting evidence ({int(i/n*100)}%)")
+                                            else:
+                                                status.update(label="Analyzing findings...")
+                                    except Exception:
+                                        pass
+                                elif "Supervisor" in name and stage == "done":
+                                    status.update(label="Drawing conclusions...")
+
                             memo = ForecasterSystem(config).forecast(
                                 question=mkt.question,
                                 context=mkt.resolution_context or None,
+                                on_step=on_step,
                             )
                             st.session_state.memo = memo
 
-                            # Save to DB
                             if not st.session_state.forecast_saved:
                                 db.save_forecast(
                                     ticker=mkt.ticker,
@@ -536,8 +551,11 @@ elif st.session_state.page == "detail":
                                     },
                                 )
                                 st.session_state.forecast_saved = True
+
+                            status.update(label="Complete", state="complete")
                             st.rerun()
                         except Exception as ex:
+                            status.update(label="Error", state="error")
                             st.error(str(ex))
 
             else:
