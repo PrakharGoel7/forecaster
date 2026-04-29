@@ -227,13 +227,7 @@ with st.sidebar:
         <div style='font-size:11px;color:#444;margin-top:5px;font-family:JetBrains Mono,monospace;'>kalshi · claude</div>
     </div>""", unsafe_allow_html=True)
 
-    if st.session_state.client:
-        st.markdown("""<div style='display:flex;align-items:center;gap:8px;padding:9px 12px;
-            background:#0e1f0e;border:1px solid #1a3a1a;border-radius:7px;margin-bottom:16px;'>
-            <div style='width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0;'></div>
-            <span style='font-family:JetBrains Mono,monospace;font-size:11px;color:#4ade80;'>kalshi connected</span>
-        </div>""", unsafe_allow_html=True)
-    else:
+    if not st.session_state.client:
         err = st.session_state.connect_error
         st.markdown(f"""<div style='padding:9px 12px;background:#1f0e0e;border:1px solid #3a1a1a;
             border-radius:7px;margin-bottom:16px;'>
