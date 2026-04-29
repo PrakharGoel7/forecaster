@@ -73,7 +73,13 @@ class _KalshiAuth(httpx.Auth):
 def _load_private_key(pem: str | bytes):
     if isinstance(pem, str):
         pem = pem.encode()
-    return serialization.load_pem_private_key(pem, password=None)
+    pem = pem.strip()
+    if pem.startswith(b"-----"):
+        return serialization.load_pem_private_key(pem, password=None)
+    # Raw base64 DER (no PEM headers) — decode and load directly
+    import base64
+    der = base64.b64decode(pem)
+    return serialization.load_der_private_key(der, password=None)
 
 
 @dataclass
