@@ -44,6 +44,16 @@ section[data-testid="stSidebar"] {
     font-size: 12px !important; width: 100% !important; padding: 0.55rem !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover { background: #c4421a !important; }
+/* Logo button — looks like plain text */
+[data-testid="stSidebar"] [data-testid="stButton"]:first-child > button {
+    background: transparent !important; border: none !important; box-shadow: none !important;
+    color: #fff !important; font-size: 20px !important; font-weight: 600 !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    padding: 4px 0 8px !important; text-align: left !important;
+}
+[data-testid="stSidebar"] [data-testid="stButton"]:first-child > button:hover {
+    background: transparent !important; color: #e36438 !important;
+}
 
 /* All buttons */
 .stButton > button {
@@ -221,11 +231,15 @@ if st.session_state.client is None:
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    st.markdown("""
-    <div style='padding:4px 0 24px;border-bottom:1px solid #252525;margin-bottom:24px;'>
-        <div style='font-family:JetBrains Mono,monospace;font-size:20px;font-weight:600;color:#fff;'>◈ forecaster</div>
-        <div style='font-size:11px;color:#444;margin-top:5px;font-family:JetBrains Mono,monospace;'>kalshi · claude</div>
-    </div>""", unsafe_allow_html=True)
+    if st.button("◈ forecaster", key="logo_home",
+                 help="Go to home", use_container_width=True):
+        st.session_state.page = "search"
+        st.session_state.saved_row = None
+        st.session_state.memo = None
+        st.rerun()
+    st.markdown("<div style='border-bottom:1px solid #252525;margin-bottom:24px;padding-bottom:4px;"
+                "font-size:11px;color:#444;font-family:JetBrains Mono,monospace;'>kalshi · claude</div>",
+                unsafe_allow_html=True)
 
     if not st.session_state.client:
         err = st.session_state.connect_error
