@@ -585,25 +585,62 @@ elif st.session_state.page == "detail":
                     </div>
                 </div>""", unsafe_allow_html=True)
 
-                with st.expander("Outside view"):
-                    st.markdown(f"**Base rate:** {memo.agent_forecasts[0].outside_view_base_rate*100:.1f}%")
+                avg_base = sum(a.outside_view_base_rate for a in memo.agent_forecasts) / len(memo.agent_forecasts)
+                with st.expander("Prior & Base Rate"):
+                    st.markdown(f"**Base rate:** {avg_base*100:.1f}%")
                     st.markdown(memo.outside_view_summary)
 
-                with st.expander("Inside view & reasoning", expanded=True):
+                with st.expander("Final Synthesis", expanded=True):
                     st.markdown(memo.supervisor_reconciliation.reconciliation_reasoning)
 
-                with st.expander("Agent details"):
-                    for a in memo.agent_forecasts:
-                        st.markdown(f"**Agent {a.agent_id+1}** — {a.probability*100:.1f}% "
-                                    f"*(confidence: {a.epistemic_confidence})*")
-                        st.markdown(f"- **For:** {'; '.join(a.key_factors_for)}")
-                        st.markdown(f"- **Against:** {'; '.join(a.key_factors_against)}")
-                        st.divider()
+                # Pros / Cons — deduplicated across agents
+                all_for     = list(dict.fromkeys(f for a in memo.agent_forecasts for f in a.key_factors_for))
+                all_against = list(dict.fromkeys(f for a in memo.agent_forecasts for f in a.key_factors_against))
+                if all_for or all_against:
+                    with st.expander("Pros / Cons"):
+                        pc1, pc2 = st.columns(2)
+                        with pc1:
+                            st.markdown("<div style='font-size:11px;font-weight:700;text-transform:uppercase;"
+                                        "letter-spacing:0.1em;color:#16a34a;margin-bottom:10px;"
+                                        "font-family:JetBrains Mono,monospace;'>For YES</div>",
+                                        unsafe_allow_html=True)
+                            for f in all_for[:6]:
+                                st.markdown(f"<div style='font-size:13px;color:#1a1a1a;padding:5px 0;"
+                                            f"border-bottom:1px solid #f0ede8;'>+ {f}</div>",
+                                            unsafe_allow_html=True)
+                        with pc2:
+                            st.markdown("<div style='font-size:11px;font-weight:700;text-transform:uppercase;"
+                                        "letter-spacing:0.1em;color:#dc2626;margin-bottom:10px;"
+                                        "font-family:JetBrains Mono,monospace;'>Against YES</div>",
+                                        unsafe_allow_html=True)
+                            for f in all_against[:6]:
+                                st.markdown(f"<div style='font-size:13px;color:#1a1a1a;padding:5px 0;"
+                                            f"border-bottom:1px solid #f0ede8;'>− {f}</div>",
+                                            unsafe_allow_html=True)
 
-                if memo.open_questions:
-                    with st.expander("Open questions"):
-                        for q in memo.open_questions:
-                            st.markdown(f"- {q}")
+                # Evidence ledger — aggregated across agents
+                all_evidence = [item for a in memo.agent_forecasts for item in a.evidence_ledger.items]
+                if all_evidence:
+                    _dir_color = {"raises": "#16a34a", "lowers": "#dc2626",
+                                  "base_rate": "#0284c7", "context": "#9b9790"}
+                    with st.expander(f"Evidence ({len(all_evidence)} sources)"):
+                        for item in all_evidence:
+                            color = _dir_color.get(item.direction.value, "#9b9790")
+                            badge = item.direction.value.replace("_", " ").upper()
+                            snippet = (f'<div style="font-size:11px;color:#6b6864;margin-top:5px;'
+                                       f'font-style:italic;">"{_trunc(item.relevant_quote_or_snippet, 180)}"</div>'
+                                       if item.relevant_quote_or_snippet else "")
+                            st.markdown(f"""<div style='border-left:3px solid {color};padding:8px 12px;
+                                margin-bottom:10px;background:#fafaf8;border-radius:0 7px 7px 0;'>
+                                <div style='font-size:10px;font-weight:700;color:{color};
+                                    text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;
+                                    font-family:JetBrains Mono,monospace;'>{badge}</div>
+                                <div style='font-size:13px;color:#1a1a1a;line-height:1.5;'>{item.claim}</div>
+                                <div style='font-size:11px;color:#9b9790;margin-top:4px;'>
+                                    <a href='{item.source_url}' target='_blank'
+                                       style='color:#9b9790;text-decoration:underline;'>{item.source_title}</a>
+                                </div>{snippet}
+                            </div>""", unsafe_allow_html=True)
 
                 if not is_saved_view:
                     if st.button("run again", use_container_width=True):
