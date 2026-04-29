@@ -205,8 +205,10 @@ if st.session_state.client is None:
     kf   = _get_secret("KALSHI_PRIVATE_KEY_FILE")
     if kid and kpem:
         try:
+            # Normalize PEM: TOML triple-quotes add a leading newline; env vars may use \n literals
             if "\\n" in kpem:
                 kpem = kpem.replace("\\n", "\n")
+            kpem = kpem.strip()
             st.session_state.client = KalshiClient(key_id=kid, private_key_pem=kpem.encode())
         except Exception as e:
             st.session_state.connect_error = str(e)
