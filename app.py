@@ -1,4 +1,4 @@
-"""Kalshi Forecaster — Streamlit UI."""
+"""Prism — AI forecasting on live prediction markets."""
 import dataclasses
 import json
 import os
@@ -18,7 +18,7 @@ from forecaster.forecaster_system import ForecasterSystem
 from forecaster.models import ForecastMemo
 from forecaster import db
 
-st.set_page_config(page_title="Forecaster", page_icon="◈", layout="wide",
+st.set_page_config(page_title="Prism", page_icon="◈", layout="wide",
                    initial_sidebar_state="expanded", menu_items={})
 
 st.html("""
@@ -44,12 +44,12 @@ section[data-testid="stSidebar"] {
     font-size: 12px !important; width: 100% !important; padding: 0.55rem !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover { background: #c4421a !important; }
-/* Logo button — looks like plain text */
+/* Logo button — plain text style */
 [data-testid="stSidebar"] [data-testid="stButton"]:first-child > button {
     background: transparent !important; border: none !important; box-shadow: none !important;
     color: #fff !important; font-size: 20px !important; font-weight: 600 !important;
     font-family: 'JetBrains Mono', monospace !important;
-    padding: 4px 0 8px !important; text-align: left !important;
+    padding: 4px 0 4px !important; text-align: left !important;
 }
 [data-testid="stSidebar"] [data-testid="stButton"]:first-child > button:hover {
     background: transparent !important; color: #e36438 !important;
@@ -58,8 +58,7 @@ section[data-testid="stSidebar"] {
 /* All buttons */
 .stButton > button {
     font-family: 'JetBrains Mono', monospace !important;
-    font-size: 13px !important;
-    border-radius: 8px !important;
+    font-size: 13px !important; border-radius: 8px !important;
     transition: all 0.15s ease !important;
 }
 
@@ -73,13 +72,18 @@ section[data-testid="stSidebar"] {
 .stTextInput input::placeholder { color: #c0bcb6 !important; }
 .stTextInput label { display: none !important; }
 
-/* Cards */
+/* Cards — with hover lift */
 [data-testid="stVerticalBlockBorderWrapper"] {
     border: 1.5px solid #eae7e0 !important;
     border-radius: 14px !important;
     background: #fff !important;
     box-shadow: 0 1px 6px rgba(0,0,0,0.05) !important;
     padding: 4px !important;
+    transition: box-shadow 0.18s ease, transform 0.18s ease !important;
+}
+[data-testid="stVerticalBlockBorderWrapper"]:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.09) !important;
+    transform: translateY(-2px) !important;
 }
 
 /* Event cards */
@@ -95,15 +99,15 @@ section[data-testid="stSidebar"] {
 /* Forecast history cards */
 .fc-card { padding: 6px 4px 4px; }
 .fc-q { font-size: 14px; font-weight: 600; color: #1a1a1a; line-height: 1.4; margin: 8px 0 10px; }
-.fc-stats { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.fc-stats { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .fc-prob { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; }
 .fc-sep  { color: #d4d0ca; font-size: 11px; }
 .fc-mkt  { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #9b9790; }
 .fc-edge { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
-.fc-date { font-size: 11px; color: #b0acA6; font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+.fc-date { font-size: 11px; color: #b0aca6; font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
 
 /* Stat row (detail view) */
-.stat-row { display: flex; gap: 36px; margin: 20px 0 24px; flex-wrap: wrap; }
+.stat-row { display: flex; gap: 36px; margin: 16px 0 20px; flex-wrap: wrap; }
 .stat { display: flex; flex-direction: column; gap: 3px; }
 .stat-lbl {
     font-size: 10px; font-weight: 700; text-transform: uppercase;
@@ -133,8 +137,8 @@ section[data-testid="stSidebar"] {
     letter-spacing: 0.1em; color: #9b9790; margin-bottom: 7px;
     font-family: 'JetBrains Mono', monospace;
 }
-.res-val { font-size: 32px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-.res-sub { font-size: 11px; color: #9b9790; margin-top: 5px; }
+.res-val { font-size: 38px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+.res-sub { font-size: 11px; color: #9b9790; margin-top: 6px; }
 .edge-card { grid-column: span 2; }
 .e-pos { color: #16a34a; } .e-neg { color: #dc2626; } .e-neu { color: #9b9790; }
 
@@ -144,8 +148,8 @@ section[data-testid="stSidebar"] {
     color: #9b9790; margin-bottom: 6px; font-family: 'JetBrains Mono', monospace;
 }
 .sec-head {
-    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
-    color: #9b9790; margin: 36px 0 18px; font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
+    color: #b0aca6; margin: 40px 0 18px; font-family: 'JetBrains Mono', monospace;
     border-top: 1px solid #eae7e0; padding-top: 28px;
 }
 
@@ -165,13 +169,19 @@ section[data-testid="stSidebar"] {
     background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd;
     border-radius: 5px; padding: 3px 8px; margin-bottom: 16px;
 }
+
+/* Breadcrumb */
+.breadcrumb {
+    font-size: 13px; color: #9b9790; margin-bottom: 20px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.breadcrumb .crumb-cur { color: #1a1a1a; font-weight: 600; }
 </style>
 """)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _get_secret(key, default=""):
-    """Read from st.secrets (Streamlit Cloud) with fallback to os.environ."""
     try:
         v = st.secrets.get(key)
         if v:
@@ -195,6 +205,35 @@ def _fmt_ts(ts):
         return ts[:10] if ts else ""
 
 
+def _rel_time(ts):
+    try:
+        dt  = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        d   = now - dt
+        if d.days >= 1:   return f"{d.days}d ago"
+        h = d.seconds // 3600
+        if h >= 1:        return f"{h}h ago"
+        m = d.seconds // 60
+        return f"{m}m ago"
+    except Exception:
+        return _fmt_ts(ts)
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def _load_browse_events(kid: str, kpem: str, kf: str) -> list:
+    try:
+        if kid and kpem:
+            client = KalshiClient(key_id=kid, private_key_pem=kpem.strip().encode())
+        elif kid and kf and Path(kf).exists():
+            client = KalshiClient.from_files(kid, kf)
+        else:
+            return []
+        events, _ = client.get_events(limit=20, status="open")
+        return events[:6]
+    except Exception:
+        return []
+
+
 # ── Session state ──────────────────────────────────────────────────────────────
 
 _DEFAULTS = {
@@ -208,14 +247,13 @@ for k, v in _DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# Auto-connect Kalshi on startup
+# Auto-connect
 if st.session_state.client is None:
     kid  = _get_secret("KALSHI_API_KEY")
     kpem = _get_secret("KALSHI_PRIVATE_KEY_PEM")
     kf   = _get_secret("KALSHI_PRIVATE_KEY_FILE")
     if kid and kpem:
         try:
-            # Normalize PEM: TOML triple-quotes add a leading newline; env vars may use \n literals
             if "\\n" in kpem:
                 kpem = kpem.replace("\\n", "\n")
             kpem = kpem.strip()
@@ -231,15 +269,15 @@ if st.session_state.client is None:
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    if st.button("◈ forecaster", key="logo_home",
-                 help="Go to home", use_container_width=True):
+    if st.button("◈ prism", key="logo_home", use_container_width=True):
         st.session_state.page = "search"
         st.session_state.saved_row = None
         st.session_state.memo = None
         st.rerun()
-    st.markdown("<div style='border-bottom:1px solid #252525;margin-bottom:24px;padding-bottom:4px;"
-                "font-size:11px;color:#444;font-family:JetBrains Mono,monospace;'>kalshi · claude</div>",
-                unsafe_allow_html=True)
+    st.markdown("""<div style='border-bottom:1px solid #252525;margin-bottom:24px;padding-bottom:12px;'>
+        <div style='font-size:11px;color:#444;font-family:JetBrains Mono,monospace;'>
+            See through the noise.</div>
+    </div>""", unsafe_allow_html=True)
 
     if not st.session_state.client:
         err = st.session_state.connect_error
@@ -255,9 +293,10 @@ with st.sidebar:
 
     try:
         n = len(db.get_forecasts(limit=1000))
-        st.markdown(f"""<div style='font-family:JetBrains Mono,monospace;font-size:11px;
-            color:#444;padding:0 4px;'>{n} forecast{"s" if n != 1 else ""} saved</div>""",
-            unsafe_allow_html=True)
+        if n:
+            st.markdown(f"""<div style='font-family:JetBrains Mono,monospace;font-size:11px;
+                color:#444;padding:0 4px;'>{n} forecast{"s" if n != 1 else ""} saved</div>""",
+                unsafe_allow_html=True)
     except Exception:
         pass
 
@@ -284,10 +323,12 @@ if not st.session_state.client:
 
 if st.session_state.page == "search":
 
-    st.markdown("""<div style='margin-bottom:28px;'>
-        <div style='font-size:28px;font-weight:750;color:#1a1a1a;letter-spacing:-0.02em;line-height:1.2;'>
+    st.markdown("""<div style='margin-bottom:24px;'>
+        <div style='font-size:30px;font-weight:750;color:#1a1a1a;letter-spacing:-0.02em;line-height:1.2;'>
             What do you want to forecast?</div>
-        <div style='font-size:14px;color:#9b9790;margin-top:8px;'>Browse live Kalshi prediction markets.</div>
+        <div style='font-size:14px;color:#9b9790;margin-top:8px;line-height:1.6;'>
+            Prism runs multiple independent AI agents on live Kalshi markets,
+            weighs the evidence, and gives you a calibrated probability.</div>
     </div>""", unsafe_allow_html=True)
 
     sc, bc = st.columns([6, 1])
@@ -314,14 +355,9 @@ if st.session_state.page == "search":
             except Exception as ex:
                 st.error(str(ex))
 
-    events = st.session_state.events
-
-    if events:
-        st.markdown(f"<div style='font-size:12px;color:#9b9790;margin:20px 0 16px;"
-                    f"font-family:JetBrains Mono,monospace;'>{len(events)} events</div>",
-                    unsafe_allow_html=True)
+    def _render_event_cards(event_list, key_prefix):
         cols = st.columns(3, gap="medium")
-        for i, e in enumerate(events):
+        for i, e in enumerate(event_list):
             with cols[i % 3]:
                 with st.container(border=True):
                     st.markdown(f"""<div class='ev-card'>
@@ -329,7 +365,7 @@ if st.session_state.page == "search":
                         <div class='ev-title'>{e.title}</div>
                         <div class='ev-sub'>{e.sub_title}</div>
                     </div>""", unsafe_allow_html=True)
-                    if st.button("explore →", key=f"ev_{i}", use_container_width=True):
+                    if st.button("explore →", key=f"{key_prefix}_{i}", use_container_width=True):
                         st.session_state.selected_event = e
                         st.session_state.selected_market = None
                         st.session_state.memo = None
@@ -347,14 +383,31 @@ if st.session_state.page == "search":
                         st.session_state.page = "detail"
                         st.rerun()
 
-    # ── Recent Analyses ────────────────────────────────────────────────────────
+    events = st.session_state.events
+
+    if events:
+        st.markdown(f"<div style='font-size:12px;color:#9b9790;margin:20px 0 16px;"
+                    f"font-family:JetBrains Mono,monospace;'>{len(events)} results</div>",
+                    unsafe_allow_html=True)
+        _render_event_cards(events, "ev")
+    else:
+        # Auto-load browse section when no search active
+        kid  = _get_secret("KALSHI_API_KEY")
+        kpem = _get_secret("KALSHI_PRIVATE_KEY_PEM", "")
+        kf   = _get_secret("KALSHI_PRIVATE_KEY_FILE", "")
+        browse = _load_browse_events(kid, kpem.strip(), kf)
+        if browse:
+            st.markdown("<div class='sec-head'>Browse Markets</div>", unsafe_allow_html=True)
+            _render_event_cards(browse, "br")
+
+    # ── Latest Forecasts ───────────────────────────────────────────────────────
     try:
         past = db.get_forecasts(limit=12)
     except Exception:
         past = []
 
     if past:
-        st.markdown("<div class='sec-head'>Recent Analyses</div>", unsafe_allow_html=True)
+        st.markdown("<div class='sec-head'>Latest Forecasts</div>", unsafe_allow_html=True)
         pcols = st.columns(3, gap="medium")
         for i, row in enumerate(past):
             fp   = row["forecaster_prob"] or 0.0
@@ -374,7 +427,7 @@ if st.session_state.page == "search":
                             <span class='fc-mkt'>{kp*100:.1f}¢ kalshi</span>
                             <span class='fc-edge {ec}'>{edge_str}</span>
                         </div>
-                        <div class='fc-date'>{_fmt_ts(row["created_at"])}</div>
+                        <div class='fc-date'>{_rel_time(row["created_at"])}</div>
                     </div>""", unsafe_allow_html=True)
                     if st.button("view →", key=f"fc_{row['id']}", use_container_width=True):
                         st.session_state.saved_row = row
@@ -382,70 +435,77 @@ if st.session_state.page == "search":
                         st.session_state.page = "detail"
                         st.rerun()
 
-    elif not events:
-        st.markdown("""<div style='text-align:center;padding:80px 0;color:#c5c1ba;'>
-            <div style='font-size:48px;margin-bottom:16px;font-weight:200;'>⊙</div>
-            <div style='font-size:15px;'>Try "Trump", "Fed", "Bitcoin" or "oil"</div>
-        </div>""", unsafe_allow_html=True)
-
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE: DETAIL
 # ══════════════════════════════════════════════════════════════════════════════
 
 elif st.session_state.page == "detail":
 
-    if st.button("← back"):
-        st.session_state.page = "search"
-        st.session_state.saved_row = None
-        st.session_state.memo = None
-        st.session_state.forecast_saved = False
-        st.rerun()
-
-    st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
-
     saved = st.session_state.saved_row
 
-    # ── Resolve market + event data ────────────────────────────────────────────
+    # Resolve market + event data
     if saved:
-        # Viewing a saved analysis
-        ctx      = json.loads(saved["context_json"])
-        ev_data  = ctx["event"]
-        mkt      = KalshiMarket(**ctx["market"])
-        memo     = ForecastMemo.model_validate_json(saved["memo_json"])
+        ctx         = json.loads(saved["context_json"])
+        ev_data     = ctx["event"]
+        mkt         = KalshiMarket(**ctx["market"])
+        memo        = ForecastMemo.model_validate_json(saved["memo_json"])
         ev_title    = ev_data.get("title", mkt.ticker)
         ev_sub      = ev_data.get("sub_title", "")
         ev_category = ev_data.get("category", "")
         is_saved_view = True
     else:
-        ev      = st.session_state.selected_event
-        mkt     = st.session_state.selected_market
-        markets = st.session_state.markets
-        memo    = st.session_state.memo
-        ev_title    = ev.title    if ev else ""
+        ev          = st.session_state.selected_event
+        mkt         = st.session_state.selected_market
+        markets     = st.session_state.markets
+        memo        = st.session_state.memo
+        ev_title    = ev.title     if ev else ""
         ev_sub      = ev.sub_title if ev else ""
         ev_category = ev.category  if ev else ""
         is_saved_view = False
 
-        # Multi-market picker
-        if len(markets) > 1 and mkt is None:
-            st.markdown(f"<div style='font-size:20px;font-weight:700;color:#1a1a1a;margin-bottom:20px;'>"
-                        f"{ev_title}</div>", unsafe_allow_html=True)
-            for j, m in enumerate(markets):
-                pc = _pc(m.mid_price)
-                st.markdown(f"""<div class='mkt-chip'>
-                    <div class='mkt-title'>{m.yes_sub_title or m.ticker}</div>
-                    <div class='mkt-price {pc}'>{m.mid_price*100:.0f}¢</div>
-                </div>""", unsafe_allow_html=True)
-                if st.button("select", key=f"mkt_{j}"):
-                    st.session_state.selected_market = m
-                    st.session_state.memo = None
-                    st.session_state.forecast_saved = False
-                    st.rerun()
-            st.stop()
+    # Breadcrumb
+    bc_col, _ = st.columns([4, 8])
+    with bc_col:
+        label = _trunc(ev_title, 48) if ev_title else "Market"
+        if st.button(f"← Home  ›  {label}", key="breadcrumb"):
+            st.session_state.page = "search"
+            st.session_state.saved_row = None
+            st.session_state.memo = None
+            st.session_state.forecast_saved = False
+            st.rerun()
 
-        if mkt is None:
-            st.warning("No open markets for this event.")
-            st.stop()
+    st.html("""<style>
+        [data-testid="stButton"][key="breadcrumb"] > button,
+        div:has(> [data-testid="stButton"] button[kind="secondary"]):first-of-type button {
+            background: transparent !important; border: none !important;
+            box-shadow: none !important; color: #9b9790 !important;
+            font-size: 13px !important; font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-weight: 400 !important; padding: 0 !important; text-align: left !important;
+        }
+    </style>""")
+
+    st.markdown("<div style='margin-bottom:16px;'></div>", unsafe_allow_html=True)
+
+    # Multi-market picker
+    if not is_saved_view and len(markets) > 1 and mkt is None:
+        st.markdown(f"<div style='font-size:20px;font-weight:700;color:#1a1a1a;margin-bottom:20px;'>"
+                    f"{ev_title}</div>", unsafe_allow_html=True)
+        for j, m in enumerate(markets):
+            pc = _pc(m.mid_price)
+            st.markdown(f"""<div class='mkt-chip'>
+                <div class='mkt-title'>{m.yes_sub_title or m.ticker}</div>
+                <div class='mkt-price {pc}'>{m.mid_price*100:.0f}¢</div>
+            </div>""", unsafe_allow_html=True)
+            if st.button("select", key=f"mkt_{j}"):
+                st.session_state.selected_market = m
+                st.session_state.memo = None
+                st.session_state.forecast_saved = False
+                st.rerun()
+        st.stop()
+
+    if mkt is None:
+        st.warning("No open markets for this event.")
+        st.stop()
 
     # ── Layout ─────────────────────────────────────────────────────────────────
     dcol, fcol = st.columns([55, 45], gap="large")
@@ -468,14 +528,17 @@ elif st.session_state.page == "detail":
 
         with st.container(border=True):
             st.markdown(f"""
-            <div style='padding:8px 10px 4px;'>
+            <div style='border-top:3px solid #e36438;border-radius:12px 12px 0 0;
+                        margin:-4px -4px 0;padding:16px 16px 0;'>
                 <div style='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;
-                            color:#e36438;margin-bottom:12px;font-family:JetBrains Mono,monospace;'>
-                    {ev_category} · {ev_sub}
+                            color:#9b9790;margin-bottom:10px;font-family:JetBrains Mono,monospace;'>
+                    {ev_category}{(" · " + ev_sub) if ev_sub else ""}
                 </div>
                 <div style='font-size:22px;font-weight:700;color:#1a1a1a;line-height:1.4;margin-bottom:4px;'>
                     {ev_title}
                 </div>
+            </div>
+            <div style='padding:0 12px 12px;'>
                 <div class='stat-row'>
                     <div class='stat'>
                         <span class='stat-lbl'>Yes Price</span>
@@ -488,7 +551,8 @@ elif st.session_state.page == "detail":
                     </div>
                     <div class='stat'>
                         <span class='stat-lbl'>Closes</span>
-                        <span class='stat-val' style='font-size:20px;color:#1a1a1a;'>{mkt.close_date}</span>
+                        <span class='stat-val' style='font-size:20px;color:#e36438;'>{mkt.close_date}</span>
+                        <span class='stat-sub'>market deadline</span>
                     </div>
                     <div class='stat'>
                         <span class='stat-lbl'>Volume</span>
@@ -505,22 +569,21 @@ elif st.session_state.page == "detail":
             st.markdown("<div style='padding:8px 10px 4px;'>", unsafe_allow_html=True)
 
             if is_saved_view:
-                st.markdown(f"<div class='saved-badge'>Saved · {_fmt_ts(saved['created_at'])}</div>",
+                st.markdown(f"<div class='saved-badge'>Saved · {_rel_time(saved['created_at'])}</div>",
                             unsafe_allow_html=True)
 
             st.markdown("<div class='sec-lbl'>AI Forecast</div>", unsafe_allow_html=True)
 
             if memo is None:
-                # New forecast — show run button
-                st.markdown(f"""<div style='font-size:14px;color:#4a4744;line-height:1.7;margin-bottom:20px;'>
-                    Run the forecaster to get an independent AI probability estimate
-                    and compare it against the Kalshi market price.
+                st.markdown("""<div style='font-size:14px;color:#4a4744;line-height:1.7;margin-bottom:20px;'>
+                    Prism will run multiple independent AI agents to research this market,
+                    weigh the evidence, and produce a calibrated probability estimate.
                     <div style='margin-top:12px;font-size:11px;color:#9b9790;font-family:JetBrains Mono,monospace;'>
-                        3 agents · gpt-4o
+                        3 agents · gpt-4o · Platt-scaled
                     </div>
                 </div>""", unsafe_allow_html=True)
 
-                if st.button("run forecaster →", use_container_width=True):
+                if st.button("run forecast →", use_container_width=True):
                     with st.status("Collecting evidence (0%)", expanded=False) as status:
                         try:
                             config = ForecasterConfig()
@@ -573,7 +636,6 @@ elif st.session_state.page == "detail":
                             st.error(str(ex))
 
             else:
-                # Show results
                 fp   = memo.final_probability
                 kp   = saved["kalshi_price"] if is_saved_view else mkt.mid_price
                 edge = fp - kp
@@ -584,7 +646,7 @@ elif st.session_state.page == "detail":
 
                 st.markdown(f"""<div class='res-grid'>
                     <div class='res-card'>
-                        <div class='res-lbl'>Forecaster P(YES)</div>
+                        <div class='res-lbl'>Prism P(YES)</div>
                         <div class='res-val {_pc(fp)}'>{fp*100:.1f}%</div>
                         <div class='res-sub'>{memo.num_agents} agents · calibrated</div>
                     </div>
@@ -595,7 +657,7 @@ elif st.session_state.page == "detail":
                     </div>
                     <div class='res-card edge-card'>
                         <div class='res-lbl'>Edge</div>
-                        <div class='res-val {ec}' style='font-size:18px;padding-top:5px;'>{el}</div>
+                        <div class='res-val {ec}' style='font-size:20px;padding-top:6px;'>{el}</div>
                     </div>
                 </div>""", unsafe_allow_html=True)
 
@@ -607,7 +669,6 @@ elif st.session_state.page == "detail":
                 with st.expander("Final Synthesis", expanded=True):
                     st.markdown(memo.supervisor_reconciliation.reconciliation_reasoning)
 
-                # Pros / Cons — deduplicated across agents
                 all_for     = list(dict.fromkeys(f for a in memo.agent_forecasts for f in a.key_factors_for))
                 all_against = list(dict.fromkeys(f for a in memo.agent_forecasts for f in a.key_factors_against))
                 if all_for or all_against:
@@ -632,15 +693,14 @@ elif st.session_state.page == "detail":
                                             f"border-bottom:1px solid #f0ede8;'>− {f}</div>",
                                             unsafe_allow_html=True)
 
-                # Evidence ledger — aggregated across agents
                 all_evidence = [item for a in memo.agent_forecasts for item in a.evidence_ledger.items]
                 if all_evidence:
                     _dir_color = {"raises": "#16a34a", "lowers": "#dc2626",
                                   "base_rate": "#0284c7", "context": "#9b9790"}
                     with st.expander(f"Evidence ({len(all_evidence)} sources)"):
                         for item in all_evidence:
-                            color = _dir_color.get(item.direction.value, "#9b9790")
-                            badge = item.direction.value.replace("_", " ").upper()
+                            color   = _dir_color.get(item.direction.value, "#9b9790")
+                            badge   = item.direction.value.replace("_", " ").upper()
                             snippet = (f'<div style="font-size:11px;color:#6b6864;margin-top:5px;'
                                        f'font-style:italic;">"{_trunc(item.relevant_quote_or_snippet, 180)}"</div>'
                                        if item.relevant_quote_or_snippet else "")
@@ -657,7 +717,7 @@ elif st.session_state.page == "detail":
                             </div>""", unsafe_allow_html=True)
 
                 if not is_saved_view:
-                    if st.button("run again", use_container_width=True):
+                    if st.button("refresh forecast", use_container_width=True):
                         st.session_state.memo = None
                         st.session_state.forecast_saved = False
                         st.rerun()
