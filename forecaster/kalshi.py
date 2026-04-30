@@ -201,10 +201,13 @@ class KalshiClient:
         limit: int = 100,
         status: str = "open",
         cursor: str | None = None,
+        series_ticker: str | None = None,
     ) -> tuple[list[KalshiEvent], str | None]:
         params: dict = {"limit": limit, "status": status}
         if cursor:
             params["cursor"] = cursor
+        if series_ticker:
+            params["series_ticker"] = series_ticker
         resp = self._http.get("/events", params=params)
         resp.raise_for_status()
         data = resp.json()
@@ -219,6 +222,29 @@ class KalshiClient:
             for e in data.get("events", [])
         ]
         return events, data.get("cursor") or None
+
+    def search_series(self, query: str, limit: int = 200) -> list[str]:
+        """Return series tickers whose title or ticker contains the query."""
+        q = query.lower()
+        tickers: list[str] = []
+        cursor = None
+        # Series are stable — paginate until we have enough matches or run out
+        for _ in range(100):
+            params: dict = {"limit": 200}
+            if cursor:
+                params["cursor"] = cursor
+            resp = self._http.get("/series", params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            for s in data.get("series", []):
+                if q in (s.get("title", "") + " " + s.get("ticker", "")).lower():
+                    tickers.append(s["ticker"])
+                    if len(tickers) >= limit:
+                        return tickers
+            cursor = data.get("cursor")
+            if not cursor:
+                break
+        return tickers
 
     def get_market(self, ticker: str) -> KalshiMarket:
         resp = self._http.get(f"/markets/{ticker}")
