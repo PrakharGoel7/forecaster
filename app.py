@@ -11,6 +11,7 @@ try:
 except ImportError:
     pass
 
+from PIL import Image
 import streamlit as st
 from forecaster.kalshi import KalshiClient, KalshiMarket, _strip_html
 from forecaster.config import ForecasterConfig
@@ -18,7 +19,10 @@ from forecaster.forecaster_system import ForecasterSystem
 from forecaster.models import ForecastMemo
 from forecaster import db
 
-st.set_page_config(page_title="Prism", page_icon="◈", layout="wide",
+_STATIC = Path(__file__).parent / "static"
+_page_icon = Image.open(_STATIC / "icon.png")
+
+st.set_page_config(page_title="Prism", page_icon=_page_icon, layout="wide",
                    initial_sidebar_state="expanded", menu_items={})
 
 st.html("""
@@ -44,15 +48,17 @@ section[data-testid="stSidebar"] {
     font-size: 12px !important; width: 100% !important; padding: 0.55rem !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover { background: #c4421a !important; }
-/* Logo button — plain text style */
+/* Home nav button — ghost style */
 [data-testid="stSidebar"] [data-testid="stButton"]:first-child > button {
-    background: transparent !important; border: none !important; box-shadow: none !important;
-    color: #fff !important; font-size: 20px !important; font-weight: 600 !important;
+    background: transparent !important; border: 1px solid #333 !important;
+    box-shadow: none !important; color: #888 !important;
+    font-size: 11px !important; font-weight: 500 !important;
     font-family: 'JetBrains Mono', monospace !important;
-    padding: 4px 0 4px !important; text-align: left !important;
+    padding: 5px 10px !important; text-align: left !important;
+    width: auto !important; margin-bottom: 8px !important;
 }
 [data-testid="stSidebar"] [data-testid="stButton"]:first-child > button:hover {
-    background: transparent !important; color: #e36438 !important;
+    background: #1f1f1f !important; color: #e36438 !important; border-color: #e36438 !important;
 }
 
 /* All buttons */
@@ -269,15 +275,17 @@ if st.session_state.client is None:
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    if st.button("◈ prism", key="logo_home", use_container_width=True):
-        st.session_state.page = "search"
-        st.session_state.saved_row = None
-        st.session_state.memo = None
-        st.rerun()
-    st.markdown("""<div style='border-bottom:1px solid #252525;margin-bottom:24px;padding-bottom:12px;'>
+    st.image(str(_STATIC / "logo.png"), use_container_width=True)
+    if st.session_state.get("page") != "search":
+        if st.button("← home", key="logo_home"):
+            st.session_state.page = "search"
+            st.session_state.saved_row = None
+            st.session_state.memo = None
+            st.rerun()
+    st.html("""<div style='border-bottom:1px solid #252525;margin-bottom:24px;padding-bottom:10px;margin-top:8px;'>
         <div style='font-size:11px;color:#444;font-family:JetBrains Mono,monospace;'>
             See through the noise.</div>
-    </div>""", unsafe_allow_html=True)
+    </div>""")
 
     if not st.session_state.client:
         err = st.session_state.connect_error
@@ -303,8 +311,11 @@ with st.sidebar:
 # ── Error gate ─────────────────────────────────────────────────────────────────
 
 if not st.session_state.client:
-    st.markdown("""<div style='max-width:480px;margin:100px auto;text-align:center;'>
-        <div style='font-size:40px;margin-bottom:20px;'>◈</div>
+    _, col, _ = st.columns([1, 1, 1])
+    with col:
+        st.markdown("<div style='height:80px'></div>", unsafe_allow_html=True)
+        st.image(str(_STATIC / "icon.png"), width=80)
+    st.markdown("""<div style='max-width:480px;margin:0 auto;text-align:center;'>
         <div style='font-size:24px;font-weight:700;color:#1a1a1a;margin-bottom:12px;'>Not connected</div>
         <div style='font-size:14px;color:#9b9790;line-height:1.7;'>
             Add your credentials to <code>.env</code> in the project root:<br><br>
