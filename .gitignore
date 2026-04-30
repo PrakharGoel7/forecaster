@@ -7,3 +7,7 @@ __pycache__/
 .streamlit/secrets.toml
 # Private key file
 forecaster/agents/forecaster.txt
+# Next.js
+prism/frontend/.next/
+prism/frontend/node_modules/
+prism/frontend/.env.local

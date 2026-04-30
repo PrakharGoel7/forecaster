@@ -20,6 +20,10 @@ class ForecasterSystem:
         question: str,
         context: str | None = None,
         on_step: ProgressCallback | None = None,
+        series_ticker: str | None = None,
+        event_title: str | None = None,
+        ev_sub: str | None = None,
+        ev_category: str | None = None,
     ) -> ForecastMemo:
         cfg = self.config
 
@@ -33,7 +37,11 @@ class ForecasterSystem:
 
         parsed: ParsedQuestion = step(
             "Question Parser",
-            lambda: parse_question(question, context, cfg),
+            lambda: parse_question(question, context, cfg,
+                                   series_ticker=series_ticker,
+                                   event_title=event_title,
+                                   ev_sub=ev_sub,
+                                   ev_category=ev_category),
         )
 
         raw_prob, run_probs, agent_forecasts, reconciliation = run_ensemble(

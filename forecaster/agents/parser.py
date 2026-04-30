@@ -63,15 +63,31 @@ def parse_question(
     question: str,
     context: str | None = None,
     config: ForecasterConfig | None = None,
+    series_ticker: str | None = None,
+    event_title: str | None = None,
+    ev_sub: str | None = None,
+    ev_category: str | None = None,
 ) -> ParsedQuestion:
     if config is None:
         config = ForecasterConfig()
 
     llm = LLMClient(config)
 
-    user_content = f"QUESTION: {question}"
+    blocks = []
+    if series_ticker:
+        blocks.append(f"SERIES: {series_ticker}")
+    if event_title or ev_category or ev_sub:
+        event_block = f"EVENT: {event_title or '(unknown)'}"
+        if ev_category:
+            event_block += f"\nCategory: {ev_category}"
+        if ev_sub:
+            event_block += f"\nSubtitle: {ev_sub}"
+        blocks.append(event_block)
+    blocks.append(f"QUESTION: {question}")
     if context:
-        user_content += f"\n\nADDITIONAL CONTEXT:\n{context}"
+        blocks.append(f"RESOLUTION RULES:\n{context}")
+
+    user_content = "\n\n".join(blocks)
 
     response = llm.complete(
         SYSTEM_PROMPT,

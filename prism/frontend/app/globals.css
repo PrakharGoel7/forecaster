@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #080808;
+  --surface: #0f0f0f;
+  --border: #1c1c1c;
+  --text-primary: #ede9e3;
+  --text-secondary: #6b6865;
+  --text-muted: #3a3835;
+  --orange: #e36438;
+  --blue: #5b9cf6;
+  --green: #4ade80;
+  --red: #f87171;
+  --amber: #fbbf24;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  background: var(--bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+body { background: var(--bg); min-height: 100vh; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%       { opacity: 0.6;  transform: scale(1.05); }
+}
+@keyframes glow-breathe-alt {
+  0%, 100% { opacity: 0.2; }
+  50%       { opacity: 0.45; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.15; }
+}
+@keyframes spectrum-drift {
+  0%, 100% { transform: translate(-50%, -50%) rotate(-6deg) scaleX(1); }
+  50%       { transform: translate(-50%, -50%) rotate(-4deg) scaleX(1.1); }
+}
+
+.blink { animation: blink 1.4s ease-in-out infinite; }
+.shimmer-bar {
+  background: linear-gradient(90deg, #e36438, #5b9cf6, #e36438);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+}
+
+input::placeholder { color: var(--text-muted); }
+input:focus { outline: none; }
+button { cursor: pointer; }
+details summary { list-style: none; }
+details summary::-webkit-details-marker { display: none; }
