@@ -17,7 +17,7 @@ export default function MarketCard({ event, index, onSelect }: Props) {
       onClick={() => onSelect(event)}
       style={{
         width: "100%", textAlign: "left",
-        background: "rgba(15,15,15,0.95)", border: "1px solid #1c1c1c",
+        background: "rgba(18,18,18,0.98)", border: "1px solid #272727",
         borderRadius: "14px", padding: "20px 22px",
         position: "relative", overflow: "hidden",
         transition: "border-color 0.2s, box-shadow 0.2s, transform 0.2s",
@@ -28,7 +28,7 @@ export default function MarketCard({ event, index, onSelect }: Props) {
         e.currentTarget.style.boxShadow = "0 0 0 1px rgba(227,100,56,0.08), 0 12px 40px rgba(0,0,0,0.7)";
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = "#1c1c1c";
+        e.currentTarget.style.borderColor = "#272727";
         e.currentTarget.style.boxShadow = "none";
       }}
     >

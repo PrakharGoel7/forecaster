@@ -41,8 +41,8 @@ export default function ForecastCard({ forecast: f, index, onSelect, featured }:
       onClick={() => onSelect(f)}
       style={{
         width: "100%", textAlign: "left", position: "relative", overflow: "hidden",
-        background: featured ? "rgba(20,12,8,0.98)" : "rgba(15,15,15,0.95)",
-        border: featured ? "1px solid rgba(227,100,56,0.18)" : "1px solid #1c1c1c",
+        background: featured ? "rgba(22,13,8,0.98)" : "rgba(18,18,18,0.98)",
+        border: featured ? "1px solid rgba(227,100,56,0.25)" : "1px solid #272727",
         borderRadius: "14px",
         padding: featured ? "26px 24px" : "18px 20px",
         transition: "border-color 0.2s, box-shadow 0.2s",
@@ -52,7 +52,7 @@ export default function ForecastCard({ forecast: f, index, onSelect, featured }:
         e.currentTarget.style.boxShadow = "0 12px 40px rgba(0,0,0,0.7)";
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = featured ? "rgba(227,100,56,0.18)" : "#1c1c1c";
+        e.currentTarget.style.borderColor = featured ? "rgba(227,100,56,0.25)" : "#272727";
         e.currentTarget.style.boxShadow = "none";
       }}
     >
@@ -76,12 +76,22 @@ export default function ForecastCard({ forecast: f, index, onSelect, featured }:
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
+          {f.event_title && f.event_title !== f.question && (
+            <div style={{
+              fontSize: "11px", color: "#4a4845", lineHeight: 1.4,
+              marginBottom: "4px",
+              overflow: "hidden", display: "-webkit-box",
+              WebkitLineClamp: 1, WebkitBoxOrient: "vertical",
+            }}>
+              {f.event_title}
+            </div>
+          )}
           <div style={{
             fontSize: featured ? "15px" : "13px", fontWeight: 600,
             color: "#ede9e3", lineHeight: 1.5,
             marginBottom: "12px",
             overflow: "hidden", display: "-webkit-box",
-            WebkitLineClamp: 3, WebkitBoxOrient: "vertical",
+            WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
           }}>
             {f.question}
           </div>

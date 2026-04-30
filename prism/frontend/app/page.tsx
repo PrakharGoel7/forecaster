@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
-import SpectralGlow from "@/components/SpectralGlow";
 import MarketCard from "@/components/MarketCard";
 import ForecastCard from "@/components/ForecastCard";
 import { searchEvents, listForecasts } from "@/lib/api";
@@ -40,7 +39,17 @@ export default function Home() {
     }
   }, [query]);
 
-  const onKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") runSearch(); };
+  const clearSearch = () => {
+    setQuery("");
+    setSearched(false);
+    setResults([]);
+    setError("");
+  };
+
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") runSearch();
+    if (e.key === "Escape") clearSearch();
+  };
 
   const goMarket = (event: KalshiEvent) =>
     router.push(
@@ -52,171 +61,153 @@ export default function Home() {
 
   const displayEvents = searched ? results : browse;
   const sectionLabel  = searched
-    ? `${results.length} result${results.length !== 1 ? "s" : ""}`
+    ? `${results.length} result${results.length !== 1 ? "s" : ""} for "${query}"`
     : "Browse Markets";
 
   return (
-    <div style={{ minHeight: "100vh", background: "#080808" }}>
+    <div style={{
+      height: "100vh", overflow: "hidden",
+      background: "#080808", position: "relative",
+      display: "flex", flexDirection: "column",
+    }}>
       <Header />
+      <GridOverlay />
 
-      {/* ── Hero ── */}
-      <section style={{
-        position: "relative", minHeight: "100vh",
+      {/* Main content — fills space below fixed header */}
+      <div style={{
+        position: "relative", zIndex: 10,
+        flex: 1, minHeight: 0,
+        paddingTop: "56px",
         display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        padding: "80px 24px 60px",
+        padding: "72px 32px 24px",
+        gap: "16px",
       }}>
-        <GridOverlay />
-        <SpectralGlow />
 
-        <div style={{
-          position: "relative", zIndex: 10,
-          width: "100%", maxWidth: "620px", textAlign: "center",
-        }}>
-          {/* Icon */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            style={{ marginBottom: "28px", display: "flex", justifyContent: "center" }}
-          >
-            <div style={{
-              width: "60px", height: "60px", borderRadius: "16px",
-              background: "linear-gradient(135deg, #1c1c1c 0%, #080808 100%)",
-              border: "1px solid #252525",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "26px", color: "#e36438",
-              boxShadow: "0 0 48px rgba(227,100,56,0.14), 0 0 90px rgba(91,156,246,0.06), inset 0 1px 0 rgba(255,255,255,0.04)",
-            }}>◈</div>
-          </motion.div>
-
-          {/* Wordmark */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <h1 style={{
-              fontFamily: "var(--font-mono), monospace",
-              fontSize: "clamp(42px, 7vw, 72px)", fontWeight: 700,
-              letterSpacing: "0.24em", color: "#ede9e3",
-              marginBottom: "14px",
-              textShadow: "0 0 80px rgba(227,100,56,0.1)",
-            }}>
-              PRISM
-            </h1>
-            <p style={{
-              fontFamily: "var(--font-mono), monospace",
-              fontSize: "11px", color: "#3a3835",
-              letterSpacing: "0.1em", marginBottom: "52px",
-            }}>
-              See through the noise.
-            </p>
-          </motion.div>
-
-          {/* Search */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.24, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div style={{
-              display: "flex", gap: "8px",
-              background: "rgba(14,14,14,0.95)",
-              border: "1px solid #282828", borderRadius: "14px",
-              padding: "7px 7px 7px 22px",
-              backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-              boxShadow: "0 0 0 1px rgba(255,255,255,0.02), 0 24px 64px rgba(0,0,0,0.65)",
-            }}>
-              <input
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={onKey}
-                placeholder="Search markets — Trump, Fed, Bitcoin, elections…"
-                style={{
-                  flex: 1, background: "transparent", border: "none",
-                  fontSize: "14px", color: "#ede9e3",
-                  fontFamily: "var(--font-jakarta), system-ui, sans-serif",
-                }}
-              />
+        {/* Search bar */}
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{
+            flex: 1,
+            display: "flex", gap: "8px",
+            background: "rgba(14,14,14,0.95)",
+            border: "1px solid #282828", borderRadius: "12px",
+            padding: "6px 6px 6px 18px",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            boxShadow: "0 0 0 1px rgba(255,255,255,0.02), 0 8px 32px rgba(0,0,0,0.5)",
+          }}>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={onKey}
+              placeholder="Search markets — Trump, Fed, Bitcoin, elections…"
+              style={{
+                flex: 1, background: "transparent", border: "none",
+                fontSize: "13px", color: "#ede9e3",
+                fontFamily: "var(--font-jakarta), system-ui, sans-serif",
+                outline: "none",
+              }}
+            />
+            {searched && (
               <button
-                onClick={runSearch}
-                disabled={searching}
+                onClick={clearSearch}
                 style={{
-                  background: searching ? "#181818" : "#e36438",
-                  color: "#fff", border: "none", borderRadius: "10px",
-                  padding: "10px 22px", fontSize: "12px",
+                  background: "transparent", color: "#3a3835", border: "none",
+                  padding: "8px 12px", fontSize: "11px",
                   fontFamily: "var(--font-mono), monospace",
-                  fontWeight: 600, letterSpacing: "0.06em",
-                  transition: "background 0.15s", whiteSpace: "nowrap",
-                  opacity: searching ? 0.5 : 1,
+                  transition: "color 0.15s", cursor: "pointer",
                 }}
-                onMouseEnter={e => { if (!searching) e.currentTarget.style.background = "#c4421a"; }}
-                onMouseLeave={e => { if (!searching) e.currentTarget.style.background = "#e36438"; }}
+                onMouseEnter={e => (e.currentTarget.style.color = "#6b6865")}
+                onMouseLeave={e => (e.currentTarget.style.color = "#3a3835")}
               >
-                {searching ? "…" : "search →"}
+                clear
               </button>
-            </div>
-            {error && (
-              <p style={{
-                marginTop: "10px", fontSize: "11px", color: "#f87171",
-                fontFamily: "var(--font-mono), monospace",
-              }}>
-                {error}
-              </p>
             )}
-          </motion.div>
+            <button
+              onClick={runSearch}
+              disabled={searching}
+              style={{
+                background: searching ? "#181818" : "#e36438",
+                color: "#fff", border: "none", borderRadius: "8px",
+                padding: "8px 18px", fontSize: "11px",
+                fontFamily: "var(--font-mono), monospace",
+                fontWeight: 600, letterSpacing: "0.06em",
+                transition: "background 0.15s", whiteSpace: "nowrap",
+                opacity: searching ? 0.5 : 1, cursor: "pointer",
+              }}
+              onMouseEnter={e => { if (!searching) e.currentTarget.style.background = "#c4421a"; }}
+              onMouseLeave={e => { if (!searching) e.currentTarget.style.background = "#e36438"; }}
+            >
+              {searching ? "…" : "search →"}
+            </button>
+          </div>
+          {error && (
+            <span style={{
+              fontSize: "11px", color: "#f87171",
+              fontFamily: "var(--font-mono), monospace", flexShrink: 0,
+            }}>
+              {error}
+            </span>
+          )}
         </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 1.2 }}
-          style={{
-            position: "absolute", bottom: "28px", left: "50%", transform: "translateX(-50%)",
-            fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-            color: "#1e1e1e", letterSpacing: "0.1em",
-          }}
-        >↓</motion.div>
-      </section>
+        {/* Two-column content */}
+        <div style={{
+          flex: 1, minHeight: 0,
+          display: "grid",
+          gridTemplateColumns: "1fr 340px",
+          gap: "20px",
+        }}>
 
-      {/* ── Content below fold ── */}
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 32px 100px" }}>
-
-        {displayEvents.length > 0 && (
-          <section style={{ marginBottom: "72px" }}>
+          {/* Left — Markets */}
+          <div style={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
             <SectionHeader label={sectionLabel} dot="orange" />
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(268px, 1fr))",
-              gap: "10px",
-            }}>
-              {displayEvents.map((e, i) => (
-                <MarketCard key={e.event_ticker} event={e} index={i} onSelect={goMarket} />
-              ))}
+            <div style={{ flex: 1, overflowY: "auto", paddingRight: "4px" }}>
+              {displayEvents.length > 0 ? (
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                  gap: "8px", alignContent: "start",
+                }}>
+                  {displayEvents.map((e, i) => (
+                    <MarketCard key={e.event_ticker} event={e} index={i} onSelect={goMarket} />
+                  ))}
+                </div>
+              ) : (
+                <div style={{
+                  fontFamily: "var(--font-mono), monospace", fontSize: "11px",
+                  color: "#2a2826", paddingTop: "24px",
+                }}>
+                  {searching ? "Searching…" : searched ? "No results." : "Loading…"}
+                </div>
+              )}
             </div>
-          </section>
-        )}
+          </div>
 
-        {forecasts.length > 0 && (
-          <section>
+          {/* Right — Forecasts */}
+          <div style={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
             <SectionHeader label="Latest Forecasts" dot="blue" />
-            <div style={{ marginBottom: "10px" }}>
-              <ForecastCard forecast={forecasts[0]} index={0} onSelect={goForecast} featured />
+            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+              {forecasts.length > 0 ? (
+                forecasts.map((f, i) => (
+                  <motion.div key={f.id}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.35, delay: i * 0.04 }}
+                  >
+                    <ForecastCard forecast={f} index={i} onSelect={goForecast} featured={i === 0} />
+                  </motion.div>
+                ))
+              ) : (
+                <div style={{
+                  fontFamily: "var(--font-mono), monospace", fontSize: "11px",
+                  color: "#2a2826", paddingTop: "24px",
+                }}>
+                  No forecasts yet.
+                </div>
+              )}
             </div>
-            {forecasts.length > 1 && (
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                gap: "10px",
-              }}>
-                {forecasts.slice(1).map((f, i) => (
-                  <ForecastCard key={f.id} forecast={f} index={i + 1} onSelect={goForecast} />
-                ))}
-              </div>
-            )}
-          </section>
-        )}
+          </div>
+
+        </div>
       </div>
     </div>
   );
@@ -225,10 +216,11 @@ export default function Home() {
 function SectionHeader({ label, dot }: { label: string; dot: "orange" | "blue" }) {
   return (
     <div style={{
-      fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
-      textTransform: "uppercase", letterSpacing: "0.18em", color: "#2a2826",
-      marginBottom: "18px", paddingBottom: "14px", borderBottom: "1px solid #141414",
+      fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700,
+      textTransform: "uppercase", letterSpacing: "0.18em", color: "#9b9790",
+      marginBottom: "12px", paddingBottom: "10px", borderBottom: "1px solid #1e1e1e",
       display: "flex", alignItems: "center", gap: "10px",
+      flexShrink: 0,
     }}>
       <span
         className="blink"

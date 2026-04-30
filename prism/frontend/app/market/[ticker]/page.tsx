@@ -39,6 +39,10 @@ export default function MarketPage() {
   const [errorMsg, setErrorMsg]         = useState("");
   const cancelRef = useRef<(() => void) | null>(null);
 
+  const [savedEventTitle, setSavedEventTitle] = useState("");
+  const [savedEvCat, setSavedEvCat]           = useState("");
+  const [savedEvSub, setSavedEvSub]           = useState("");
+
   useEffect(() => {
     if (savedId) {
       listForecasts(200).then((rows: SavedForecast[]) => {
@@ -49,6 +53,11 @@ export default function MarketPage() {
           setMemo(JSON.parse(row.memo_json));
           setKalshiPrice(row.kalshi_price);
           setPhase("done");
+          if (ctx.event) {
+            setSavedEventTitle(ctx.event.title ?? "");
+            setSavedEvCat(ctx.event.category ?? "");
+            setSavedEvSub(ctx.event.sub_title ?? "");
+          }
         }
       }).catch(() => {});
     } else {
@@ -65,13 +74,17 @@ export default function MarketPage() {
     }
   }, [rawTicker, savedId]);
 
+  const displayTitle = eventTitle || savedEventTitle;
+  const displayCat   = evCat     || savedEvCat;
+  const displaySub   = evSub     || savedEvSub;
+
   const runForecast = () => {
     if (!mkt) return;
     setPhase("running");
     setProgressLabel("Collecting evidence (0%)");
     setMemo(null);
     cancelRef.current = streamForecast(
-      { ticker: mkt.ticker, event_title: eventTitle, ev_sub: evSub, ev_category: evCat, market: mkt as unknown as Record<string, unknown> },
+      { ticker: mkt.ticker, event_title: displayTitle, ev_sub: displaySub, ev_category: displayCat, market: mkt as unknown as Record<string, unknown> },
       (msg: StreamMessage) => {
         if (msg.type === "progress") setProgressLabel(msg.label);
         else if (msg.type === "complete") {
@@ -103,9 +116,9 @@ export default function MarketPage() {
           onMouseLeave={e => (e.currentTarget.style.color = "#2a2826")}
         >
           ← home
-          {eventTitle && (
+          {displayTitle && (
             <><span style={{ color: "#1a1a1a" }}> › </span>
-            <span style={{ color: "#3a3835" }}>{eventTitle.slice(0, 60)}</span></>
+            <span style={{ color: "#3a3835" }}>{displayTitle.slice(0, 60)}</span></>
           )}
         </button>
 
@@ -150,16 +163,16 @@ export default function MarketPage() {
             >
               <div style={{ height: "2px", background: "linear-gradient(90deg, #e36438, #5b9cf6 60%, transparent)" }} />
               <div style={{ padding: "24px" }}>
-                {evCat && (
+                {displayCat && (
                   <div style={{
                     fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
                     textTransform: "uppercase", letterSpacing: "0.16em", color: "#e36438", marginBottom: "10px",
                   }}>
-                    {evCat}{evSub ? ` · ${evSub}` : ""}
+                    {displayCat}{displaySub ? ` · ${displaySub}` : ""}
                   </div>
                 )}
                 <h1 style={{ fontSize: "20px", fontWeight: 700, color: "#ede9e3", lineHeight: 1.4, marginBottom: "24px" }}>
-                  {eventTitle || mkt.yes_sub_title || mkt.ticker}
+                  {displayTitle || mkt.yes_sub_title || mkt.ticker}
                 </h1>
 
                 {/* Stats */}
