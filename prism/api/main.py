@@ -7,13 +7,13 @@ import sys
 from pathlib import Path
 from typing import AsyncIterator
 
-# Resolve the forecaster package from the sibling directory
-_FORECASTER_ROOT = Path(__file__).resolve().parent.parent.parent / "forecaster"
-sys.path.insert(0, str(_FORECASTER_ROOT))
+# Repo root is three levels up from prism/api/main.py; forecaster package lives there
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(_REPO_ROOT))
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(_FORECASTER_ROOT / ".env")
+    load_dotenv(_REPO_ROOT / ".env")
 except ImportError:
     pass
 
