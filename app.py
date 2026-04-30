@@ -23,7 +23,7 @@ _STATIC = Path(__file__).parent / "static"
 _page_icon = Image.open(_STATIC / "icon.png")
 
 st.set_page_config(page_title="Prism", page_icon=_page_icon, layout="wide",
-                   initial_sidebar_state="expanded", menu_items={})
+                   initial_sidebar_state="collapsed", menu_items={})
 
 st.html("""
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -39,28 +39,8 @@ section[data-testid="stSidebar"] {
 }
 .block-container { padding: 2.5rem 2.5rem 4rem !important; max-width: 1400px !important; }
 
-/* Sidebar — matches logo's black bg */
-[data-testid="stSidebar"] { background: #060606 !important; }
-[data-testid="stSidebar"] * { color: #555 !important; }
-[data-testid="stSidebar"] img { display: block !important; }
-[data-testid="stSidebar"] .stButton > button {
-    background: #e36438 !important; color: #fff !important; border: none !important;
-    border-radius: 5px !important; font-family: 'JetBrains Mono', monospace !important;
-    font-size: 12px !important; width: 100% !important; padding: 0.55rem !important;
-}
-[data-testid="stSidebar"] .stButton > button:hover { background: #c4421a !important; }
-/* Home nav button — ghost style */
-[data-testid="stSidebar"] [data-testid="stButton"]:first-child > button {
-    background: transparent !important; border: 1px solid #1e1e1e !important;
-    box-shadow: none !important; color: #444 !important;
-    font-size: 11px !important; font-weight: 500 !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    padding: 5px 10px !important; text-align: left !important;
-    width: auto !important; margin-bottom: 8px !important;
-}
-[data-testid="stSidebar"] [data-testid="stButton"]:first-child > button:hover {
-    background: #111 !important; color: #e36438 !important; border-color: #e36438 !important;
-}
+/* Hide sidebar entirely */
+[data-testid="stSidebar"], [data-testid="collapsedControl"] { display: none !important; }
 
 /* All buttons */
 .stButton > button {
@@ -281,42 +261,6 @@ if st.session_state.client is None:
         except Exception as e:
             st.session_state.connect_error = str(e)
 
-# ── Sidebar ────────────────────────────────────────────────────────────────────
-
-with st.sidebar:
-    st.image(str(_STATIC / "logo.png"), use_container_width=True)
-    if st.session_state.get("page") != "search":
-        if st.button("← home", key="logo_home"):
-            st.session_state.page = "search"
-            st.session_state.saved_row = None
-            st.session_state.memo = None
-            st.rerun()
-    st.html("""<div style='border-bottom:1px solid #252525;margin-bottom:24px;padding-bottom:10px;margin-top:8px;'>
-        <div style='font-size:11px;color:#444;font-family:JetBrains Mono,monospace;'>
-            See through the noise.</div>
-    </div>""")
-
-    if not st.session_state.client:
-        err = st.session_state.connect_error
-        st.markdown(f"""<div style='padding:9px 12px;background:#1f0e0e;border:1px solid #3a1a1a;
-            border-radius:7px;margin-bottom:16px;'>
-            <div style='font-family:JetBrains Mono,monospace;font-size:11px;color:#f87171;margin-bottom:6px;'>
-                not connected</div>
-            <div style='font-size:10px;color:#555;line-height:1.5;'>
-                Set KALSHI_API_KEY and<br>KALSHI_PRIVATE_KEY_FILE<br>in your .env file.
-                {"<br><br>" + err[:80] if err else ""}
-            </div>
-        </div>""", unsafe_allow_html=True)
-
-    try:
-        n = len(db.get_forecasts(limit=1000))
-        if n:
-            st.markdown(f"""<div style='font-family:JetBrains Mono,monospace;font-size:11px;
-                color:#444;padding:0 4px;'>{n} forecast{"s" if n != 1 else ""} saved</div>""",
-                unsafe_allow_html=True)
-    except Exception:
-        pass
-
 # ── Error gate ─────────────────────────────────────────────────────────────────
 
 if not st.session_state.client:
@@ -343,12 +287,11 @@ if not st.session_state.client:
 
 if st.session_state.page == "search":
 
-    st.markdown("""<div style='margin-bottom:24px;'>
-        <div style='font-size:30px;font-weight:750;color:#ede9e3;letter-spacing:-0.02em;line-height:1.2;'>
-            What do you want to forecast?</div>
-        <div style='font-size:14px;color:#6b6865;margin-top:8px;line-height:1.6;'>
-            Prism runs multiple independent AI agents on live Kalshi markets,
-            weighs the evidence, and gives you a calibrated probability.</div>
+    st.image(str(_STATIC / "logo.png"), width=200)
+    st.markdown("""<div style='margin:16px 0 28px;'>
+        <div style='font-size:14px;color:#6b6865;line-height:1.6;'>
+            Multiple independent AI agents research live Kalshi markets,
+            weigh the evidence, and return a calibrated probability.</div>
     </div>""", unsafe_allow_html=True)
 
     sc, bc = st.columns([6, 1])
