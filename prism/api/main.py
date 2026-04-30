@@ -39,10 +39,16 @@ app.add_middleware(
 
 def _get_client() -> KalshiClient:
     key_id = os.environ.get("KALSHI_API_KEY", "")
-    pem    = os.environ.get("KALSHI_PRIVATE_KEY_PEM", "")
+    pem      = os.environ.get("KALSHI_PRIVATE_KEY_PEM", "")
+    pem_b64  = os.environ.get("KALSHI_PRIVATE_KEY_B64", "")
     pem_file = os.environ.get("KALSHI_PRIVATE_KEY_FILE", "")
+    if key_id and pem_b64:
+        # Base64-encoded DER — safe for env vars (no newline issues)
+        return KalshiClient(key_id=key_id, private_key_pem=pem_b64.strip())
     if key_id and pem:
-        return KalshiClient(key_id=key_id, private_key_pem=pem.strip().encode())
+        # Replace literal \n in case the env var had newlines collapsed
+        pem = pem.replace("\\n", "\n").strip()
+        return KalshiClient(key_id=key_id, private_key_pem=pem.encode())
     if key_id and pem_file and Path(pem_file).exists():
         return KalshiClient.from_files(key_id, pem_file)
     raise HTTPException(status_code=503, detail="Kalshi credentials not configured")
