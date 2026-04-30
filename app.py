@@ -29,7 +29,7 @@ st.html("""
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif !important; }
-.stApp { background: #f7f6f3; }
+.stApp { background: #080808; }
 #MainMenu, footer { visibility: hidden; }
 header { visibility: hidden; height: 0 !important; }
 [data-testid="collapsedControl"],
@@ -39,9 +39,10 @@ section[data-testid="stSidebar"] {
 }
 .block-container { padding: 2.5rem 2.5rem 4rem !important; max-width: 1400px !important; }
 
-/* Sidebar */
-[data-testid="stSidebar"] { background: #151515 !important; }
-[data-testid="stSidebar"] * { color: #d4d0ca !important; }
+/* Sidebar — matches logo's black bg */
+[data-testid="stSidebar"] { background: #060606 !important; }
+[data-testid="stSidebar"] * { color: #555 !important; }
+[data-testid="stSidebar"] img { display: block !important; }
 [data-testid="stSidebar"] .stButton > button {
     background: #e36438 !important; color: #fff !important; border: none !important;
     border-radius: 5px !important; font-family: 'JetBrains Mono', monospace !important;
@@ -50,15 +51,15 @@ section[data-testid="stSidebar"] {
 [data-testid="stSidebar"] .stButton > button:hover { background: #c4421a !important; }
 /* Home nav button — ghost style */
 [data-testid="stSidebar"] [data-testid="stButton"]:first-child > button {
-    background: transparent !important; border: 1px solid #333 !important;
-    box-shadow: none !important; color: #888 !important;
+    background: transparent !important; border: 1px solid #1e1e1e !important;
+    box-shadow: none !important; color: #444 !important;
     font-size: 11px !important; font-weight: 500 !important;
     font-family: 'JetBrains Mono', monospace !important;
     padding: 5px 10px !important; text-align: left !important;
     width: auto !important; margin-bottom: 8px !important;
 }
 [data-testid="stSidebar"] [data-testid="stButton"]:first-child > button:hover {
-    background: #1f1f1f !important; color: #e36438 !important; border-color: #e36438 !important;
+    background: #111 !important; color: #e36438 !important; border-color: #e36438 !important;
 }
 
 /* All buttons */
@@ -71,25 +72,33 @@ section[data-testid="stSidebar"] {
 /* Text inputs */
 .stTextInput input {
     font-size: 15px !important; padding: 0.75rem 1.1rem !important; border-radius: 10px !important;
-    border: 1.5px solid #e3dfd8 !important; background: #fff !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.05) !important; color: #1a1a1a !important;
+    border: 1.5px solid #252525 !important; background: #0d0d0d !important;
+    box-shadow: none !important; color: #ede9e3 !important;
 }
-.stTextInput input:focus { border-color: #e36438 !important; box-shadow: 0 0 0 3px rgba(227,100,56,0.1) !important; }
-.stTextInput input::placeholder { color: #c0bcb6 !important; }
+.stTextInput input:focus { border-color: #e36438 !important; box-shadow: 0 0 0 3px rgba(227,100,56,0.12) !important; }
+.stTextInput input::placeholder { color: #333 !important; }
 .stTextInput label { display: none !important; }
 
-/* Cards — with hover lift */
+/* Cards — dark with prism-glow hover */
 [data-testid="stVerticalBlockBorderWrapper"] {
-    border: 1.5px solid #eae7e0 !important;
+    border: 1px solid #1e1e1e !important;
     border-radius: 14px !important;
-    background: #fff !important;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.05) !important;
+    background: #111111 !important;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.5) !important;
     padding: 4px !important;
-    transition: box-shadow 0.18s ease, transform 0.18s ease !important;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease !important;
 }
 [data-testid="stVerticalBlockBorderWrapper"]:hover {
-    box-shadow: 0 6px 20px rgba(0,0,0,0.09) !important;
+    box-shadow: 0 0 0 1px rgba(227,100,56,0.25), 0 10px 32px rgba(0,0,0,0.7) !important;
     transform: translateY(-2px) !important;
+    border-color: rgba(227,100,56,0.25) !important;
+}
+
+/* Expanders */
+[data-testid="stExpander"] {
+    background: #0d0d0d !important;
+    border: 1px solid #1e1e1e !important;
+    border-radius: 10px !important;
 }
 
 /* Event cards */
@@ -99,89 +108,89 @@ section[data-testid="stSidebar"] {
     letter-spacing: 0.12em; color: #e36438; margin-bottom: 8px;
     font-family: 'JetBrains Mono', monospace;
 }
-.ev-title { font-size: 15px; font-weight: 650; color: #1a1a1a; line-height: 1.45; margin-bottom: 6px; }
-.ev-sub   { font-size: 12px; color: #9b9790; }
+.ev-title { font-size: 15px; font-weight: 650; color: #ede9e3; line-height: 1.45; margin-bottom: 6px; }
+.ev-sub   { font-size: 12px; color: #6b6865; }
 
 /* Forecast history cards */
 .fc-card { padding: 6px 4px 4px; }
-.fc-q { font-size: 14px; font-weight: 600; color: #1a1a1a; line-height: 1.4; margin: 8px 0 10px; }
+.fc-q { font-size: 14px; font-weight: 600; color: #ede9e3; line-height: 1.4; margin: 8px 0 10px; }
 .fc-stats { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .fc-prob { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; }
-.fc-sep  { color: #d4d0ca; font-size: 11px; }
-.fc-mkt  { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #9b9790; }
+.fc-sep  { color: #2a2826; font-size: 11px; }
+.fc-mkt  { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6b6865; }
 .fc-edge { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
-.fc-date { font-size: 11px; color: #b0aca6; font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+.fc-date { font-size: 11px; color: #4a4845; font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
 
 /* Stat row (detail view) */
 .stat-row { display: flex; gap: 36px; margin: 16px 0 20px; flex-wrap: wrap; }
 .stat { display: flex; flex-direction: column; gap: 3px; }
 .stat-lbl {
     font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.1em; color: #9b9790; font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.1em; color: #4a4845; font-family: 'JetBrains Mono', monospace;
 }
-.stat-val { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-.stat-sub { font-size: 11px; color: #9b9790; margin-top: 2px; }
-.p-hi { color: #16a34a; } .p-mid { color: #d97706; } .p-lo { color: #dc2626; }
+.stat-val { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; color: #ede9e3; }
+.stat-sub { font-size: 11px; color: #6b6865; margin-top: 2px; }
+.p-hi { color: #4ade80; } .p-mid { color: #fbbf24; } .p-lo { color: #f87171; }
 
 /* Rules boxes */
 .rules-lbl {
     font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.1em; color: #9b9790; margin-bottom: 7px;
+    letter-spacing: 0.1em; color: #4a4845; margin-bottom: 7px;
     font-family: 'JetBrains Mono', monospace;
 }
 .rules-box {
-    background: #f7f6f3; border: 1px solid #eae7e0; border-radius: 9px;
-    padding: 13px 16px; font-size: 13px; color: #4a4744; line-height: 1.75;
+    background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 9px;
+    padding: 13px 16px; font-size: 13px; color: #6b6865; line-height: 1.75;
     max-height: 130px; overflow-y: auto; margin-bottom: 14px;
 }
 
 /* Result grid */
 .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
-.res-card { background: #f7f6f3; border: 1px solid #eae7e0; border-radius: 10px; padding: 18px 20px; }
+.res-card { background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 10px; padding: 18px 20px; }
 .res-lbl {
     font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.1em; color: #9b9790; margin-bottom: 7px;
+    letter-spacing: 0.1em; color: #4a4845; margin-bottom: 7px;
     font-family: 'JetBrains Mono', monospace;
 }
 .res-val { font-size: 38px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-.res-sub { font-size: 11px; color: #9b9790; margin-top: 6px; }
+.res-sub { font-size: 11px; color: #6b6865; margin-top: 6px; }
 .edge-card { grid-column: span 2; }
-.e-pos { color: #16a34a; } .e-neg { color: #dc2626; } .e-neu { color: #9b9790; }
+.e-pos { color: #5b9cf6; } .e-neg { color: #f87171; } .e-neu { color: #4a4845; }
 
 /* Section labels */
 .sec-lbl {
     font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
-    color: #9b9790; margin-bottom: 6px; font-family: 'JetBrains Mono', monospace;
+    color: #4a4845; margin-bottom: 6px; font-family: 'JetBrains Mono', monospace;
 }
 .sec-head {
     font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
-    color: #b0aca6; margin: 40px 0 18px; font-family: 'JetBrains Mono', monospace;
-    border-top: 1px solid #eae7e0; padding-top: 28px;
+    color: #2a2826; margin: 40px 0 18px; font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid #1a1a1a; padding-top: 28px;
 }
 
 /* Market chip */
 .mkt-chip {
-    background: #fff; border: 1.5px solid #eae7e0; border-radius: 9px;
+    background: #0a0a0a; border: 1px solid #1e1e1e; border-radius: 9px;
     padding: 12px 16px; margin-bottom: 7px;
     display: flex; align-items: center; justify-content: space-between;
 }
-.mkt-title { font-size: 13px; font-weight: 500; color: #1a1a1a; }
+.mkt-title { font-size: 13px; font-weight: 500; color: #ede9e3; }
 .mkt-price { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; }
 
 /* Saved badge */
 .saved-badge {
     display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 10px;
     font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
-    background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd;
+    background: #0f1c2e; color: #5b9cf6; border: 1px solid #1e3a5a;
     border-radius: 5px; padding: 3px 8px; margin-bottom: 16px;
 }
 
 /* Breadcrumb */
 .breadcrumb {
-    font-size: 13px; color: #9b9790; margin-bottom: 20px;
+    font-size: 13px; color: #4a4845; margin-bottom: 20px;
     font-family: 'Plus Jakarta Sans', sans-serif;
 }
-.breadcrumb .crumb-cur { color: #1a1a1a; font-weight: 600; }
+.breadcrumb .crumb-cur { color: #ede9e3; font-weight: 600; }
 </style>
 """)
 
@@ -316,10 +325,10 @@ if not st.session_state.client:
         st.markdown("<div style='height:80px'></div>", unsafe_allow_html=True)
         st.image(str(_STATIC / "icon.png"), width=80)
     st.markdown("""<div style='max-width:480px;margin:0 auto;text-align:center;'>
-        <div style='font-size:24px;font-weight:700;color:#1a1a1a;margin-bottom:12px;'>Not connected</div>
-        <div style='font-size:14px;color:#9b9790;line-height:1.7;'>
+        <div style='font-size:24px;font-weight:700;color:#ede9e3;margin-bottom:12px;'>Not connected</div>
+        <div style='font-size:14px;color:#6b6865;line-height:1.7;'>
             Add your credentials to <code>.env</code> in the project root:<br><br>
-            <code style='background:#f0f0ed;padding:12px 16px;border-radius:8px;display:block;text-align:left;font-size:12px;'>
+            <code style='background:#0d0d0d;border:1px solid #1e1e1e;padding:12px 16px;border-radius:8px;display:block;text-align:left;font-size:12px;color:#9b9790;'>
             KALSHI_API_KEY=your-key-id<br>
             KALSHI_PRIVATE_KEY_FILE=/path/to/key.txt<br>
             OPENROUTER_API_KEY=sk-or-...
@@ -335,9 +344,9 @@ if not st.session_state.client:
 if st.session_state.page == "search":
 
     st.markdown("""<div style='margin-bottom:24px;'>
-        <div style='font-size:30px;font-weight:750;color:#1a1a1a;letter-spacing:-0.02em;line-height:1.2;'>
+        <div style='font-size:30px;font-weight:750;color:#ede9e3;letter-spacing:-0.02em;line-height:1.2;'>
             What do you want to forecast?</div>
-        <div style='font-size:14px;color:#9b9790;margin-top:8px;line-height:1.6;'>
+        <div style='font-size:14px;color:#6b6865;margin-top:8px;line-height:1.6;'>
             Prism runs multiple independent AI agents on live Kalshi markets,
             weighs the evidence, and gives you a calibrated probability.</div>
     </div>""", unsafe_allow_html=True)
@@ -397,7 +406,7 @@ if st.session_state.page == "search":
     events = st.session_state.events
 
     if events:
-        st.markdown(f"<div style='font-size:12px;color:#9b9790;margin:20px 0 16px;"
+        st.markdown(f"<div style='font-size:12px;color:#4a4845;margin:20px 0 16px;"
                     f"font-family:JetBrains Mono,monospace;'>{len(events)} results</div>",
                     unsafe_allow_html=True)
         _render_event_cards(events, "ev")
@@ -489,7 +498,7 @@ elif st.session_state.page == "detail":
         [data-testid="stButton"][key="breadcrumb"] > button,
         div:has(> [data-testid="stButton"] button[kind="secondary"]):first-of-type button {
             background: transparent !important; border: none !important;
-            box-shadow: none !important; color: #9b9790 !important;
+            box-shadow: none !important; color: #4a4845 !important;
             font-size: 13px !important; font-family: 'Plus Jakarta Sans', sans-serif !important;
             font-weight: 400 !important; padding: 0 !important; text-align: left !important;
         }
@@ -499,7 +508,7 @@ elif st.session_state.page == "detail":
 
     # Multi-market picker
     if not is_saved_view and len(markets) > 1 and mkt is None:
-        st.markdown(f"<div style='font-size:20px;font-weight:700;color:#1a1a1a;margin-bottom:20px;'>"
+        st.markdown(f"<div style='font-size:20px;font-weight:700;color:#ede9e3;margin-bottom:20px;'>"
                     f"{ev_title}</div>", unsafe_allow_html=True)
         for j, m in enumerate(markets):
             pc = _pc(m.mid_price)
@@ -535,17 +544,17 @@ elif st.session_state.page == "detail":
         if rules2:
             rules_html += f"<div class='rules-lbl'>Settlement Rules</div><div class='rules-box'>{rules2}</div>"
         if not rules_html:
-            rules_html = "<div style='font-size:13px;color:#9b9790;'>No rules available.</div>"
+            rules_html = "<div style='font-size:13px;color:#4a4845;'>No rules available.</div>"
 
         with st.container(border=True):
             st.markdown(f"""
             <div style='border-top:3px solid #e36438;border-radius:12px 12px 0 0;
                         margin:-4px -4px 0;padding:16px 16px 0;'>
                 <div style='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;
-                            color:#9b9790;margin-bottom:10px;font-family:JetBrains Mono,monospace;'>
+                            color:#4a4845;margin-bottom:10px;font-family:JetBrains Mono,monospace;'>
                     {ev_category}{(" · " + ev_sub) if ev_sub else ""}
                 </div>
-                <div style='font-size:22px;font-weight:700;color:#1a1a1a;line-height:1.4;margin-bottom:4px;'>
+                <div style='font-size:22px;font-weight:700;color:#ede9e3;line-height:1.4;margin-bottom:4px;'>
                     {ev_title}
                 </div>
             </div>
@@ -558,7 +567,7 @@ elif st.session_state.page == "detail":
                     </div>
                     <div class='stat'>
                         <span class='stat-lbl'>Bid / Ask</span>
-                        <span class='stat-val' style='font-size:20px;color:#1a1a1a;'>{bid_s} / {ask_s}</span>
+                        <span class='stat-val' style='font-size:20px;color:#ede9e3;'>{bid_s} / {ask_s}</span>
                     </div>
                     <div class='stat'>
                         <span class='stat-lbl'>Closes</span>
@@ -567,7 +576,7 @@ elif st.session_state.page == "detail":
                     </div>
                     <div class='stat'>
                         <span class='stat-lbl'>Volume</span>
-                        <span class='stat-val' style='font-size:20px;color:#1a1a1a;'>{_vol(mkt.volume)}</span>
+                        <span class='stat-val' style='font-size:20px;color:#ede9e3;'>{_vol(mkt.volume)}</span>
                     </div>
                 </div>
                 {rules_html}
@@ -586,10 +595,10 @@ elif st.session_state.page == "detail":
             st.markdown("<div class='sec-lbl'>AI Forecast</div>", unsafe_allow_html=True)
 
             if memo is None:
-                st.markdown("""<div style='font-size:14px;color:#4a4744;line-height:1.7;margin-bottom:20px;'>
+                st.markdown("""<div style='font-size:14px;color:#6b6865;line-height:1.7;margin-bottom:20px;'>
                     Prism will run multiple independent AI agents to research this market,
                     weigh the evidence, and produce a calibrated probability estimate.
-                    <div style='margin-top:12px;font-size:11px;color:#9b9790;font-family:JetBrains Mono,monospace;'>
+                    <div style='margin-top:12px;font-size:11px;color:#4a4845;font-family:JetBrains Mono,monospace;'>
                         3 agents · gpt-4o · Platt-scaled
                     </div>
                 </div>""", unsafe_allow_html=True)
@@ -663,7 +672,7 @@ elif st.session_state.page == "detail":
                     </div>
                     <div class='res-card'>
                         <div class='res-lbl'>Kalshi Price</div>
-                        <div class='res-val' style='color:#1a1a1a;'>{kp*100:.1f}¢</div>
+                        <div class='res-val' style='color:#ede9e3;'>{kp*100:.1f}¢</div>
                         <div class='res-sub'>{"at forecast time" if is_saved_view else "live mid price"}</div>
                     </div>
                     <div class='res-card edge-card'>
@@ -687,43 +696,43 @@ elif st.session_state.page == "detail":
                         pc1, pc2 = st.columns(2)
                         with pc1:
                             st.markdown("<div style='font-size:11px;font-weight:700;text-transform:uppercase;"
-                                        "letter-spacing:0.1em;color:#16a34a;margin-bottom:10px;"
+                                        "letter-spacing:0.1em;color:#4ade80;margin-bottom:10px;"
                                         "font-family:JetBrains Mono,monospace;'>For YES</div>",
                                         unsafe_allow_html=True)
                             for f in all_for[:6]:
-                                st.markdown(f"<div style='font-size:13px;color:#1a1a1a;padding:5px 0;"
-                                            f"border-bottom:1px solid #f0ede8;'>+ {f}</div>",
+                                st.markdown(f"<div style='font-size:13px;color:#ede9e3;padding:5px 0;"
+                                            f"border-bottom:1px solid #1a1a1a;'>+ {f}</div>",
                                             unsafe_allow_html=True)
                         with pc2:
                             st.markdown("<div style='font-size:11px;font-weight:700;text-transform:uppercase;"
-                                        "letter-spacing:0.1em;color:#dc2626;margin-bottom:10px;"
+                                        "letter-spacing:0.1em;color:#f87171;margin-bottom:10px;"
                                         "font-family:JetBrains Mono,monospace;'>Against YES</div>",
                                         unsafe_allow_html=True)
                             for f in all_against[:6]:
-                                st.markdown(f"<div style='font-size:13px;color:#1a1a1a;padding:5px 0;"
-                                            f"border-bottom:1px solid #f0ede8;'>− {f}</div>",
+                                st.markdown(f"<div style='font-size:13px;color:#ede9e3;padding:5px 0;"
+                                            f"border-bottom:1px solid #1a1a1a;'>− {f}</div>",
                                             unsafe_allow_html=True)
 
                 all_evidence = [item for a in memo.agent_forecasts for item in a.evidence_ledger.items]
                 if all_evidence:
-                    _dir_color = {"raises": "#16a34a", "lowers": "#dc2626",
-                                  "base_rate": "#0284c7", "context": "#9b9790"}
+                    _dir_color = {"raises": "#4ade80", "lowers": "#f87171",
+                                  "base_rate": "#5b9cf6", "context": "#6b6865"}
                     with st.expander(f"Evidence ({len(all_evidence)} sources)"):
                         for item in all_evidence:
                             color   = _dir_color.get(item.direction.value, "#9b9790")
                             badge   = item.direction.value.replace("_", " ").upper()
-                            snippet = (f'<div style="font-size:11px;color:#6b6864;margin-top:5px;'
+                            snippet = (f'<div style="font-size:11px;color:#4a4845;margin-top:5px;'
                                        f'font-style:italic;">"{_trunc(item.relevant_quote_or_snippet, 180)}"</div>'
                                        if item.relevant_quote_or_snippet else "")
                             st.markdown(f"""<div style='border-left:3px solid {color};padding:8px 12px;
-                                margin-bottom:10px;background:#fafaf8;border-radius:0 7px 7px 0;'>
+                                margin-bottom:10px;background:#0d0d0d;border-radius:0 7px 7px 0;'>
                                 <div style='font-size:10px;font-weight:700;color:{color};
                                     text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;
                                     font-family:JetBrains Mono,monospace;'>{badge}</div>
-                                <div style='font-size:13px;color:#1a1a1a;line-height:1.5;'>{item.claim}</div>
-                                <div style='font-size:11px;color:#9b9790;margin-top:4px;'>
+                                <div style='font-size:13px;color:#ede9e3;line-height:1.5;'>{item.claim}</div>
+                                <div style='font-size:11px;color:#6b6865;margin-top:4px;'>
                                     <a href='{item.source_url}' target='_blank'
-                                       style='color:#9b9790;text-decoration:underline;'>{item.source_title}</a>
+                                       style='color:#6b6865;text-decoration:underline;'>{item.source_title}</a>
                                 </div>{snippet}
                             </div>""", unsafe_allow_html=True)
 
