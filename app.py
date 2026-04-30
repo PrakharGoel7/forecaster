@@ -1,4 +1,5 @@
 """Prism — AI forecasting on live prediction markets."""
+import base64
 import dataclasses
 import json
 import os
@@ -21,6 +22,26 @@ from forecaster import db
 
 _STATIC = Path(__file__).parent / "static"
 _page_icon = Image.open(_STATIC / "icon.png")
+_icon_b64  = base64.b64encode((_STATIC / "icon.png").read_bytes()).decode()
+
+def _header(show_home: bool = False):
+    home_link = ""
+    if show_home:
+        home_link = """<div style='font-size:12px;color:#4a4845;margin-top:2px;
+            font-family:JetBrains Mono,monospace;cursor:pointer;'>← home</div>"""
+    st.html(f"""
+    <div style='display:flex;align-items:center;gap:14px;
+                padding:24px 0 20px;border-bottom:1px solid #1a1a1a;margin-bottom:32px;'>
+        <img src='data:image/png;base64,{_icon_b64}'
+             style='width:42px;height:42px;border-radius:10px;flex-shrink:0;'>
+        <div>
+            <div style='font-size:17px;font-weight:700;color:#ede9e3;
+                        letter-spacing:0.18em;font-family:JetBrains Mono,monospace;'>PRISM</div>
+            <div style='font-size:11px;color:#4a4845;margin-top:2px;
+                        font-family:JetBrains Mono,monospace;'>See through the noise.</div>
+        </div>
+    </div>
+    """)
 
 st.set_page_config(page_title="Prism", page_icon=_page_icon, layout="wide",
                    initial_sidebar_state="collapsed", menu_items={})
@@ -264,11 +285,8 @@ if st.session_state.client is None:
 # ── Error gate ─────────────────────────────────────────────────────────────────
 
 if not st.session_state.client:
-    _, col, _ = st.columns([1, 1, 1])
-    with col:
-        st.markdown("<div style='height:80px'></div>", unsafe_allow_html=True)
-        st.image(str(_STATIC / "icon.png"), width=80)
-    st.markdown("""<div style='max-width:480px;margin:0 auto;text-align:center;'>
+    _header()
+    st.markdown("""<div style='max-width:480px;margin:60px auto;text-align:center;'>
         <div style='font-size:24px;font-weight:700;color:#ede9e3;margin-bottom:12px;'>Not connected</div>
         <div style='font-size:14px;color:#6b6865;line-height:1.7;'>
             Add your credentials to <code>.env</code> in the project root:<br><br>
@@ -287,12 +305,7 @@ if not st.session_state.client:
 
 if st.session_state.page == "search":
 
-    st.image(str(_STATIC / "logo.png"), width=200)
-    st.markdown("""<div style='margin:16px 0 28px;'>
-        <div style='font-size:14px;color:#6b6865;line-height:1.6;'>
-            Multiple independent AI agents research live Kalshi markets,
-            weigh the evidence, and return a calibrated probability.</div>
-    </div>""", unsafe_allow_html=True)
+    _header()
 
     sc, bc = st.columns([6, 1])
     with sc:
@@ -404,6 +417,7 @@ if st.session_state.page == "search":
 
 elif st.session_state.page == "detail":
 
+    _header()
     saved = st.session_state.saved_row
 
     # Resolve market + event data
