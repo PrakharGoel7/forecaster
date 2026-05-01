@@ -69,6 +69,53 @@ export function streamForecast(
   return () => { cancelled = true; };
 }
 
+// ── Legacy Oracle endpoints ───────────────────────────────────────────────────
+
+export async function oracleTurn(
+  history: Record<string, unknown>[],
+  message: string,
+): Promise<Record<string, unknown>> {
+  return apiFetch("/api/oracle/turn", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ history, message }),
+  });
+}
+
+export function streamOraclePipeline(
+  beliefSummary: Record<string, unknown>,
+  onMessage: (msg: Record<string, unknown>) => void,
+): () => void {
+  let cancelled = false;
+  (async () => {
+    try {
+      const res = await fetch(`${BASE}/api/oracle/pipeline/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ belief_summary: beliefSummary }),
+      });
+      if (!res.body) return;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (!cancelled) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.replace(/^data: /, "").trim();
+          if (line) { try { onMessage(JSON.parse(line)); } catch {} }
+        }
+      }
+    } catch (err) {
+      if (!cancelled) onMessage({ type: "error", message: err instanceof Error ? err.message : "Connection lost" });
+    }
+  })();
+  return () => { cancelled = true; };
+}
+
 export const listTradingSessions = (limit = 20, token?: string): Promise<TradingSession[]> =>
   apiFetch(`/api/trading/sessions?limit=${limit}`, undefined, token);
 
