@@ -74,7 +74,7 @@ export function streamForecast(
 export async function oracleTurn(
   history: Record<string, unknown>[],
   message: string,
-): Promise<Record<string, unknown>> {
+): Promise<TradingChatResponse> {
   return apiFetch("/api/oracle/turn", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
