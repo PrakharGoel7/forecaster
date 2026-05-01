@@ -130,6 +130,14 @@ export interface TradingSession {
 
 // ── Oracle (legacy) ───────────────────────────────────────────────────────────
 
+export interface OraclePipelineMessage {
+  type: string;
+  stage?: string;
+  status?: string;
+  data?: unknown;
+  message?: string;
+}
+
 export interface OracleTurnResponse {
   status: "asking" | "finalized";
   agent_message: string | null;

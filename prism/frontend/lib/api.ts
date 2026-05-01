@@ -1,4 +1,4 @@
-import type { StreamMessage, TradingChatResponse, TradingStreamMessage, BeliefSummary, TradingSession, OracleTurnResponse } from "./types";
+import type { StreamMessage, TradingChatResponse, TradingStreamMessage, BeliefSummary, TradingSession, OracleTurnResponse, OraclePipelineMessage } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -84,7 +84,7 @@ export async function oracleTurn(
 
 export function streamOraclePipeline(
   beliefSummary: Record<string, unknown>,
-  onMessage: (msg: Record<string, unknown>) => void,
+  onMessage: (msg: OraclePipelineMessage) => void,
 ): () => void {
   let cancelled = false;
   (async () => {
