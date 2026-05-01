@@ -124,6 +124,10 @@ class KalshiMarket:
         return title if title.endswith("?") else f"{title}?"
 
     @property
+    def rules_summary(self) -> str:
+        return _strip_html(self.rules_primary)[:300] if self.rules_primary else ""
+
+    @property
     def resolution_context(self) -> str:
         parts = []
         if self.rules_primary:
