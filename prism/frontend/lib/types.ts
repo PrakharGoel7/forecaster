@@ -130,6 +130,14 @@ export interface TradingSession {
 
 // ── Oracle (legacy) ───────────────────────────────────────────────────────────
 
+export interface OracleTurnResponse {
+  status: "asking" | "finalized";
+  agent_message: string | null;
+  search_queries: string[];
+  belief_summary: Record<string, unknown> | null;
+  history: Record<string, unknown>[];
+}
+
 export interface OracleChatMessage {
   role: "user" | "oracle";
   content: string;

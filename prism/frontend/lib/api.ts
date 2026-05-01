@@ -1,4 +1,4 @@
-import type { StreamMessage, TradingChatResponse, TradingStreamMessage, BeliefSummary, TradingSession } from "./types";
+import type { StreamMessage, TradingChatResponse, TradingStreamMessage, BeliefSummary, TradingSession, OracleTurnResponse } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -74,7 +74,7 @@ export function streamForecast(
 export async function oracleTurn(
   history: Record<string, unknown>[],
   message: string,
-): Promise<TradingChatResponse> {
+): Promise<OracleTurnResponse> {
   return apiFetch("/api/oracle/turn", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
