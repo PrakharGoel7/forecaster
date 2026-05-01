@@ -152,20 +152,20 @@ export default function ModelPage() {
         }}>
           <div>
             <ColumnHeader
-              label="Intel — How Prism Forecasts"
-              subtitle="Every forecast runs a four-stage pipeline — parsing, parallel research, reconciliation, and calibration."
-              accent="#e36438"
-            />
-            <PipelineColumn steps={INTEL_STEPS} />
-          </div>
-
-          <div>
-            <ColumnHeader
               label="Compass — How Prism Trades"
               subtitle="Compass converts a freeform belief about the future into a curated portfolio of prediction market positions."
               accent="#a78bfa"
             />
             <PipelineColumn steps={COMPASS_STEPS} />
+          </div>
+
+          <div>
+            <ColumnHeader
+              label="Intel — How Prism Forecasts"
+              subtitle="Every forecast runs a four-stage pipeline — parsing, parallel research, reconciliation, and calibration."
+              accent="#e36438"
+            />
+            <PipelineColumn steps={INTEL_STEPS} />
           </div>
         </div>
 
