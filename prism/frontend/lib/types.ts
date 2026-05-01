@@ -128,6 +128,30 @@ export interface TradingSession {
   recommendations_json: string;
 }
 
+// ── Oracle (legacy) ───────────────────────────────────────────────────────────
+
+export interface OracleChatMessage {
+  role: "user" | "oracle";
+  content: string;
+}
+
+export interface OracleDomain {
+  domain: string;
+  relevance: "high" | "medium" | "low";
+  mechanism: string;
+}
+
+export interface OracleRecommendation {
+  ticker: string;
+  event_ticker: string;
+  question: string;
+  price: number;
+  close_date: string;
+  direction: "YES" | "NO";
+  rationale: string;
+  score: number;
+}
+
 export type TradingStreamMessage =
   | { type: "progress"; label: string }
   | { type: "analyst_done"; analysis: BeliefAnalysis }
