@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/Header";
@@ -26,6 +26,14 @@ interface ChatMsg {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function TradingPage() {
+  return (
+    <Suspense>
+      <TradingPageInner />
+    </Suspense>
+  );
+}
+
+function TradingPageInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const [stage, setStage]                 = useState<Stage>("idle");
