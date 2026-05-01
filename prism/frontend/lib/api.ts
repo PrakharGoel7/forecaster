@@ -72,7 +72,7 @@ export function streamForecast(
 // ── Legacy Oracle endpoints ───────────────────────────────────────────────────
 
 export async function oracleTurn(
-  history: Record<string, unknown>[],
+  history: unknown[],
   message: string,
 ): Promise<OracleTurnResponse> {
   return apiFetch("/api/oracle/turn", {
