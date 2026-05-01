@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth, SignInButton } from "@clerk/nextjs";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
 import ProbabilityArc from "@/components/ProbabilityArc";
@@ -22,6 +23,7 @@ export default function HomePage() {
 function HomeInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const [stage, setStage]               = useState<Stage>("idle");
   const [input, setInput]               = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
@@ -36,27 +38,34 @@ function HomeInner() {
   const [savedForecasts, setSavedForecasts] = useState<SavedForecast[]>([]);
   const [sessions, setSessions]             = useState<TradingSession[]>([]);
   const [sessionId, setSessionId]           = useState<number | null>(null);
+  const [showAuthModal, setShowAuthModal]   = useState(false);
+  const [pendingInput, setPendingInput]     = useState("");
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     const sid = searchParams.get("session");
-    listForecasts(500).then(setSavedForecasts).catch(() => {});
-    listTradingSessions(20).then(list => {
-      setSessions(list);
-      if (sid) {
-        const s = list.find(s => s.id === Number(sid));
-        if (s) {
-          setBeliefSummary(JSON.parse(s.belief_summary_json));
-          setAnalysis(JSON.parse(s.analysis_json));
-          setRecommendations(JSON.parse(s.recommendations_json));
-          setSessionId(s.id);
-          setStage("done");
+    const load = async () => {
+      const token = (await getToken()) ?? undefined;
+      listForecasts(500, token).then(setSavedForecasts).catch(() => {});
+      listTradingSessions(20, token).then(list => {
+        setSessions(list);
+        if (sid) {
+          const s = list.find(s => s.id === Number(sid));
+          if (s) {
+            setBeliefSummary(JSON.parse(s.belief_summary_json));
+            setAnalysis(JSON.parse(s.analysis_json));
+            setRecommendations(JSON.parse(s.recommendations_json));
+            setSessionId(s.id);
+            setStage("done");
+          }
         }
-      }
-    }).catch(() => {});
+      }).catch(() => {});
+    };
+    load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -64,8 +73,12 @@ function HomeInner() {
     }
   }, [chatMessages, beliefSummary, analysis, recommendations, progressLabel]);
 
-  function startAnalysis(summary: BeliefSummary) {
-    streamTradingAnalysis(summary, msg => {
+  async function _token() {
+    return isSignedIn ? ((await getToken()) ?? undefined) : undefined;
+  }
+
+  function startAnalysis(summary: BeliefSummary, token?: string) {
+    streamTradingAnalysis(summary, async msg => {
       if (msg.type === "progress")       setProgressLabel(msg.label);
       else if (msg.type === "analyst_done")  setAnalysis(msg.analysis);
       else if (msg.type === "screener_done") setScreenedCount(msg.count);
@@ -77,28 +90,31 @@ function HomeInner() {
           setSessionId(msg.session_id);
           router.replace(`/?session=${msg.session_id}`, { scroll: false });
         }
-        listForecasts(500).then(setSavedForecasts).catch(() => {});
-        listTradingSessions(20).then(setSessions).catch(() => {});
+        if (isSignedIn) {
+          const t = await _token();
+          listForecasts(500, t).then(setSavedForecasts).catch(() => {});
+          listTradingSessions(20, t).then(setSessions).catch(() => {});
+        }
       } else if (msg.type === "error") {
         setError(msg.message);
         setStage("error");
         setProgressLabel("");
       }
-    });
+    }, token);
   }
 
-  async function sendMessage(message: string, history: Record<string, unknown>[]) {
+  async function sendMessage(message: string, history: Record<string, unknown>[], token?: string) {
     if (!message.trim() || loading) return;
     setLoading(true);
     setInput("");
     setChatMessages(prev => [...prev, { role: "user", content: message }]);
     try {
-      const result = await tradingChat(history, message);
+      const result = await tradingChat(history, message, token);
       setApiHistory(result.history);
       if (result.status === "finalized" && result.belief_summary) {
         setBeliefSummary(result.belief_summary);
         setStage("analyzing");
-        startAnalysis(result.belief_summary);
+        startAnalysis(result.belief_summary, token);
       } else if (result.agent_message) {
         setChatMessages(prev => [...prev, {
           role: "assistant", content: result.agent_message!,
@@ -113,7 +129,7 @@ function HomeInner() {
     }
   }
 
-  function restoreSession(s: TradingSession) {
+  async function restoreSession(s: TradingSession) {
     setBeliefSummary(JSON.parse(s.belief_summary_json));
     setAnalysis(JSON.parse(s.analysis_json));
     setRecommendations(JSON.parse(s.recommendations_json));
@@ -125,20 +141,35 @@ function HomeInner() {
     setScreenedCount(0);
     setStage("done");
     router.replace(`/?session=${s.id}`, { scroll: false });
-    listForecasts(500).then(setSavedForecasts).catch(() => {});
+    const t = await _token();
+    listForecasts(500, t).then(setSavedForecasts).catch(() => {});
+  }
+
+  async function proceedWithSubmit(text: string) {
+    setStage("chatting");
+    const token = await _token();
+    sendMessage(text, [], token);
   }
 
   function handleSubmit() {
     if (!input.trim()) return;
-    setStage("chatting");
-    sendMessage(input, []);
+    if (!isSignedIn) {
+      setPendingInput(input);
+      setShowAuthModal(true);
+      return;
+    }
+    proceedWithSubmit(input);
   }
 
   function onIdleKey(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
   }
-  function onReplyKey(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input, apiHistory); }
+  async function onReplyKey(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const token = await _token();
+      sendMessage(input, apiHistory, token);
+    }
   }
 
   return (
@@ -146,11 +177,98 @@ function HomeInner() {
       <Header />
       <GridOverlay />
 
+      {/* Auth modal */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{
+              position: "fixed", inset: 0, zIndex: 100,
+              background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: "24px",
+            }}
+            onClick={() => setShowAuthModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.97 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: "#0e0e0e", border: "1px solid #282828",
+                borderRadius: "16px", padding: "32px 28px", maxWidth: "400px", width: "100%",
+                boxShadow: "0 0 0 1px rgba(255,255,255,0.03), 0 24px 64px rgba(0,0,0,0.8)",
+              }}
+            >
+              <div style={{
+                fontFamily: "var(--font-mono), monospace", fontSize: "9px",
+                fontWeight: 700, color: "#e36438", letterSpacing: "0.18em",
+                textTransform: "uppercase", marginBottom: "12px",
+              }}>Save your research</div>
+              <div style={{
+                fontSize: "18px", fontWeight: 600, color: "#ede9e3",
+                lineHeight: 1.3, marginBottom: "10px",
+              }}>Sign in to save your sessions</div>
+              <div style={{
+                fontSize: "13px", color: "#6b6865", lineHeight: 1.6, marginBottom: "28px",
+              }}>
+                Create an account to access your sessions and forecasts from any device. Or continue without saving — your results will still appear this session.
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <SignInButton mode="modal">
+                  <button
+                    onClick={() => setShowAuthModal(false)}
+                    style={{
+                      width: "100%", background: "#e36438", color: "#fff",
+                      border: "none", borderRadius: "10px", padding: "12px",
+                      fontSize: "13px", fontWeight: 600,
+                      fontFamily: "var(--font-mono), monospace",
+                      letterSpacing: "0.06em", cursor: "pointer",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#c4421a"}
+                    onMouseLeave={e => e.currentTarget.style.background = "#e36438"}
+                  >
+                    Sign in →
+                  </button>
+                </SignInButton>
+                <button
+                  onClick={() => {
+                    setShowAuthModal(false);
+                    proceedWithSubmit(pendingInput);
+                  }}
+                  style={{
+                    width: "100%", background: "transparent", color: "#6b6865",
+                    border: "1px solid #282828", borderRadius: "10px", padding: "12px",
+                    fontSize: "13px",
+                    fontFamily: "var(--font-mono), monospace",
+                    letterSpacing: "0.06em", cursor: "pointer",
+                    transition: "color 0.15s, border-color 0.15s",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.color = "#ede9e3";
+                    e.currentTarget.style.borderColor = "#3a3835";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.color = "#6b6865";
+                    e.currentTarget.style.borderColor = "#282828";
+                  }}
+                >
+                  Continue without saving
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div
         ref={scrollRef}
         style={{ position: "relative", zIndex: 10, paddingTop: "56px", overflowY: "auto", height: "100vh" }}
       >
-        <div style={{ maxWidth: "700px", margin: "0 auto", padding: "48px 28px 80px" }}>
+        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "48px 28px 80px" }}>
 
           {/* ── Idle ── */}
           <AnimatePresence>
@@ -161,55 +279,43 @@ function HomeInner() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12, transition: { duration: 0.2 } }}
               >
-                {/* Top row */}
-                <div style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  marginBottom: "36px",
-                }}>
-                  <div style={{
-                    fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                    letterSpacing: "0.22em", textTransform: "uppercase",
-                    color: "#3a3835", display: "flex", alignItems: "center", gap: "8px",
-                  }}>
-                    <span style={{ color: "#e36438", fontSize: "11px" }}>◈</span> Prism
+                {/* Headline + pill row */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "32px", marginBottom: "28px" }}>
+                  <div style={{ flex: 1 }}>
+                    <motion.h1
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.05 }}
+                      style={{
+                        fontSize: "clamp(24px, 3.2vw, 34px)", fontWeight: 600,
+                        color: "#ede9e3", lineHeight: 1.25, letterSpacing: "-0.02em",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      You have views on geopolitics,<br />markets, AI, sports.
+                    </motion.h1>
+                    <motion.p
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.1 }}
+                      style={{
+                        fontSize: "clamp(16px, 2vw, 20px)", fontWeight: 400,
+                        color: "#7a7570", lineHeight: 1.35, letterSpacing: "-0.01em",
+                        margin: 0,
+                      }}
+                    >
+                      Prism turns them into researched Kalshi positions.
+                    </motion.p>
                   </div>
-                  <Link href="/markets" style={{
-                    fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-                    color: "#3a3835", textDecoration: "none", letterSpacing: "0.06em",
-                    transition: "color 0.15s",
-                  }}
-                    onMouseEnter={e => (e.currentTarget.style.color = "#5b9cf6")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "#3a3835")}
-                  >
-                    Intel — browse markets →
-                  </Link>
+                  <div style={{ flexShrink: 0, maxWidth: "215px", paddingTop: "6px" }}>
+                    <div style={{
+                      fontFamily: "var(--font-mono), monospace", fontSize: "12px",
+                      letterSpacing: "0.06em", color: "#9b9790", lineHeight: 1.7,
+                    }}>
+                      <Typewriter text="Hedge fund-level research, built for individual Kalshi users" delay={600} speed={60} />
+                    </div>
+                  </div>
                 </div>
-
-                {/* Headline */}
-                <motion.h1
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.05 }}
-                  style={{
-                    fontSize: "clamp(24px, 3.2vw, 34px)", fontWeight: 600,
-                    color: "#ede9e3", lineHeight: 1.25, letterSpacing: "-0.02em",
-                    marginBottom: "10px",
-                  }}
-                >
-                  You have views on geopolitics,<br />markets, policy.
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                  style={{
-                    fontSize: "clamp(16px, 2vw, 20px)", fontWeight: 400,
-                    color: "#4a4845", lineHeight: 1.35, letterSpacing: "-0.01em",
-                    marginBottom: "28px",
-                  }}
-                >
-                  Prism turns them into researched Kalshi positions.
-                </motion.p>
 
                 {/* How it works */}
                 <motion.div
@@ -218,13 +324,6 @@ function HomeInner() {
                   transition={{ duration: 0.45, delay: 0.14 }}
                   style={{ marginBottom: "28px" }}
                 >
-                  <div style={{
-                    fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                    color: "#3a3835", letterSpacing: "0.14em", textTransform: "uppercase",
-                    marginBottom: "10px",
-                  }}>
-                    Hedge fund research, built for individual Kalshi traders
-                  </div>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                     {[
                       {
@@ -263,7 +362,7 @@ function HomeInner() {
                           marginBottom: "6px", lineHeight: 1.3,
                         }}>{step.title}</div>
                         <div style={{
-                          fontSize: "11px", color: "#4a4845", lineHeight: 1.6,
+                          fontSize: "11px", color: "#7a7570", lineHeight: 1.6,
                         }}>{step.desc}</div>
                       </div>
                     ))}
@@ -287,8 +386,8 @@ function HomeInner() {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={onIdleKey}
-                    placeholder="e.g. I think the US-China trade war will escalate significantly this year, pushing inflation back up and delaying Fed cuts…"
-                    rows={4}
+                    placeholder="e.g. I think the Fed will cut rates this summer"
+                    rows={2}
                     autoFocus
                     style={{
                       width: "100%", background: "transparent", border: "none",
@@ -374,7 +473,7 @@ function HomeInner() {
                                 <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                                   {drivers.slice(0, 3).map((d, j) => (
                                     <span key={j} style={{
-                                      fontSize: "10px", color: "#4a4845",
+                                      fontSize: "10px", color: "#6b6865",
                                       background: "rgba(255,255,255,0.03)",
                                       border: "1px solid #1e1e1e", borderRadius: "4px",
                                       padding: "2px 7px",
@@ -472,7 +571,8 @@ function HomeInner() {
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
                   <ReplyBar
                     input={input} setInput={setInput}
-                    onKey={onReplyKey} onSubmit={() => sendMessage(input, apiHistory)}
+                    onKey={onReplyKey}
+                    onSubmit={async () => { const t = await _token(); sendMessage(input, apiHistory, t); }}
                     disabled={loading}
                   />
                 </motion.div>
@@ -830,6 +930,30 @@ function RecCard({ rec, forecast, onExplore, onViewForecast, onRunForecast }: {
         </button>
       </div>
     </div>
+  );
+}
+
+function Typewriter({ text, delay = 0, speed = 35 }: { text: string; delay?: number; speed?: number }) {
+  const [displayed, setDisplayed] = useState("");
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setStarted(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+
+  useEffect(() => {
+    if (!started || displayed.length >= text.length) return;
+    const t = setTimeout(() => setDisplayed(text.slice(0, displayed.length + 1)), speed);
+    return () => clearTimeout(t);
+  }, [started, displayed, text, speed]);
+
+  const done = displayed.length >= text.length;
+  return (
+    <span>
+      {displayed}
+      <span className="blink" style={{ color: "#e36438", opacity: done ? 0.5 : 1 }}>▋</span>
+    </span>
   );
 }
 

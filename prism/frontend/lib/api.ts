@@ -2,8 +2,12 @@ import type { StreamMessage, TradingChatResponse, TradingStreamMessage, BeliefSu
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-async function apiFetch(path: string, init?: RequestInit) {
-  const res = await fetch(`${BASE}${path}`, init);
+async function apiFetch(path: string, init?: RequestInit, token?: string) {
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string> ?? {}),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -17,20 +21,23 @@ export const getMarkets = (eventTicker: string) =>
 export const getMarket = (ticker: string) =>
   apiFetch(`/api/markets/${ticker}`);
 
-export const listForecasts = (limit = 48) =>
-  apiFetch(`/api/forecasts?limit=${limit}`);
+export const listForecasts = (limit = 48, token?: string) =>
+  apiFetch(`/api/forecasts?limit=${limit}`, undefined, token);
 
 export function streamForecast(
   body: { ticker: string; event_title: string; ev_sub?: string; ev_category?: string; market?: Record<string, unknown> },
-  onMessage: (msg: StreamMessage) => void
+  onMessage: (msg: StreamMessage) => void,
+  token?: string,
 ): () => void {
   let cancelled = false;
 
   (async () => {
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`${BASE}/api/forecasts/stream`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(body),
       });
       if (!res.body) return;
@@ -62,31 +69,35 @@ export function streamForecast(
   return () => { cancelled = true; };
 }
 
-export const listTradingSessions = (limit = 20): Promise<TradingSession[]> =>
-  apiFetch(`/api/trading/sessions?limit=${limit}`);
+export const listTradingSessions = (limit = 20, token?: string): Promise<TradingSession[]> =>
+  apiFetch(`/api/trading/sessions?limit=${limit}`, undefined, token);
 
 export async function tradingChat(
   history: Record<string, unknown>[],
   message: string,
+  token?: string,
 ): Promise<TradingChatResponse> {
   return apiFetch("/api/trading/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ history, message }),
-  });
+  }, token);
 }
 
 export function streamTradingAnalysis(
   beliefSummary: BeliefSummary,
   onMessage: (msg: TradingStreamMessage) => void,
+  token?: string,
 ): () => void {
   let cancelled = false;
 
   (async () => {
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`${BASE}/api/trading/analyze`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ belief_summary: beliefSummary }),
       });
       if (!res.body) return;

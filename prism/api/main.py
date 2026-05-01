@@ -22,10 +22,67 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+
+# ── Clerk JWT verification ────────────────────────────────────────────────────
+
+def _derive_jwks_url() -> str:
+    """Derive JWKS URL from CLERK_PUBLISHABLE_KEY if CLERK_JWKS_URL not set."""
+    explicit = os.environ.get("CLERK_JWKS_URL", "")
+    if explicit:
+        return explicit
+    pk = os.environ.get("CLERK_PUBLISHABLE_KEY", "")
+    if not pk:
+        return ""
+    try:
+        import base64
+        # pk format: pk_test_<b64> or pk_live_<b64>
+        encoded = pk.split("_", 2)[2]
+        padded = encoded + "=" * (-len(encoded) % 4)
+        frontend_api = base64.b64decode(padded).decode().rstrip("$")
+        return f"https://{frontend_api}/.well-known/jwks.json"
+    except Exception:
+        return ""
+
+_CLERK_JWKS_URL = _derive_jwks_url()
+_jwks_cache: dict = {}
+
+def _get_jwks() -> dict:
+    global _jwks_cache
+    if _jwks_cache:
+        return _jwks_cache
+    if not _CLERK_JWKS_URL:
+        return {}
+    try:
+        import httpx as _httpx
+        resp = _httpx.get(_CLERK_JWKS_URL, timeout=5)
+        _jwks_cache = resp.json()
+    except Exception:
+        pass
+    return _jwks_cache
+
+def _get_user_id(request: Request) -> str | None:
+    """Extract and verify Clerk JWT; return user_id (sub) or None."""
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth[7:]
+    try:
+        from jose import jwt, jwk
+        header = jwt.get_unverified_header(token)
+        kid = header.get("kid", "")
+        keys = _get_jwks().get("keys", [])
+        key_data = next((k for k in keys if k.get("kid") == kid), None)
+        if not key_data:
+            return None
+        public_key = jwk.construct(key_data)
+        payload = jwt.decode(token, public_key, algorithms=["RS256"])
+        return payload.get("sub")
+    except Exception:
+        return None
 
 from forecaster.kalshi import KalshiClient
 from forecaster.config import ForecasterConfig
@@ -125,8 +182,9 @@ async def get_market(ticker: str):
 
 
 @app.get("/api/forecasts")
-async def list_forecasts(limit: int = 48):
-    return db.get_forecasts(limit=limit)
+async def list_forecasts(request: Request, limit: int = 48):
+    user_id = _get_user_id(request)
+    return db.get_forecasts(limit=limit, user_id=user_id)
 
 
 class ForecastRequest(BaseModel):
@@ -139,7 +197,7 @@ class ForecastRequest(BaseModel):
 
 
 @app.post("/api/forecasts/stream")
-async def stream_forecast(req: ForecastRequest):
+async def stream_forecast(req: ForecastRequest, request: Request):
     client = _get_client()
     loop = asyncio.get_event_loop()
 
@@ -213,6 +271,7 @@ async def stream_forecast(req: ForecastRequest):
                                 "category": req.ev_category,
                             },
                         },
+                        user_id=_get_user_id(request),
                     )
                 except Exception:
                     pass  # don't fail the whole stream if save fails
@@ -404,8 +463,9 @@ class TradingChatRequest(BaseModel):
 
 
 @app.get("/api/trading/sessions")
-async def list_trading_sessions(limit: int = 20):
-    return db.get_trading_sessions(limit=limit)
+async def list_trading_sessions(request: Request, limit: int = 20):
+    user_id = _get_user_id(request)
+    return db.get_trading_sessions(limit=limit, user_id=user_id)
 
 
 @app.post("/api/trading/chat")
@@ -430,7 +490,7 @@ class TradingAnalyzeRequest(BaseModel):
 
 
 @app.post("/api/trading/analyze")
-async def trading_analyze(req: TradingAnalyzeRequest):
+async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
     if not _TC_AVAILABLE:
         async def _unavail():
             yield f"data: {json.dumps({'type': 'error', 'message': 'Trading companion not available'})}\n\n"
@@ -516,6 +576,7 @@ async def trading_analyze(req: TradingAnalyzeRequest):
                         belief_summary=req.belief_summary,
                         analysis=analysis,
                         recommendations=recommendations,
+                        user_id=_get_user_id(request),
                     )
                 except Exception:
                     pass

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 
 const NAV = [
   { href: "/",          label: "Home"      },
@@ -12,6 +13,7 @@ const NAV = [
 
 export default function Header() {
   const path = usePathname();
+  const { isSignedIn } = useUser();
 
   return (
     <header style={{
@@ -69,14 +71,48 @@ export default function Header() {
           })}
         </nav>
 
-        {/* Live indicator */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: "8px",
-          fontFamily: "var(--font-mono), monospace",
-          fontSize: "9px", color: "#2a2826", letterSpacing: "0.12em", flexShrink: 0,
-        }}>
-          <span className="blink" style={{ color: "#e36438", fontSize: "7px" }}>●</span>
-          LIVE
+        {/* Right side: live indicator + auth */}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: "8px",
+            fontFamily: "var(--font-mono), monospace",
+            fontSize: "9px", color: "#2a2826", letterSpacing: "0.12em",
+          }}>
+            <span className="blink" style={{ color: "#e36438", fontSize: "7px" }}>●</span>
+            LIVE
+          </div>
+
+          {!isSignedIn ? (
+            <SignInButton mode="modal">
+              <button style={{
+                fontFamily: "var(--font-mono), monospace", fontSize: "10px",
+                fontWeight: 600, letterSpacing: "0.08em",
+                color: "#6b6865", background: "transparent",
+                border: "1px solid #252525", borderRadius: "6px",
+                padding: "5px 12px", cursor: "pointer",
+                transition: "color 0.15s, border-color 0.15s",
+              }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = "#ede9e3";
+                  e.currentTarget.style.borderColor = "#3a3835";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = "#6b6865";
+                  e.currentTarget.style.borderColor = "#252525";
+                }}
+              >
+                Sign in
+              </button>
+            </SignInButton>
+          ) : (
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: { width: "28px", height: "28px" },
+                },
+              }}
+            />
+          )}
         </div>
       </div>
     </header>
