@@ -205,11 +205,63 @@ function HomeInner() {
                   style={{
                     fontSize: "clamp(16px, 2vw, 20px)", fontWeight: 400,
                     color: "#4a4845", lineHeight: 1.35, letterSpacing: "-0.01em",
-                    marginBottom: "32px",
+                    marginBottom: "28px",
                   }}
                 >
                   Prism turns them into researched Kalshi positions.
                 </motion.p>
+
+                {/* How it works */}
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, delay: 0.14 }}
+                  style={{
+                    display: "flex", alignItems: "flex-start", gap: "0",
+                    marginBottom: "28px", flexWrap: "wrap",
+                  }}
+                >
+                  {[
+                    {
+                      n: "01",
+                      title: "State your thesis",
+                      desc: "Describe what you believe will happen — geopolitics, macro, policy.",
+                    },
+                    {
+                      n: "02",
+                      title: "Map the effects",
+                      desc: "Prism traces second and third-order consequences and finds relevant markets.",
+                    },
+                    {
+                      n: "03",
+                      title: "Find the edge",
+                      desc: "We surface Kalshi contracts where the market price disagrees with your view.",
+                    },
+                  ].map((step, i) => (
+                    <div key={step.n} style={{ display: "flex", alignItems: "flex-start", flex: "1 1 0", minWidth: "160px" }}>
+                      <div style={{ flex: 1, paddingRight: "12px" }}>
+                        <div style={{
+                          fontFamily: "var(--font-mono), monospace", fontSize: "9px",
+                          fontWeight: 700, color: "#e36438", letterSpacing: "0.16em",
+                          marginBottom: "5px",
+                        }}>{step.n}</div>
+                        <div style={{
+                          fontSize: "12px", fontWeight: 600, color: "#9b9790",
+                          marginBottom: "4px", lineHeight: 1.3,
+                        }}>{step.title}</div>
+                        <div style={{
+                          fontSize: "11px", color: "#3a3835", lineHeight: 1.55,
+                        }}>{step.desc}</div>
+                      </div>
+                      {i < 2 && (
+                        <div style={{
+                          fontFamily: "var(--font-mono), monospace", fontSize: "10px",
+                          color: "#1e1e1e", paddingTop: "2px", flexShrink: 0, paddingRight: "12px",
+                        }}>→</div>
+                      )}
+                    </div>
+                  ))}
+                </motion.div>
 
                 {/* Input */}
                 <motion.div
