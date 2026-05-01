@@ -130,8 +130,10 @@ export interface TradingSession {
 
 // ── Oracle (legacy) ───────────────────────────────────────────────────────────
 
+export type OracleStageStatus = "waiting" | "running" | "done";
+
 export type OraclePipelineMessage =
-  | { type: "stage"; stage: string; status: string; data?: { domains: OracleDomain[]; insight: string } }
+  | { type: "stage"; stage: string; status: OracleStageStatus; data?: { domains: OracleDomain[]; insight: string } }
   | { type: "complete"; data: { recommendations: OracleRecommendation[]; analysis: { domains: OracleDomain[]; insight: string } } }
   | { type: "error"; message: string };
 
