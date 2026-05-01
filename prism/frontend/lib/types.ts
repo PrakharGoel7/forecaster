@@ -130,13 +130,10 @@ export interface TradingSession {
 
 // ── Oracle (legacy) ───────────────────────────────────────────────────────────
 
-export interface OraclePipelineMessage {
-  type: string;
-  stage?: string;
-  status?: string;
-  data?: unknown;
-  message?: string;
-}
+export type OraclePipelineMessage =
+  | { type: "stage"; stage: string; status: string; data?: { domains: OracleDomain[]; insight: string } }
+  | { type: "complete"; data: { recommendations: OracleRecommendation[]; analysis: { domains: OracleDomain[]; insight: string } } }
+  | { type: "error"; message: string };
 
 export interface OracleTurnResponse {
   status: "asking" | "finalized";
@@ -149,6 +146,7 @@ export interface OracleTurnResponse {
 export interface OracleChatMessage {
   role: "user" | "oracle";
   content: string;
+  searchQueries?: string[];
 }
 
 export interface OracleDomain {
