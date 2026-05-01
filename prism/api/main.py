@@ -5,11 +5,16 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 # Repo root is three levels up from prism/api/main.py; forecaster package lives there
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
+
+# Trading companion lives inside the repo
+_TC_PATH = _REPO_ROOT / "trading_companion"
+if _TC_PATH.exists() and str(_TC_PATH) not in sys.path:
+    sys.path.append(str(_TC_PATH))
 
 try:
     from dotenv import load_dotenv
@@ -26,6 +31,10 @@ from forecaster.kalshi import KalshiClient
 from forecaster.config import ForecasterConfig
 from forecaster.forecaster_system import ForecasterSystem
 from forecaster import db
+
+# Oracle agents (from trading_companion) — imported lazily inside endpoints
+# so a missing trading_companion path doesn't break the rest of the API.
+_TC_AVAILABLE = _TC_PATH.exists()
 
 app = FastAPI(title="Prism API")
 
@@ -238,6 +247,307 @@ async def stream_forecast(req: ForecastRequest):
 
     return StreamingResponse(
         _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# ── Oracle endpoints (legacy) ─────────────────────────────────────────────────
+
+class OracleTurnRequest(BaseModel):
+    history: list[Any] = []
+    message: str
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+class OraclePipelineRequest(BaseModel):
+    belief_summary: dict[str, Any]
+
+
+@app.post("/api/oracle/turn")
+async def oracle_turn(req: OracleTurnRequest):
+    if not _TC_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Oracle not available: trading_companion not found")
+
+    from agents.belief_agent import BeliefAgent
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None, lambda: BeliefAgent().step(req.history, req.message)
+    )
+    return result
+
+
+@app.post("/api/oracle/pipeline/stream")
+async def oracle_pipeline_stream(req: OraclePipelineRequest):
+    if not _TC_AVAILABLE:
+        async def _err():
+            yield f"data: {json.dumps({'type': 'error', 'message': 'trading_companion not found'})}\n\n"
+        return StreamingResponse(_err(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache"})
+
+    from agents.analyst_agent import AnalystAgent
+    from agents.screener_agent import ScreenerAgent
+    from agents.curator_agent import CuratorAgent
+    from kalshi import KalshiClient as TradingKalshiClient
+
+    async def _generate() -> AsyncIterator[str]:
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue = asyncio.Queue()
+
+        async def _run():
+            try:
+                belief = req.belief_summary
+
+                # Stage 1: Analyst
+                await queue.put({"type": "stage", "stage": "analyst", "status": "running"})
+                analysis = await loop.run_in_executor(None, lambda: AnalystAgent().run(belief))
+                high_med = [d for d in analysis["affected_domains"] if d["relevance"] in ("high", "medium")]
+                await queue.put({
+                    "type": "stage", "stage": "analyst", "status": "done",
+                    "data": {"domains": high_med, "insight": analysis.get("most_surprising_connection", "")},
+                })
+
+                # Stage 2: Screener
+                await queue.put({"type": "stage", "stage": "screener", "status": "running"})
+                event_tickers = await loop.run_in_executor(
+                    None, lambda: ScreenerAgent().run(belief, analysis)
+                )
+                await queue.put({
+                    "type": "stage", "stage": "screener", "status": "done",
+                    "data": {"event_count": len(event_tickers)},
+                })
+
+                if not event_tickers:
+                    await queue.put({"type": "error", "message": "No relevant events found. Run sync_events.py to refresh the cache."})
+                    return
+
+                # Stage 3: Fetch markets
+                await queue.put({"type": "stage", "stage": "markets", "status": "running"})
+
+                def _fetch_markets():
+                    client = TradingKalshiClient.from_env()
+                    all_markets: dict = {}
+                    for ticker in event_tickers:
+                        try:
+                            mkts, _ = client.get_markets(limit=20, status="open", event_ticker=ticker)
+                            for m in mkts:
+                                if m.ticker not in all_markets:
+                                    all_markets[m.ticker] = m
+                        except Exception:
+                            pass
+                    return list(all_markets.values())
+
+                markets = await loop.run_in_executor(None, _fetch_markets)
+                await queue.put({
+                    "type": "stage", "stage": "markets", "status": "done",
+                    "data": {"market_count": len(markets)},
+                })
+
+                if not markets:
+                    await queue.put({"type": "error", "message": "No open markets found for the shortlisted events."})
+                    return
+
+                # Stage 4: Curator
+                await queue.put({"type": "stage", "stage": "curator", "status": "running"})
+                recommendations = await loop.run_in_executor(
+                    None, lambda: CuratorAgent().run(belief, markets, analysis)
+                )
+
+                await queue.put({
+                    "type": "complete",
+                    "data": {
+                        "recommendations": recommendations,
+                        "analysis": {
+                            "domains": high_med,
+                            "insight": analysis.get("most_surprising_connection", ""),
+                        },
+                    },
+                })
+
+            except FileNotFoundError as exc:
+                await queue.put({"type": "error", "message": f"Events cache missing — run sync_events.py first. ({exc})"})
+            except Exception as exc:
+                await queue.put({"type": "error", "message": str(exc)})
+
+        task = asyncio.create_task(_run())
+        try:
+            while True:
+                try:
+                    msg = await asyncio.wait_for(asyncio.shield(queue.get()), timeout=360.0)
+                except asyncio.TimeoutError:
+                    yield f"data: {json.dumps({'type': 'error', 'message': 'Pipeline timed out'})}\n\n"
+                    task.cancel()
+                    break
+                yield f"data: {json.dumps(msg)}\n\n"
+                if msg["type"] in ("complete", "error"):
+                    break
+        finally:
+            try:
+                await asyncio.wait_for(task, timeout=10.0)
+            except Exception:
+                pass
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# ── Trading Companion (Compass) ───────────────────────────────────────────────
+
+class TradingChatRequest(BaseModel):
+    history: list[dict]
+    message: str
+
+
+@app.get("/api/trading/sessions")
+async def list_trading_sessions(limit: int = 20):
+    return db.get_trading_sessions(limit=limit)
+
+
+@app.post("/api/trading/chat")
+async def trading_chat(req: TradingChatRequest):
+    if not _TC_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Trading companion not available")
+    loop = asyncio.get_event_loop()
+
+    def _run():
+        from agents.belief_agent import BeliefAgent
+        return BeliefAgent().step(req.history, req.message)
+
+    try:
+        result = await loop.run_in_executor(None, _run)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    return result
+
+
+class TradingAnalyzeRequest(BaseModel):
+    belief_summary: dict
+
+
+@app.post("/api/trading/analyze")
+async def trading_analyze(req: TradingAnalyzeRequest):
+    if not _TC_AVAILABLE:
+        async def _unavail():
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Trading companion not available'})}\n\n"
+        return StreamingResponse(_unavail(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache"})
+
+    async def _tc_generate() -> AsyncIterator[str]:
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue = asyncio.Queue()
+
+        def _run():
+            try:
+                from agents.analyst_agent import AnalystAgent
+                from agents.screener_agent import ScreenerAgent, CACHE_FILE
+                from agents.curator_agent import CuratorAgent
+
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "progress", "label": "Analyzing ramifications across 16 domains…"}), loop
+                )
+                analysis = AnalystAgent().run(req.belief_summary)
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "analyst_done", "analysis": analysis}), loop
+                )
+
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "progress", "label": "Screening Kalshi event catalog…"}), loop
+                )
+                tickers = ScreenerAgent().run(req.belief_summary, analysis)
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "screener_done", "tickers": tickers, "count": len(tickers)}), loop
+                )
+
+                if not tickers:
+                    asyncio.run_coroutine_threadsafe(
+                        queue.put({"type": "error", "message": "No relevant markets found."}), loop
+                    )
+                    return
+
+                client = _get_client()
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "progress", "label": f"Fetching live markets for {len(tickers)} events…"}), loop
+                )
+                markets: list = []
+                seen: set = set()
+                for ticker in tickers:
+                    try:
+                        batch, _ = client.get_markets(limit=20, status="open", event_ticker=ticker)
+                        for m in batch:
+                            if m.ticker not in seen:
+                                seen.add(m.ticker)
+                                markets.append(m)
+                    except Exception:
+                        pass
+
+                if not markets:
+                    asyncio.run_coroutine_threadsafe(
+                        queue.put({"type": "error", "message": "No open markets found."}), loop
+                    )
+                    return
+
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "progress", "label": f"Curating best bets from {len(markets)} live markets…"}), loop
+                )
+                recommendations = CuratorAgent().run(req.belief_summary, markets, analysis)
+
+                event_lookup: dict = {}
+                if CACHE_FILE.exists():
+                    _data = json.loads(CACHE_FILE.read_text())
+                    event_lookup = {e["event_ticker"]: e for e in _data.get("events", [])}
+                for rec in recommendations:
+                    evt = event_lookup.get(rec.get("event_ticker", ""), {})
+                    rec["event_title"]   = evt.get("title", "")
+                    rec["series_ticker"] = evt.get("series_ticker", "")
+                    rec["category"]      = evt.get("category", "")
+
+                session_id: int | None = None
+                try:
+                    session_id = db.save_trading_session(
+                        core_belief=req.belief_summary.get("core_belief", ""),
+                        time_horizon=req.belief_summary.get("time_horizon", ""),
+                        scope=req.belief_summary.get("scope", ""),
+                        key_drivers=req.belief_summary.get("key_drivers", []),
+                        belief_summary=req.belief_summary,
+                        analysis=analysis,
+                        recommendations=recommendations,
+                    )
+                except Exception:
+                    pass
+
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "curator_done", "recommendations": recommendations, "session_id": session_id}), loop
+                )
+
+            except Exception as exc:
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "error", "message": str(exc)}), loop
+                )
+
+        task = loop.run_in_executor(None, _run)
+        try:
+            while True:
+                try:
+                    msg = await asyncio.wait_for(asyncio.shield(queue.get()), timeout=300.0)
+                except asyncio.TimeoutError:
+                    yield f"data: {json.dumps({'type': 'error', 'message': 'Analysis timed out'})}\n\n"
+                    break
+                yield f"data: {json.dumps(msg)}\n\n"
+                if msg["type"] in ("curator_done", "error"):
+                    break
+        finally:
+            try:
+                await asyncio.wait_for(task, timeout=10.0)
+            except Exception:
+                pass
+
+    return StreamingResponse(
+        _tc_generate(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

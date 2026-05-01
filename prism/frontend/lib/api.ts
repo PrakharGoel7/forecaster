@@ -1,4 +1,4 @@
-import type { StreamMessage } from "./types";
+import type { StreamMessage, TradingChatResponse, TradingStreamMessage, BeliefSummary, TradingSession } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -32,6 +32,62 @@ export function streamForecast(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+      });
+      if (!res.body) return;
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (!cancelled) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.replace(/^data: /, "").trim();
+          if (line) {
+            try { onMessage(JSON.parse(line)); } catch {}
+          }
+        }
+      }
+    } catch (err) {
+      if (!cancelled) {
+        onMessage({ type: "error", message: err instanceof Error ? err.message : "Connection lost" });
+      }
+    }
+  })();
+
+  return () => { cancelled = true; };
+}
+
+export const listTradingSessions = (limit = 20): Promise<TradingSession[]> =>
+  apiFetch(`/api/trading/sessions?limit=${limit}`);
+
+export async function tradingChat(
+  history: Record<string, unknown>[],
+  message: string,
+): Promise<TradingChatResponse> {
+  return apiFetch("/api/trading/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ history, message }),
+  });
+}
+
+export function streamTradingAnalysis(
+  beliefSummary: BeliefSummary,
+  onMessage: (msg: TradingStreamMessage) => void,
+): () => void {
+  let cancelled = false;
+
+  (async () => {
+    try {
+      const res = await fetch(`${BASE}/api/trading/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ belief_summary: beliefSummary }),
       });
       if (!res.body) return;
 

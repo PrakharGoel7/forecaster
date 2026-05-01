@@ -67,3 +67,70 @@ export type StreamMessage =
   | { type: "progress"; label: string }
   | { type: "complete"; memo: ForecastMemo; kalshi_price: number; close_date: string }
   | { type: "error"; message: string };
+
+// ── Trading Companion ─────────────────────────────────────────────────────────
+
+export interface BeliefSummary {
+  core_belief: string;
+  time_horizon: string;
+  key_drivers: string[];
+  scope: string;
+  confidence_level: "low" | "medium" | "high";
+  supporting_reasoning: string;
+  current_context: string;
+}
+
+export interface DomainAnalysis {
+  domain: string;
+  relevance: "high" | "medium" | "low";
+  mechanism: string;
+  market_signals: string[];
+}
+
+export interface BeliefAnalysis {
+  affected_domains: DomainAnalysis[];
+  most_surprising_connection: string;
+}
+
+export interface TradeRecommendation {
+  ticker: string;
+  event_ticker: string;
+  question: string;
+  price: number;
+  close_date: string;
+  rules_summary: string;
+  relevance: string;
+  direction: "YES" | "NO";
+  rationale: string;
+  score: number;
+  event_title?: string;
+  series_ticker?: string;
+  category?: string;
+}
+
+export interface TradingChatResponse {
+  status: "asking" | "finalized";
+  agent_message: string | null;
+  search_queries: string[];
+  belief_summary: BeliefSummary | null;
+  history: Record<string, unknown>[];
+}
+
+export interface TradingSession {
+  id: number;
+  created_at: string;
+  core_belief: string;
+  time_horizon: string;
+  scope: string;
+  key_drivers_json: string;
+  belief_summary_json: string;
+  analysis_json: string;
+  recommendations_json: string;
+}
+
+export type TradingStreamMessage =
+  | { type: "progress"; label: string }
+  | { type: "analyst_done"; analysis: BeliefAnalysis }
+  | { type: "screener_done"; tickers: string[]; count: number }
+  | { type: "curator_done"; recommendations: TradeRecommendation[]; session_id?: number }
+  | { type: "error"; message: string };

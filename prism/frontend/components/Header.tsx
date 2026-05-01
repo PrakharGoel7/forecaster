@@ -3,10 +3,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/",          label: "Home"             },
-  { href: "/markets",   label: "Live Markets"     },
-  { href: "/forecasts", label: "Forecast Reports" },
-  { href: "/model",     label: "Model"            },
+  { href: "/",          label: "Home"      },
+  { href: "/markets",   label: "Monitor"   },
+  { href: "/forecasts", label: "Intel"     },
+  { href: "/trading",   label: "Compass"   },
+  { href: "/model",     label: "Model"     },
 ];
 
 export default function Header() {

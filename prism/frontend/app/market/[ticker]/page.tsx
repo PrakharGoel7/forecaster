@@ -24,11 +24,16 @@ export default function MarketPage() {
   const searchParams = useSearchParams();
   const router       = useRouter();
 
-  const rawTicker  = params.ticker as string;
-  const eventTitle = searchParams.get("title") ?? "";
-  const evCat      = searchParams.get("cat") ?? "";
-  const evSub      = searchParams.get("sub") ?? "";
-  const savedId    = searchParams.get("saved");
+  const rawTicker    = params.ticker as string;
+  const eventTitle   = searchParams.get("title") ?? "";
+  const evCat        = searchParams.get("cat") ?? "";
+  const evSub        = searchParams.get("sub") ?? "";
+  const savedId      = searchParams.get("saved");
+  const fromTrading  = searchParams.get("from") === "trading";
+  const fromSession  = searchParams.get("session");
+  const backHref     = fromTrading
+    ? `/trading${fromSession ? `?session=${fromSession}` : ""}`
+    : "/";
 
   const [markets, setMarkets]           = useState<KalshiMarket[]>([]);
   const [mkt, setMkt]                   = useState<KalshiMarket | null>(null);
@@ -105,7 +110,7 @@ export default function MarketPage() {
 
         {/* Breadcrumb */}
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push(backHref)}
           style={{
             background: "transparent", border: "none", padding: 0,
             fontFamily: "var(--font-mono), monospace", fontSize: "10px",
@@ -115,7 +120,7 @@ export default function MarketPage() {
           onMouseEnter={e => (e.currentTarget.style.color = "#6b6865")}
           onMouseLeave={e => (e.currentTarget.style.color = "#2a2826")}
         >
-          ← home
+          ← {fromTrading ? "back to recommendations" : "home"}
           {displayTitle && (
             <><span style={{ color: "#1a1a1a" }}> › </span>
             <span style={{ color: "#3a3835" }}>{displayTitle.slice(0, 60)}</span></>
