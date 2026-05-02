@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useAuth } from "@clerk/nextjs";
 import Header from "@/components/Header";
 import ProbabilityArc from "@/components/ProbabilityArc";
 import { getMarkets, getMarket, listForecasts, streamForecast } from "@/lib/api";
@@ -23,6 +24,7 @@ export default function MarketPage() {
   const params       = useParams();
   const searchParams = useSearchParams();
   const router       = useRouter();
+  const { getToken, userId } = useAuth();
 
   const rawTicker    = params.ticker as string;
   const eventTitle   = searchParams.get("title") ?? "";
@@ -50,21 +52,24 @@ export default function MarketPage() {
 
   useEffect(() => {
     if (savedId) {
-      listForecasts(200).then((rows: SavedForecast[]) => {
-        const row = rows.find(r => r.id === Number(savedId));
-        if (row) {
-          const ctx = JSON.parse(row.context_json);
-          setMkt(ctx.market as KalshiMarket);
-          setMemo(JSON.parse(row.memo_json));
-          setKalshiPrice(row.kalshi_price);
-          setPhase("done");
-          if (ctx.event) {
-            setSavedEventTitle(ctx.event.title ?? "");
-            setSavedEvCat(ctx.event.category ?? "");
-            setSavedEvSub(ctx.event.sub_title ?? "");
+      (async () => {
+        const token = userId ? await getToken().catch(() => null) : null;
+        listForecasts(200, token ?? undefined).then((rows: SavedForecast[]) => {
+          const row = rows.find(r => r.id === Number(savedId));
+          if (row) {
+            const ctx = JSON.parse(row.context_json);
+            setMkt(ctx.market as KalshiMarket);
+            setMemo(JSON.parse(row.memo_json));
+            setKalshiPrice(row.kalshi_price);
+            setPhase("done");
+            if (ctx.event) {
+              setSavedEventTitle(ctx.event.title ?? "");
+              setSavedEvCat(ctx.event.category ?? "");
+              setSavedEvSub(ctx.event.sub_title ?? "");
+            }
           }
-        }
-      }).catch(() => {});
+        }).catch(() => {});
+      })();
     } else {
       getMarkets(rawTicker)
         .then((mkts: KalshiMarket[]) => {
@@ -83,11 +88,12 @@ export default function MarketPage() {
   const displayCat   = evCat     || savedEvCat;
   const displaySub   = evSub     || savedEvSub;
 
-  const runForecast = () => {
+  const runForecast = async () => {
     if (!mkt) return;
     setPhase("running");
     setProgressLabel("Collecting evidence (0%)");
     setMemo(null);
+    const token = userId ? await getToken().catch(() => null) : null;
     cancelRef.current = streamForecast(
       { ticker: mkt.ticker, event_title: displayTitle, ev_sub: displaySub, ev_category: displayCat, market: mkt as unknown as Record<string, unknown> },
       (msg: StreamMessage) => {
@@ -97,7 +103,8 @@ export default function MarketPage() {
         } else if (msg.type === "error") {
           setErrorMsg(msg.message); setPhase("error");
         }
-      }
+      },
+      token ?? undefined,
     );
   };
 
