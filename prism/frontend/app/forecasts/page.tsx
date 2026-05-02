@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import Header from "@/components/Header";
 import ForecastCard from "@/components/ForecastCard";
 import { listForecasts } from "@/lib/api";
@@ -8,14 +9,19 @@ import type { SavedForecast } from "@/lib/types";
 
 export default function ForecastsPage() {
   const router = useRouter();
+  const { getToken, isLoaded, userId } = useAuth();
   const [forecasts, setForecasts] = useState<SavedForecast[]>([]);
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    listForecasts(100)
-      .then(f => { setForecasts(f); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
+    if (!isLoaded) return;
+    (async () => {
+      const token = userId ? await getToken().catch(() => null) : null;
+      listForecasts(100, token ?? undefined)
+        .then(f => { setForecasts(f); setLoading(false); })
+        .catch(() => setLoading(false));
+    })();
+  }, [isLoaded, userId]);
 
   const goForecast = (f: SavedForecast) =>
     router.push(`/market/${f.ticker}?saved=${f.id}`);
