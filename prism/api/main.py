@@ -213,7 +213,10 @@ async def get_market(ticker: str):
 @app.get("/api/forecasts")
 async def list_forecasts(request: Request, limit: int = 48):
     user_id = _get_user_id(request)
-    return db.get_forecasts(limit=limit, user_id=user_id)
+    try:
+        return db.get_forecasts(limit=limit, user_id=user_id)
+    except Exception as e:
+        return {"error": str(e), "items": []}
 
 
 class ForecastRequest(BaseModel):
@@ -494,7 +497,10 @@ class TradingChatRequest(BaseModel):
 @app.get("/api/trading/sessions")
 async def list_trading_sessions(request: Request, limit: int = 20):
     user_id = _get_user_id(request)
-    return db.get_trading_sessions(limit=limit, user_id=user_id)
+    try:
+        return db.get_trading_sessions(limit=limit, user_id=user_id)
+    except Exception as e:
+        return {"error": str(e), "items": []}
 
 
 @app.post("/api/trading/chat")
