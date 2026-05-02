@@ -143,8 +143,25 @@ def _market_dict(m) -> dict:
 @app.get("/api/me")
 async def me(request: Request):
     """Debug: returns the user_id extracted from the Bearer token."""
-    user_id = _get_user_id(request)
-    return {"user_id": user_id, "jwks_url": _CLERK_JWKS_URL or "(not set)"}
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return {"user_id": None, "jwks_url": _CLERK_JWKS_URL or "(not set)", "error": "no Bearer token"}
+    token = auth[7:]
+    try:
+        from jose import jwt, jwk
+        header = jwt.get_unverified_header(token)
+        kid = header.get("kid", "")
+        keys = _get_jwks().get("keys", [])
+        key_data = next((k for k in keys if k.get("kid") == kid), None)
+        if not key_data:
+            return {"user_id": None, "jwks_url": _CLERK_JWKS_URL or "(not set)",
+                    "error": f"kid '{kid}' not found in JWKS. Available kids: {[k.get('kid') for k in keys]}"}
+        public_key = jwk.construct(key_data)
+        payload = jwt.decode(token, public_key, algorithms=["RS256"],
+                             options={"verify_aud": False, "verify_at_hash": False})
+        return {"user_id": payload.get("sub"), "jwks_url": _CLERK_JWKS_URL or "(not set)", "error": None}
+    except Exception as e:
+        return {"user_id": None, "jwks_url": _CLERK_JWKS_URL or "(not set)", "error": str(e)}
 
 
 @app.get("/api/events")
