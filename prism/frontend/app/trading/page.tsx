@@ -221,6 +221,24 @@ function TradingPageInner() {
           {/* ── Active: chat + progressive results ── */}
           {stage !== "idle" && (
             <div>
+              {/* Back to home */}
+              <div style={{ marginBottom: "24px", marginTop: "16px" }}>
+                <button
+                  onClick={() => router.push("/")}
+                  style={{
+                    background: "transparent", border: "none", padding: 0, cursor: "pointer",
+                    fontFamily: "var(--font-mono), monospace", fontSize: "11px",
+                    color: "#3a3835", letterSpacing: "0.06em",
+                    display: "flex", alignItems: "center", gap: "6px",
+                    transition: "color 0.15s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#6b6865"}
+                  onMouseLeave={e => e.currentTarget.style.color = "#3a3835"}
+                >
+                  ← home
+                </button>
+              </div>
+
               {/* Chat thread */}
               <ChatThread messages={chatMessages} loading={loading && stage === "chatting"} />
 
