@@ -77,8 +77,8 @@ export default function IntelPage() {
     if (e.key === "Escape") clearSearch();
   };
 
-  const goMarket = (event: KalshiEvent) =>
-    router.push(`/market/${event.event_ticker}?title=${encodeURIComponent(event.title)}&cat=${encodeURIComponent(event.category)}&sub=${encodeURIComponent(event.sub_title)}`);
+  const goRunForecast = (event: KalshiEvent) =>
+    router.push(`/market/${event.event_ticker}?title=${encodeURIComponent(event.title)}&cat=${encodeURIComponent(event.category)}&sub=${encodeURIComponent(event.sub_title)}&runForecast=1`);
 
   const goForecast = (f: SavedForecast) =>
     router.push(`/market/${f.ticker}?saved=${f.id}`);
@@ -154,7 +154,7 @@ export default function IntelPage() {
             }}>
               <div style={{
                 fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
-                textTransform: "uppercase", letterSpacing: "0.18em", color: "#5b9cf6",
+                textTransform: "uppercase", letterSpacing: "0.18em", color: "#e36438",
                 display: "flex", alignItems: "center", gap: "8px",
               }}>
                 <span className="blink" style={{ fontSize: "7px", animationDelay: "0.7s" }}>●</span>
@@ -213,7 +213,7 @@ export default function IntelPage() {
                       <div style={{
                         fontFamily: "var(--font-mono), monospace", fontSize: "8px",
                         fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em",
-                        color: "#e36438", marginBottom: "5px",
+                        color: "#6b6865", marginBottom: "5px",
                         overflow: "hidden", display: "-webkit-box",
                         WebkitLineClamp: 1, WebkitBoxOrient: "vertical" as const,
                       }}>
@@ -260,18 +260,8 @@ export default function IntelPage() {
                         <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "12px", fontWeight: 600, color: "#9b9790" }}>{((f.kalshi_price ?? 0) * 100).toFixed(0)}%</div>
                       </div>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#2a2826" }}>
-                        {relTime(f.created_at)}
-                      </span>
-                      {f.category && (
-                        <span style={{
-                          fontFamily: "var(--font-mono), monospace", fontSize: "8px",
-                          color: "#2a2826", textTransform: "uppercase", letterSpacing: "0.1em",
-                        }}>
-                          {f.category}
-                        </span>
-                      )}
+                    <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#2a2826" }}>
+                      {relTime(f.created_at)}
                     </div>
                   </motion.button>
                 );
@@ -280,30 +270,30 @@ export default function IntelPage() {
           </div>
         )}
 
-        {/* ── Market grid ── */}
+        {/* ── Live Markets ── */}
         <div style={{
           fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
           textTransform: "uppercase", letterSpacing: "0.2em", color: "#e36438",
-          marginBottom: "14px", display: "flex", alignItems: "center", gap: "8px",
+          display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px",
         }}>
           <span className="blink" style={{ fontSize: "7px" }}>●</span>
           Live Markets
+          <span style={{ color: "#2a2826" }}>·</span>
+          <span style={{ color: "#6b6865", fontWeight: 400, letterSpacing: "0.1em" }}>click any card to analyse</span>
         </div>
+
         {events.length > 0 ? (
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
             gap: "10px",
           }}>
             {events.map((e, i) => (
-              <MarketCard key={e.event_ticker} event={e} index={i} onSelect={goMarket} />
+              <MarketCard key={e.event_ticker} event={e} index={i} onForecast={goRunForecast} />
             ))}
           </div>
         ) : (
-          <div style={{
-            fontFamily: "var(--font-mono), monospace", fontSize: "11px",
-            color: "#2a2826", paddingTop: "40px", textAlign: "center",
-          }}>
+          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", color: "#2a2826", paddingTop: "40px", textAlign: "center" }}>
             {searching ? "Loading markets…" : "No results."}
           </div>
         )}
