@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@clerk/nextjs";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
 import ProbabilityArc from "@/components/ProbabilityArc";
@@ -36,6 +37,7 @@ export default function TradingPage() {
 function TradingPageInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const { getToken }  = useAuth();
   const [stage, setStage]                 = useState<Stage>("idle");
   const [input, setInput]                 = useState("");
   const [chatMessages, setChatMessages]   = useState<ChatMsg[]>([]);
@@ -56,20 +58,23 @@ function TradingPageInner() {
 
   useEffect(() => {
     const sid = searchParams.get("session");
-    listForecasts(500).then(setSavedForecasts).catch(() => {});
-    listTradingSessions(20).then(list => {
-      setSessions(list);
-      if (sid) {
-        const s = list.find(s => s.id === Number(sid));
-        if (s) {
-          setBeliefSummary(JSON.parse(s.belief_summary_json));
-          setAnalysis(JSON.parse(s.analysis_json));
-          setRecommendations(JSON.parse(s.recommendations_json));
-          setSessionId(s.id);
-          setStage("done");
+    (async () => {
+      const token = await getToken().catch(() => null);
+      listForecasts(500, token ?? undefined).then(setSavedForecasts).catch(() => {});
+      listTradingSessions(20, token ?? undefined).then(list => {
+        setSessions(list);
+        if (sid) {
+          const s = list.find(s => s.id === Number(sid));
+          if (s) {
+            setBeliefSummary(JSON.parse(s.belief_summary_json));
+            setAnalysis(JSON.parse(s.analysis_json));
+            setRecommendations(JSON.parse(s.recommendations_json));
+            setSessionId(s.id);
+            setStage("done");
+          }
         }
-      }
-    }).catch(() => {});
+      }).catch(() => {});
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -79,7 +84,7 @@ function TradingPageInner() {
     }
   }, [chatMessages, beliefSummary, analysis, recommendations, progressLabel]);
 
-  function startAnalysis(summary: BeliefSummary) {
+  function startAnalysis(summary: BeliefSummary, token?: string) {
     streamTradingAnalysis(summary, (msg) => {
       if (msg.type === "progress") {
         setProgressLabel(msg.label);
@@ -95,14 +100,16 @@ function TradingPageInner() {
           setSessionId(msg.session_id);
           router.replace(`/trading?session=${msg.session_id}`, { scroll: false });
         }
-        listForecasts(500).then(setSavedForecasts).catch(() => {});
-        listTradingSessions(20).then(setSessions).catch(() => {});
+        getToken().catch(() => null).then(token => {
+          listForecasts(500, token ?? undefined).then(setSavedForecasts).catch(() => {});
+          listTradingSessions(20, token ?? undefined).then(setSessions).catch(() => {});
+        });
       } else if (msg.type === "error") {
         setError(msg.message);
         setStage("error");
         setProgressLabel("");
       }
-    });
+    }, token);
   }
 
   async function sendMessage(message: string, history: Record<string, unknown>[]) {
@@ -113,13 +120,14 @@ function TradingPageInner() {
     setChatMessages(prev => [...prev, { role: "user", content: message }]);
 
     try {
-      const result = await tradingChat(history, message);
+      const token = await getToken().catch(() => null);
+      const result = await tradingChat(history, message, token ?? undefined);
       setApiHistory(result.history);
 
       if (result.status === "finalized" && result.belief_summary) {
         setBeliefSummary(result.belief_summary);
         setStage("analyzing");
-        startAnalysis(result.belief_summary);
+        startAnalysis(result.belief_summary, token ?? undefined);
       } else if (result.agent_message) {
         setChatMessages(prev => [...prev, {
           role: "assistant",
