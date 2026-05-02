@@ -99,7 +99,9 @@ _TC_AVAILABLE = _TC_PATH.exists()
 app = FastAPI(title="Prism API")
 
 _raw_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001")
-_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+_origins = list({o.strip() for o in _raw_origins.split(",") if o.strip()} | {
+    "https://forecaster-black.vercel.app",
+})
 
 app.add_middleware(
     CORSMiddleware,
@@ -107,7 +109,7 @@ app.add_middleware(
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 
