@@ -208,27 +208,57 @@ export default function IntelPage() {
                       e.currentTarget.style.background = "rgba(14,14,14,0.95)";
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "7px" }}>
-                      <span style={{
-                        fontFamily: "var(--font-mono), monospace", fontSize: "18px",
-                        fontWeight: 700, color: "#ede9e3", letterSpacing: "-0.02em",
+                    {/* Event title — eyebrow */}
+                    {f.event_title && (
+                      <div style={{
+                        fontFamily: "var(--font-mono), monospace", fontSize: "8px",
+                        fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em",
+                        color: "#e36438", marginBottom: "5px",
+                        overflow: "hidden", display: "-webkit-box",
+                        WebkitLineClamp: 1, WebkitBoxOrient: "vertical" as const,
                       }}>
-                        {(fp * 100).toFixed(0)}%
-                      </span>
-                      <span style={{
-                        fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                        fontWeight: 600, color: ec,
-                      }}>
-                        {edge > 0.03 ? "+" : ""}{(edge * 100).toFixed(1)}pp
-                      </span>
-                    </div>
+                        {f.event_title}
+                      </div>
+                    )}
+
+                    {/* Question */}
                     <div style={{
-                      fontSize: "11px", color: "#6b6865", lineHeight: 1.5,
+                      fontSize: "12px", fontWeight: 500, color: "#ede9e3", lineHeight: 1.5,
                       overflow: "hidden", display: "-webkit-box",
                       WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
-                      marginBottom: "8px",
+                      marginBottom: "10px",
                     }}>
                       {f.question}
+                    </div>
+
+                    {/* Hero: edge */}
+                    <div style={{ marginBottom: "10px" }}>
+                      <div style={{
+                        fontFamily: "var(--font-mono), monospace", fontSize: "26px",
+                        fontWeight: 700, color: ec, letterSpacing: "-0.03em",
+                        lineHeight: 1, marginBottom: "3px",
+                      }}>
+                        {edge > 0 ? "+" : ""}{(edge * 100).toFixed(0)}%
+                      </div>
+                      <div style={{
+                        fontFamily: "var(--font-mono), monospace", fontSize: "9px",
+                        fontWeight: 600, letterSpacing: "0.1em",
+                        textTransform: "uppercase", color: ec, opacity: 0.7,
+                      }}>
+                        {Math.abs(edge) > 0.03 ? "mispriced" : "inline"}
+                      </div>
+                    </div>
+
+                    {/* Supporting: model vs market */}
+                    <div style={{ display: "flex", gap: "12px", marginBottom: "8px" }}>
+                      <div>
+                        <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "8px", color: "#4a4845", letterSpacing: "0.08em", marginBottom: "1px" }}>Model</div>
+                        <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "12px", fontWeight: 600, color: "#9b9790" }}>{(fp * 100).toFixed(0)}%</div>
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "8px", color: "#4a4845", letterSpacing: "0.08em", marginBottom: "1px" }}>Market</div>
+                        <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "12px", fontWeight: 600, color: "#9b9790" }}>{((f.kalshi_price ?? 0) * 100).toFixed(0)}%</div>
+                      </div>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#2a2826" }}>
