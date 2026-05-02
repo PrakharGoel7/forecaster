@@ -34,7 +34,9 @@ def _derive_jwks_url() -> str:
     explicit = os.environ.get("CLERK_JWKS_URL", "")
     if explicit:
         return explicit
-    pk = os.environ.get("CLERK_PUBLISHABLE_KEY", "")
+    # Support both naming conventions
+    pk = (os.environ.get("CLERK_PUBLISHABLE_KEY", "")
+          or os.environ.get("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", ""))
     if not pk:
         return ""
     try:
@@ -79,7 +81,8 @@ def _get_user_id(request: Request) -> str | None:
         if not key_data:
             return None
         public_key = jwk.construct(key_data)
-        payload = jwt.decode(token, public_key, algorithms=["RS256"])
+        payload = jwt.decode(token, public_key, algorithms=["RS256"],
+                             options={"verify_aud": False, "verify_at_hash": False})
         return payload.get("sub")
     except Exception:
         return None
@@ -135,6 +138,13 @@ def _market_dict(m) -> dict:
         "close_date": m.close_date, "mid_price": m.mid_price,
         "question": m.question, "status": m.status,
     }
+
+
+@app.get("/api/me")
+async def me(request: Request):
+    """Debug: returns the user_id extracted from the Bearer token."""
+    user_id = _get_user_id(request)
+    return {"user_id": user_id, "jwks_url": _CLERK_JWKS_URL or "(not set)"}
 
 
 @app.get("/api/events")

@@ -37,7 +37,7 @@ export default function TradingPage() {
 function TradingPageInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const { getToken }  = useAuth();
+  const { getToken, isLoaded, userId } = useAuth();
   const [stage, setStage]                 = useState<Stage>("idle");
   const [input, setInput]                 = useState("");
   const [chatMessages, setChatMessages]   = useState<ChatMsg[]>([]);
@@ -57,9 +57,10 @@ function TradingPageInner() {
   const inputRef   = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    if (!isLoaded) return;
     const sid = searchParams.get("session");
     (async () => {
-      const token = await getToken().catch(() => null);
+      const token = userId ? await getToken().catch(() => null) : null;
       listForecasts(500, token ?? undefined).then(setSavedForecasts).catch(() => {});
       listTradingSessions(20, token ?? undefined).then(list => {
         setSessions(list);
@@ -76,7 +77,7 @@ function TradingPageInner() {
       }).catch(() => {});
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isLoaded, userId]);
 
   useEffect(() => {
     if (scrollRef.current) {
