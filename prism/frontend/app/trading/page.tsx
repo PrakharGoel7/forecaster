@@ -771,13 +771,6 @@ function BeliefCard({ summary }: { summary: BeliefSummary }) {
           position: "absolute", top: 0, left: 0, right: 0, height: "1px",
           background: "linear-gradient(90deg, transparent, rgba(91,156,246,0.5) 50%, transparent)",
         }} />
-        <p style={{
-          fontSize: "16px", fontWeight: 600, color: "#ede9e3",
-          lineHeight: 1.5, marginBottom: "20px",
-          fontStyle: "italic",
-        }}>
-          &ldquo;{summary.core_belief}&rdquo;
-        </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <MetaField label="Time Horizon" value={summary.time_horizon} />
           <MetaField label="Scope" value={summary.scope} />
