@@ -216,11 +216,20 @@ export default function MarketPage() {
               </h1>
               {markets.length > 1 && mkt.yes_sub_title && (
                 <div style={{
-                  fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
-                  textTransform: "uppercase", letterSpacing: "0.16em", color: "#6b6865",
+                  display: "inline-flex", alignItems: "center", gap: "8px",
+                  background: "#1a1a1a", border: "1px solid #2a2826",
+                  borderRadius: "6px", padding: "5px 10px",
                   marginBottom: "20px",
                 }}>
-                  Selected Option · <span style={{ color: "#ede9e3" }}>{mkt.yes_sub_title}</span>
+                  <span style={{
+                    fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
+                    textTransform: "uppercase", letterSpacing: "0.16em", color: "#6b6865",
+                  }}>Selected Option</span>
+                  <span style={{ color: "#2a2826" }}>·</span>
+                  <span style={{
+                    fontFamily: "var(--font-mono), monospace", fontSize: "11px", fontWeight: 700,
+                    color: "#ede9e3",
+                  }}>{mkt.yes_sub_title}</span>
                 </div>
               )}
               <YesNoBar price={mkt.mid_price} />
