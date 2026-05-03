@@ -660,22 +660,6 @@ function ChatThread({ messages, loading }: { messages: ChatMsg[]; loading: boole
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "7px", maxWidth: "84%" }}>
-                {msg.searchQueries && msg.searchQueries.length > 0 && (
-                  <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
-                    {msg.searchQueries.map((q, j) => (
-                      <span key={j} style={{
-                        fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                        color: "#3a3835",
-                        background: "rgba(91,156,246,0.05)",
-                        border: "1px solid rgba(91,156,246,0.1)",
-                        borderRadius: "4px", padding: "3px 8px",
-                        letterSpacing: "0.04em",
-                      }}>
-                        ↗ {q}
-                      </span>
-                    ))}
-                  </div>
-                )}
                 <div style={{
                   background: "rgba(18,18,18,0.95)",
                   border: "1px solid #252525",
