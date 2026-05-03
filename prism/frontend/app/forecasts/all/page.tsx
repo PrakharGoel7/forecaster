@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { createClient } from "@/lib/supabase";
 import Header from "@/components/Header";
 import ForecastCard from "@/components/ForecastCard";
 import { listForecasts } from "@/lib/api";
@@ -9,19 +9,20 @@ import type { SavedForecast } from "@/lib/types";
 
 export default function AllForecastsPage() {
   const router = useRouter();
-  const { getToken, isLoaded, userId } = useAuth();
+  const supabase = createClient();
   const [forecasts, setForecasts] = useState<SavedForecast[]>([]);
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    if (!isLoaded) return;
     (async () => {
-      const token = userId ? await getToken().catch(() => null) : null;
-      listForecasts(100, token ?? undefined)
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      listForecasts(100, token)
         .then(f => { setForecasts(f); setLoading(false); })
         .catch(() => setLoading(false));
     })();
-  }, [isLoaded, userId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const goForecast = (f: SavedForecast) =>
     router.push(`/market/${f.ticker}?saved=${f.id}`);

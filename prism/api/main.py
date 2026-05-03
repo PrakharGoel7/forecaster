@@ -27,62 +27,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-# ── Clerk JWT verification ────────────────────────────────────────────────────
+# ── Supabase JWT verification ─────────────────────────────────────────────────
 
-def _derive_jwks_url() -> str:
-    """Derive JWKS URL from CLERK_PUBLISHABLE_KEY if CLERK_JWKS_URL not set."""
-    explicit = os.environ.get("CLERK_JWKS_URL", "")
-    if explicit:
-        return explicit
-    # Support both naming conventions
-    pk = (os.environ.get("CLERK_PUBLISHABLE_KEY", "")
-          or os.environ.get("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", ""))
-    if not pk:
-        return ""
-    try:
-        import base64
-        # pk format: pk_test_<b64> or pk_live_<b64>
-        encoded = pk.split("_", 2)[2]
-        padded = encoded + "=" * (-len(encoded) % 4)
-        frontend_api = base64.b64decode(padded).decode().rstrip("$")
-        return f"https://{frontend_api}/.well-known/jwks.json"
-    except Exception:
-        return ""
-
-_CLERK_JWKS_URL = _derive_jwks_url()
-_jwks_cache: dict = {}
-
-def _get_jwks() -> dict:
-    global _jwks_cache
-    if _jwks_cache:
-        return _jwks_cache
-    if not _CLERK_JWKS_URL:
-        return {}
-    try:
-        import httpx as _httpx
-        resp = _httpx.get(_CLERK_JWKS_URL, timeout=5)
-        _jwks_cache = resp.json()
-    except Exception:
-        pass
-    return _jwks_cache
+_SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
 
 def _get_user_id(request: Request) -> str | None:
-    """Extract and verify Clerk JWT; return user_id (sub) or None."""
+    """Extract and verify Supabase JWT; return user_id (sub) or None."""
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         return None
     token = auth[7:]
+    if not _SUPABASE_JWT_SECRET:
+        return None
     try:
-        from jose import jwt, jwk
-        header = jwt.get_unverified_header(token)
-        kid = header.get("kid", "")
-        keys = _get_jwks().get("keys", [])
-        key_data = next((k for k in keys if k.get("kid") == kid), None)
-        if not key_data:
-            return None
-        public_key = jwk.construct(key_data)
-        payload = jwt.decode(token, public_key, algorithms=["RS256"],
-                             options={"verify_aud": False, "verify_at_hash": False})
+        from jose import jwt
+        payload = jwt.decode(token, _SUPABASE_JWT_SECRET, algorithms=["HS256"],
+                             options={"verify_aud": False})
         return payload.get("sub")
     except Exception:
         return None
@@ -145,25 +105,8 @@ def _market_dict(m) -> dict:
 @app.get("/api/me")
 async def me(request: Request):
     """Debug: returns the user_id extracted from the Bearer token."""
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        return {"user_id": None, "jwks_url": _CLERK_JWKS_URL or "(not set)", "error": "no Bearer token"}
-    token = auth[7:]
-    try:
-        from jose import jwt, jwk
-        header = jwt.get_unverified_header(token)
-        kid = header.get("kid", "")
-        keys = _get_jwks().get("keys", [])
-        key_data = next((k for k in keys if k.get("kid") == kid), None)
-        if not key_data:
-            return {"user_id": None, "jwks_url": _CLERK_JWKS_URL or "(not set)",
-                    "error": f"kid '{kid}' not found in JWKS. Available kids: {[k.get('kid') for k in keys]}"}
-        public_key = jwk.construct(key_data)
-        payload = jwt.decode(token, public_key, algorithms=["RS256"],
-                             options={"verify_aud": False, "verify_at_hash": False})
-        return {"user_id": payload.get("sub"), "jwks_url": _CLERK_JWKS_URL or "(not set)", "error": None}
-    except Exception as e:
-        return {"user_id": None, "jwks_url": _CLERK_JWKS_URL or "(not set)", "error": str(e)}
+    user_id = _get_user_id(request)
+    return {"user_id": user_id, "error": None if user_id else "invalid or missing token"}
 
 
 @app.get("/api/events")

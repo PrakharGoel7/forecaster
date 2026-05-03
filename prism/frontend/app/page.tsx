@@ -3,7 +3,8 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth, SignInButton } from "@clerk/nextjs";
+import { createClient } from "@/lib/supabase";
+import type { Session } from "@supabase/supabase-js";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
 import ProbabilityArc from "@/components/ProbabilityArc";
@@ -23,7 +24,8 @@ export default function HomePage() {
 function HomeInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const { isSignedIn, isLoaded, getToken } = useAuth();
+  const supabase = createClient();
+  const [session, setSession]           = useState<Session | null>(null);
   const [stage, setStage]               = useState<Stage>("idle");
   const [input, setInput]               = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
@@ -44,33 +46,34 @@ function HomeInner() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    const sid = searchParams.get("session");
-    const load = async () => {
-      const token = (await getToken()) ?? undefined;
-      listForecasts(500, token).then(setSavedForecasts).catch(() => {});
-      listTradingSessions(20, token).then(list => {
-        setSessions(list);
-        if (sid) {
-          const s = list.find(s => s.id === Number(sid));
-          if (s) {
-            setBeliefSummary(JSON.parse(s.belief_summary_json));
-            setAnalysis(JSON.parse(s.analysis_json));
-            setRecommendations(JSON.parse(s.recommendations_json));
-            setSessionId(s.id);
-            setStage("done");
-          }
-        }
-      }).catch(() => {});
-    };
-    load();
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setSession(s));
+    return () => subscription.unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn]);
+  }, []);
 
+  useEffect(() => {
+    const sid = searchParams.get("session");
+    const token = session?.access_token;
+    listForecasts(500, token).then(setSavedForecasts).catch(() => {});
+    listTradingSessions(20, token).then(list => {
+      setSessions(list);
+      if (sid) {
+        const s = list.find(s => s.id === Number(sid));
+        if (s) {
+          setBeliefSummary(JSON.parse(s.belief_summary_json));
+          setAnalysis(JSON.parse(s.analysis_json));
+          setRecommendations(JSON.parse(s.recommendations_json));
+          setSessionId(s.id);
+          setStage("done");
+        }
+      }
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
-
-  async function _token() {
-    return isSignedIn ? ((await getToken()) ?? undefined) : undefined;
+  function _token() {
+    return session?.access_token;
   }
 
   function startAnalysis(summary: BeliefSummary, token?: string) {
@@ -86,11 +89,9 @@ function HomeInner() {
           setSessionId(msg.session_id);
           router.replace(`/?session=${msg.session_id}`, { scroll: false });
         }
-        if (isSignedIn) {
-          const t = await _token();
-          listForecasts(500, t).then(setSavedForecasts).catch(() => {});
-          listTradingSessions(20, t).then(setSessions).catch(() => {});
-        }
+        const t = _token();
+        listForecasts(500, t).then(setSavedForecasts).catch(() => {});
+        listTradingSessions(20, t).then(setSessions).catch(() => {});
       } else if (msg.type === "error") {
         setError(msg.message);
         setStage("error");
@@ -149,11 +150,6 @@ function HomeInner() {
 
   function handleSubmit() {
     if (!input.trim()) return;
-    if (!isSignedIn) {
-      setPendingInput(input);
-      setShowAuthModal(true);
-      return;
-    }
     proceedWithSubmit(input);
   }
 
@@ -173,92 +169,6 @@ function HomeInner() {
       <Header />
       <GridOverlay />
 
-      {/* Auth modal */}
-      <AnimatePresence>
-        {showAuthModal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{
-              position: "fixed", inset: 0, zIndex: 100,
-              background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              padding: "24px",
-            }}
-            onClick={() => setShowAuthModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 16, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.97 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              onClick={e => e.stopPropagation()}
-              style={{
-                background: "#0e0e0e", border: "1px solid #282828",
-                borderRadius: "16px", padding: "32px 28px", maxWidth: "400px", width: "100%",
-                boxShadow: "0 0 0 1px rgba(255,255,255,0.03), 0 24px 64px rgba(0,0,0,0.8)",
-              }}
-            >
-              <div style={{
-                fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                fontWeight: 700, color: "#e36438", letterSpacing: "0.18em",
-                textTransform: "uppercase", marginBottom: "12px",
-              }}>Save your research</div>
-              <div style={{
-                fontSize: "18px", fontWeight: 600, color: "#ede9e3",
-                lineHeight: 1.3, marginBottom: "10px",
-              }}>Sign in to save your sessions</div>
-              <div style={{
-                fontSize: "13px", color: "#6b6865", lineHeight: 1.6, marginBottom: "28px",
-              }}>
-                Create an account to access your sessions and forecasts from any device. Or continue without saving — your results will still appear this session.
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <SignInButton mode="modal">
-                  <button
-                    onClick={() => setShowAuthModal(false)}
-                    style={{
-                      width: "100%", background: "#e36438", color: "#fff",
-                      border: "none", borderRadius: "10px", padding: "12px",
-                      fontSize: "13px", fontWeight: 600,
-                      fontFamily: "var(--font-mono), monospace",
-                      letterSpacing: "0.06em", cursor: "pointer",
-                      transition: "background 0.15s",
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#c4421a"}
-                    onMouseLeave={e => e.currentTarget.style.background = "#e36438"}
-                  >
-                    Sign in →
-                  </button>
-                </SignInButton>
-                <button
-                  onClick={() => {
-                    setShowAuthModal(false);
-                    proceedWithSubmit(pendingInput);
-                  }}
-                  style={{
-                    width: "100%", background: "transparent", color: "#6b6865",
-                    border: "1px solid #282828", borderRadius: "10px", padding: "12px",
-                    fontSize: "13px",
-                    fontFamily: "var(--font-mono), monospace",
-                    letterSpacing: "0.06em", cursor: "pointer",
-                    transition: "color 0.15s, border-color 0.15s",
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.color = "#ede9e3";
-                    e.currentTarget.style.borderColor = "#3a3835";
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.color = "#6b6865";
-                    e.currentTarget.style.borderColor = "#282828";
-                  }}
-                >
-                  Continue without saving
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div
         ref={scrollRef}

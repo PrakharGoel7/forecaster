@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useAuth } from "@clerk/nextjs";
+import { createClient } from "@/lib/supabase";
 import Header from "@/components/Header";
 import MarketCard from "@/components/MarketCard";
 import { listForecasts, searchEvents } from "@/lib/api";
@@ -27,7 +27,7 @@ function edgeColor(edge: number) {
 
 export default function IntelPage() {
   const router = useRouter();
-  const { getToken, isLoaded, userId } = useAuth();
+  const supabase = createClient();
 
   const [query, setQuery]         = useState("");
   const [events, setEvents]       = useState<KalshiEvent[]>([]);
@@ -46,14 +46,15 @@ export default function IntelPage() {
   }, []);
 
   useEffect(() => {
-    if (!isLoaded) return;
     (async () => {
-      const token = userId ? await getToken().catch(() => null) : null;
-      listForecasts(100, token ?? undefined)
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      listForecasts(100, token)
         .then(f => { setForecasts(f); setForecastsLoading(false); })
         .catch(() => setForecastsLoading(false));
     })();
-  }, [isLoaded, userId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const runSearch = useCallback(async () => {
     if (!query.trim()) return;
