@@ -130,14 +130,14 @@ export default function IntelPage() {
             >clear</button>
           )}
           <button onClick={runSearch} disabled={searching} style={{
-            background: searching ? "#181818" : "#5aaa72", color: "#fff",
+            background: searching ? "#181818" : "#e36438", color: "#fff",
             border: "none", borderRadius: "8px", padding: "8px 18px",
             fontSize: "11px", fontFamily: "var(--font-mono), monospace",
             fontWeight: 600, letterSpacing: "0.06em", cursor: "pointer",
             opacity: searching ? 0.5 : 1, transition: "background 0.15s",
           }}
-            onMouseEnter={e => { if (!searching) e.currentTarget.style.background = "#3d8a57"; }}
-            onMouseLeave={e => { if (!searching) e.currentTarget.style.background = "#5aaa72"; }}
+            onMouseEnter={e => { if (!searching) e.currentTarget.style.background = "#c4421a"; }}
+            onMouseLeave={e => { if (!searching) e.currentTarget.style.background = "#e36438"; }}
           >
             {searching ? "…" : "search →"}
           </button>
@@ -157,10 +157,10 @@ export default function IntelPage() {
             }}>
               <div style={{
                 fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
-                textTransform: "uppercase", letterSpacing: "0.18em", color: "#5aaa72",
+                textTransform: "uppercase", letterSpacing: "0.18em", color: "#e36438",
                 display: "flex", alignItems: "center", gap: "8px",
               }}>
-                <span className="blink" style={{ fontSize: "7px", animationDelay: "0.7s", color: "#5aaa72" }}>●</span>
+                <span className="blink" style={{ fontSize: "7px", animationDelay: "0.7s", color: "#e36438" }}>●</span>
                 Recently Analysed
               </div>
               <a
@@ -203,7 +203,7 @@ export default function IntelPage() {
                       transition: "border-color 0.15s, background 0.15s",
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = "rgba(90,170,114,0.3)";
+                      e.currentTarget.style.borderColor = "rgba(227,100,56,0.22)";
                       e.currentTarget.style.background = "rgba(18,18,18,0.98)";
                     }}
                     onMouseLeave={e => {
@@ -276,10 +276,10 @@ export default function IntelPage() {
         {/* ── Live Markets ── */}
         <div style={{
           fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
-          textTransform: "uppercase", letterSpacing: "0.2em", color: "#5aaa72",
+          textTransform: "uppercase", letterSpacing: "0.2em", color: "#e36438",
           display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px",
         }}>
-          <span className="blink" style={{ fontSize: "7px", color: "#5aaa72" }}>●</span>
+          <span className="blink" style={{ fontSize: "7px", color: "#e36438" }}>●</span>
           Live Markets
           <span style={{ color: "#2a2826" }}>·</span>
           <span style={{ color: "#6b6865", fontWeight: 400, letterSpacing: "0.1em" }}>click any card to analyse</span>

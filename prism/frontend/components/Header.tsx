@@ -46,8 +46,6 @@ export default function Header() {
             const active = href === "/" ? path === "/" : path.startsWith(href);
             const activeBorder = href === "/trading"
               ? "1px solid rgba(155,127,232,0.35)"
-              : href === "/forecasts"
-              ? "1px solid rgba(90,170,114,0.35)"
               : "1px solid #252525";
             const navStyle = {
               fontFamily: "var(--font-mono), monospace",
