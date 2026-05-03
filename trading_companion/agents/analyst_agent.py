@@ -32,24 +32,52 @@ DOMAINS = [
 
 SYSTEM_PROMPT = f"""You are a macro analyst specializing in second and third-order thinking.
 
-Given a user's belief about the future, you will systematically analyze its ramifications across every major domain. For EACH domain, reason through:
-1. Is this belief relevant to this domain? (yes/no/maybe)
+Given a user's belief about the future, systematically analyze its ramifications across every major domain. For EACH domain, reason through:
+1. Is this belief directly relevant, indirectly relevant, or not relevant?
 2. If relevant: what is the exact causal mechanism?
-3. What specific, observable outcomes in this domain would prediction markets capture?
+3. What specific, observable outcomes would prediction markets capture?
+4. Score the domain for market search utility.
 
 Domains to analyze:
 {chr(10).join(f"- {d}" for d in DOMAINS)}
 
-Be rigorous. A belief about Iran war doesn't just affect geopolitics — it affects:
-- Oil prices (Strait of Hormuz risk)
-- Inflation and Fed policy (oil-driven CPI)
-- Defense budgets and legislation
-- Airline costs and consumer spending
-- Currency markets (USD safe-haven, Iranian rial)
-- Crypto (risk-off sentiment)
-- Israeli and Saudi political decisions
+SCORING GUIDE — assess each domain on four dimensions:
 
-Go beyond the obvious. Third-order effects matter — they're where the market is underpriced."""
+causal_distance — how directly does the belief cause effects here?
+  direct: the belief IS about this domain
+  precursor: the belief is a necessary precondition that directly enables effects here
+  first_order: the belief causes an immediate, well-established effect here
+  second_order: requires one additional causal step to reach this domain
+  speculative: connection is plausible but weak or uncertain
+
+expressiveness_score (1–5) — how well would a prediction market in this domain express the user's thesis?
+  5 = a market here directly resolves the belief
+  3 = a market here is a meaningful proxy
+  1 = only tangentially related
+
+causal_purity_score (1–5) — is the belief a primary driver of this domain, or one minor factor among many?
+  5 = the belief dominates outcomes here
+  3 = the belief is a meaningful contributor
+  1 = the belief is a marginal factor
+
+timeframe_alignment_score (1–5) — do typical market resolutions in this domain align with the user's timeframe?
+  5 = most relevant markets resolve within the stated timeframe
+  3 = partial alignment
+  1 = markets resolve much earlier or later
+
+keep_for_market_search — set true only when ALL THREE hold:
+  - expressiveness_score >= 3 (markets here meaningfully express the thesis)
+  - causal_purity_score >= 3 (the belief is a significant driver, not background noise)
+  - causal_distance is direct, precursor, or first_order (OR second_order with expressiveness >= 4)
+
+Be rigorous. A belief about an Iran-Israel war doesn't just affect geopolitics — trace the causal chains:
+- Oil (Strait of Hormuz risk premium) → first_order
+- Inflation and Fed policy (oil-driven CPI) → second_order, but high expressiveness if timely
+- Defense budgets → first_order
+- Airline costs → second_order
+- Crypto risk-off → second_order, low causal_purity (many other drivers)
+
+Only set keep_for_market_search=true on domains where prediction markets would give clean exposure to the belief."""
 
 _ANALYZE_TOOL = {
     "type": "function",
@@ -78,8 +106,31 @@ _ANALYZE_TOOL = {
                                 "items": {"type": "string"},
                                 "description": "Specific observable outcomes prediction markets would capture (e.g. 'oil above $90', 'Fed holds in June', 'defense bill passes').",
                             },
+                            "causal_distance": {
+                                "type": "string",
+                                "enum": ["direct", "precursor", "first_order", "second_order", "speculative"],
+                                "description": "How directly does the belief cause effects in this domain.",
+                            },
+                            "expressiveness_score": {
+                                "type": "integer",
+                                "description": "1–5: how well would a market in this domain express the user's thesis.",
+                            },
+                            "causal_purity_score": {
+                                "type": "integer",
+                                "description": "1–5: is the belief a primary driver here, or one minor factor among many.",
+                            },
+                            "timeframe_alignment_score": {
+                                "type": "integer",
+                                "description": "1–5: do likely market resolutions align with the user's timeframe.",
+                            },
+                            "keep_for_market_search": {
+                                "type": "boolean",
+                                "description": "True only if this domain gives meaningful tradable exposure to the belief.",
+                            },
                         },
-                        "required": ["domain", "relevance", "mechanism", "market_signals"],
+                        "required": ["domain", "relevance", "mechanism", "market_signals",
+                                     "causal_distance", "expressiveness_score", "causal_purity_score",
+                                     "timeframe_alignment_score", "keep_for_market_search"],
                     },
                     "description": "Analysis for every domain — include all domains, even low-relevance ones.",
                 },
@@ -127,13 +178,18 @@ class AnalystAgent:
         return json.loads(tc.function.arguments)
 
     def format_for_screener(self, analysis: dict) -> str:
-        """Render the domain analysis as concise text for the screener prompt."""
-        lines = ["Domain impact map:"]
-        for d in analysis["affected_domains"]:
-            if d["relevance"] == "low":
-                continue
+        """Render the domain analysis as structured text for the screener prompt."""
+        lines = ["Domain impact map (keep_for_market_search=True only):"]
+        kept = [d for d in analysis["affected_domains"] if d.get("keep_for_market_search")]
+        for d in kept:
             signals = ", ".join(d["market_signals"][:3])
-            lines.append(f"  [{d['relevance'].upper()}] {d['domain']}: {d['mechanism']} → look for: {signals}")
+            lines.append(
+                f"  [{d.get('causal_distance','?').upper()}] {d['domain']}"
+                f" | expr={d.get('expressiveness_score','?')}"
+                f" purity={d.get('causal_purity_score','?')}"
+                f" time={d.get('timeframe_alignment_score','?')}"
+                f": {d['mechanism']} → signals: {signals}"
+            )
         if analysis.get("most_surprising_connection"):
-            lines.append(f"\nKey non-obvious bet: {analysis['most_surprising_connection']}")
+            lines.append(f"\nKey non-obvious angle: {analysis['most_surprising_connection']}")
         return "\n".join(lines)

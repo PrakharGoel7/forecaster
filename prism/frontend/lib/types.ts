@@ -91,6 +91,12 @@ export interface BeliefSummary {
   confidence_level: "low" | "medium" | "high";
   supporting_reasoning: string;
   current_context: string;
+  resolution_target?: string;
+  resolution_type?: string;
+  timeframe_start?: string;
+  timeframe_end?: string;
+  mechanism?: string;
+  falsifiers?: string[];
 }
 
 export interface DomainAnalysis {
@@ -119,6 +125,11 @@ export interface TradeRecommendation {
   event_title?: string;
   series_ticker?: string;
   category?: string;
+  tier?: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
+  expressiveness_score?: number;
+  causal_purity_score?: number;
+  timeframe_alignment_score?: number;
+  main_risk?: string;
 }
 
 export interface TradingChatResponse {

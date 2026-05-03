@@ -9,20 +9,30 @@ import json
 import os
 from openai import OpenAI
 
-SYSTEM_PROMPT = """You are a prediction market curator helping a user find the best markets to bet on given their belief about the future.
+SYSTEM_PROMPT = """You are a prediction market curator. The user has a belief about the future, and your job is to recommend a small portfolio of markets that best expresses that belief.
 
-You will receive:
-1. The user's belief (structured)
-2. A list of available Kalshi markets with their current prices
+Optimize for:
+1. Expressiveness: the market captures the user's thesis or stated mechanism
+2. Causal purity: the market is not mostly driven by unrelated factors
+3. Time alignment: the market resolves within or near the user's timeframe
+4. Variety: the portfolio covers direct_thesis, mechanism, first_order_consequence, and hedge_or_falsifier where useful
+5. Price/value: mention price only after relevance is established
 
-Your task: select 5-8 markets that together give the user the best portfolio of bets to express their belief. Optimise for:
+For each recommendation:
+- State the tier (from the market listing)
+- State betting direction (YES or NO)
+- Explain expressiveness, causal purity, and time alignment briefly
+- Explain why this belongs in the portfolio (not just why it's related)
+- Name the main risk or confounder
 
-- RELEVANCE: Does the market directly or indirectly test the user's belief?
-- VARIETY: Don't pick 5 versions of the same market — cover different dimensions of the belief
-- CONVICTION MATCH: If the user has high confidence, find markets with prices that don't yet reflect their view (best value)
-- DIRECTION: For each market, state whether betting YES or NO aligns with the belief
-
-For tickers you choose that don't appear in the market list, skip them. Only recommend markets from the provided list."""
+Rules:
+- Recommend 5–8 markets total.
+- At least 3 must be direct_thesis or mechanism if available.
+- Do not recommend markets that are merely adjacent to the belief.
+- Do not recommend broad macro markets unless the causal link is clear and tight.
+- If no good direct markets exist, explicitly say the portfolio uses proxy markets.
+- Include at most 2 first_order_consequence markets.
+- Include at most 1 hedge_or_falsifier unless the user specifically asked for hedges."""
 
 _CURATE_TOOL = {
     "type": "function",
@@ -37,34 +47,50 @@ _CURATE_TOOL = {
                     "items": {
                         "type": "object",
                         "properties": {
-                            "ticker": {
+                            "ticker": {"type": "string"},
+                            "tier": {
                                 "type": "string",
-                                "description": "Exact ticker from the provided market list.",
+                                "enum": ["direct_thesis", "mechanism",
+                                         "first_order_consequence", "hedge_or_falsifier"],
                             },
+                            "betting_direction": {"type": "string", "enum": ["YES", "NO"]},
                             "relevance_score": {
                                 "type": "integer",
-                                "description": "Relevance to the belief, 1-10.",
+                                "description": "Overall fit for the portfolio, 1–10.",
                             },
-                            "relevance_explanation": {
-                                "type": "string",
-                                "description": "Why this market is a good expression of the user's belief.",
+                            "expressiveness_score": {
+                                "type": "integer",
+                                "description": "1–5: how directly does this market express the thesis.",
                             },
-                            "betting_direction": {
-                                "type": "string",
-                                "enum": ["YES", "NO"],
-                                "description": "Which side aligns with the user's belief.",
+                            "causal_purity_score": {
+                                "type": "integer",
+                                "description": "1–5: is the belief the primary driver of this market.",
                             },
-                            "betting_rationale": {
+                            "timeframe_alignment_score": {
+                                "type": "integer",
+                                "description": "1–5: does the market resolve within the user's timeframe.",
+                            },
+                            "rationale": {
                                 "type": "string",
-                                "description": "Concise explanation of why this direction and why the price is interesting.",
+                                "description": "Why this market expresses or tests the belief.",
+                            },
+                            "why_this_belongs_in_portfolio": {
+                                "type": "string",
+                                "description": "What role this market plays in the portfolio (not just relevance).",
+                            },
+                            "main_risk_or_confounder": {
+                                "type": "string",
+                                "description": "The biggest reason this market might move independent of the belief.",
                             },
                         },
                         "required": [
-                            "ticker", "relevance_score", "relevance_explanation",
-                            "betting_direction", "betting_rationale",
+                            "ticker", "tier", "betting_direction", "relevance_score",
+                            "expressiveness_score", "causal_purity_score",
+                            "timeframe_alignment_score", "rationale",
+                            "why_this_belongs_in_portfolio", "main_risk_or_confounder",
                         ],
                     },
-                    "description": "5-8 recommended markets sorted by relevance_score descending.",
+                    "description": "5–8 recommended markets sorted by relevance_score descending.",
                 },
             },
             "required": ["recommendations"],
@@ -81,31 +107,50 @@ class CuratorAgent:
         )
         self._model = model
 
-    def run(self, belief_summary: dict, markets: list, analysis: dict | None = None) -> list[dict]:
-        # Cap to 80 markets to stay within token budget; prefer higher-volume ones
-        top_markets = sorted(markets, key=lambda m: m.volume, reverse=True)[:80]
+    def run(self, belief_summary: dict, markets: list, analysis: dict | None = None,
+            screener_candidates: list | None = None) -> list[dict]:
+        # Build tier lookup from screener candidates
+        candidate_map: dict = {}
+        if screener_candidates:
+            for c in screener_candidates:
+                candidate_map[c["event_ticker"]] = c
+
+        # Markets are pre-sorted by main.py; just cap count
+        top_markets = markets[:60]
 
         market_lines = "\n".join(
-            f"[{m.ticker}] {m.question} | YES price: {m.mid_price:.0%} | Closes: {m.close_date}"
+            f"[{m.ticker}] {m.question}"
+            f" | tier: {candidate_map.get(m.event_ticker, {}).get('tier', 'unknown')}"
+            f" | alignment: {candidate_map.get(m.event_ticker, {}).get('alignment', '?')}"
+            f" | YES: {m.mid_price:.0%} | Closes: {m.close_date}"
             for m in top_markets
         )
 
         domain_text = ""
         if analysis:
-            high_med = [d for d in analysis["affected_domains"] if d["relevance"] in ("high", "medium")]
-            domain_lines = [f"  - {d['domain']}: {d['mechanism']}" for d in high_med]
-            domain_text = "\nDomain impact map (use this to explain indirect connections):\n" + "\n".join(domain_lines)
+            high_med = [d for d in analysis["affected_domains"]
+                        if d.get("keep_for_market_search") or d["relevance"] in ("high", "medium")]
+            domain_lines = [
+                f"  - [{d.get('causal_distance','?')}] {d['domain']}: {d['mechanism']}"
+                for d in high_med
+            ]
+            domain_text = "\nDomain impact map:\n" + "\n".join(domain_lines)
             if analysis.get("most_surprising_connection"):
                 domain_text += f"\nKey non-obvious angle: {analysis['most_surprising_connection']}"
 
+        resolution_target = belief_summary.get("resolution_target", "")
+        falsifiers = belief_summary.get("falsifiers", [])
+
         prompt = (
             f"User's belief: {belief_summary['core_belief']}\n"
-            f"Time horizon: {belief_summary['time_horizon']}\n"
+            f"Resolution target: {resolution_target}\n"
+            f"Timeframe: {belief_summary.get('timeframe_start', '')} → {belief_summary.get('timeframe_end', belief_summary.get('time_horizon', ''))}\n"
             f"Key drivers: {', '.join(belief_summary.get('key_drivers', []))}\n"
-            f"Scope: {belief_summary.get('scope', '')}\n"
-            f"User confidence: {belief_summary['confidence_level']}"
+            f"Mechanism: {belief_summary.get('mechanism', '')}\n"
+            f"Falsifiers: {'; '.join(falsifiers)}\n"
+            f"Confidence: {belief_summary['confidence_level']}"
             f"{domain_text}\n\n"
-            f"Available markets ({len(top_markets)} shown):\n{market_lines}"
+            f"Available markets ({len(top_markets)} shown, pre-sorted by relevance):\n{market_lines}"
         )
 
         response = self._client.chat.completions.create(
@@ -135,10 +180,15 @@ class CuratorAgent:
                 "price": m.mid_price,
                 "close_date": m.close_date,
                 "rules_summary": m.rules_summary,
-                "relevance": rec["relevance_explanation"],
+                "tier": rec["tier"],
                 "direction": rec["betting_direction"],
-                "rationale": rec["betting_rationale"],
+                "rationale": rec["rationale"],
+                "relevance": rec["why_this_belongs_in_portfolio"],
                 "score": rec["relevance_score"],
+                "expressiveness_score": rec["expressiveness_score"],
+                "causal_purity_score": rec["causal_purity_score"],
+                "timeframe_alignment_score": rec["timeframe_alignment_score"],
+                "main_risk": rec["main_risk_or_confounder"],
             })
 
         return sorted(enriched, key=lambda x: x["score"], reverse=True)

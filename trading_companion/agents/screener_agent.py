@@ -20,37 +20,89 @@ ELECTION_KEYWORDS = {
     "poll", "polling", "democrat", "republican", "party",
 }
 
-SYSTEM_PROMPT = """You are a prediction market screener. You will be given:
-1. A user's belief about the future
-2. A domain-by-domain impact analysis showing direct AND indirect ramifications of the belief
-3. A list of Kalshi prediction market events (event_ticker | title | subtitle | category)
+SYSTEM_PROMPT = """You are a prediction market screener. Your job is to find markets that provide meaningful tradable exposure to a user's belief about the future.
 
-Your job: use the domain analysis to identify every event that could be used to express or test the belief — including indirect and second/third-order connections.
+You will receive:
+1. A structured user belief with resolution_target and timeframe
+2. A domain impact map showing which domains give clean exposure to the belief (keep_for_market_search=True) with causal distance and expressiveness scores
+3. A list of Kalshi events
 
-The domain analysis is your map. If it says "oil-driven inflation → Fed less likely to cut", you should shortlist Fed rate events even if they don't mention Iran. If it says "defense spending rises", find defense legislation events.
+Select events only if they meaningfully express, test, or hedge the user's belief.
 
-Return 20-35 event_tickers. Err on the side of inclusion — the curator does final filtering.
-Only return tickers that appear exactly in the provided list."""
+Classify every selected event into one of four tiers:
+- direct_thesis: the market directly resolves the user's belief or resolution_target
+- mechanism: the market tests the user's stated causal mechanism
+- first_order_consequence: captures a likely immediate consequence of the belief being true
+- hedge_or_falsifier: captures something that would weaken or falsify the belief
+
+Avoid:
+- markets that are only thematically adjacent
+- broad macro markets where the belief is only a minor driver
+- unrelated political/geopolitical markets
+- speculative third-order effects unless no stronger markets exist
+
+For each selected event return:
+- event_ticker
+- tier
+- alignment: YES or NO (does betting YES align with the user's belief?)
+- expressiveness_score: 1-5 (how directly does this market express the thesis?)
+- causal_purity_score: 1-5 (is the belief the main driver of this market's outcome?)
+- timeframe_alignment_score: 1-5 (does the market resolve within the user's timeframe?)
+- overall_score: 0.45 * expressiveness + 0.30 * causal_purity + 0.25 * timeframe_alignment
+- rationale: one sentence explaining how this market expresses the belief
+- main_confounder: the biggest reason this market might move for reasons unrelated to the belief
+
+Selection rules:
+- Prefer direct_thesis and mechanism markets.
+- Include first_order_consequence markets only if causally tight (causal_purity >= 3).
+- Include hedge_or_falsifier markets only if they test the user's stated falsifiers.
+- Do not include speculative macro spillovers unless fewer than 8 stronger candidates exist.
+- Return 12-25 events total.
+- Never select an event with overall_score below 3.0.
+- Only return tickers that appear exactly in the provided list."""
 
 _SCREEN_TOOL = {
     "type": "function",
     "function": {
         "name": "select_events",
-        "description": "Return the event_tickers most relevant to the user's belief.",
+        "description": "Return scored, tiered candidates for the user's belief.",
         "parameters": {
             "type": "object",
             "properties": {
-                "event_tickers": {
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "event_ticker": {"type": "string"},
+                            "tier": {
+                                "type": "string",
+                                "enum": ["direct_thesis", "mechanism",
+                                         "first_order_consequence", "hedge_or_falsifier"],
+                            },
+                            "alignment": {"type": "string", "enum": ["YES", "NO"]},
+                            "expressiveness_score": {"type": "integer"},
+                            "causal_purity_score": {"type": "integer"},
+                            "timeframe_alignment_score": {"type": "integer"},
+                            "overall_score": {"type": "number"},
+                            "rationale": {"type": "string"},
+                            "main_confounder": {"type": "string"},
+                        },
+                        "required": [
+                            "event_ticker", "tier", "alignment",
+                            "expressiveness_score", "causal_purity_score",
+                            "timeframe_alignment_score", "overall_score",
+                            "rationale", "main_confounder",
+                        ],
+                    },
+                },
+                "rejected_patterns": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "15-30 event_tickers from the provided list that are relevant to the belief.",
-                },
-                "reasoning": {
-                    "type": "string",
-                    "description": "One sentence explaining the screening logic.",
+                    "description": "Patterns of markets considered and rejected, e.g. 'generic Fed cut markets — belief is not about monetary policy'.",
                 },
             },
-            "required": ["event_tickers", "reasoning"],
+            "required": ["candidates", "rejected_patterns"],
         },
     },
 }
@@ -85,10 +137,9 @@ class ScreenerAgent:
         )
         self._model = model
 
-    def run(self, belief_summary: dict, analysis: dict | None = None) -> list[str]:
+    def run(self, belief_summary: dict, analysis: dict | None = None) -> dict:
         all_events = _load_cache()
 
-        # Include Elections only if the belief is explicitly election-related
         belief_words = set(
             (belief_summary.get("core_belief", "") + " " + belief_summary.get("scope", "")).lower().split()
         )
@@ -101,11 +152,18 @@ class ScreenerAgent:
         if include_elections:
             print(f"  Including Elections category ({sum(1 for e in all_events if e['category'] == 'Elections')} events)")
 
+        resolution_target = belief_summary.get("resolution_target", "")
+        timeframe_start = belief_summary.get("timeframe_start", "")
+        timeframe_end = belief_summary.get("timeframe_end", belief_summary.get("time_horizon", ""))
+
         belief_text = (
             f"Belief: {belief_summary['core_belief']}\n"
-            f"Time horizon: {belief_summary['time_horizon']}\n"
-            f"Key drivers: {', '.join(belief_summary['key_drivers'])}\n"
-            f"Scope: {belief_summary['scope']}"
+            f"Resolution target: {resolution_target}\n"
+            f"Timeframe: {timeframe_start} → {timeframe_end}\n"
+            f"Key drivers: {', '.join(belief_summary.get('key_drivers', []))}\n"
+            f"Mechanism: {belief_summary.get('mechanism', '')}\n"
+            f"Falsifiers: {'; '.join(belief_summary.get('falsifiers', []))}\n"
+            f"Scope: {belief_summary.get('scope', '')}"
         )
 
         if analysis:
@@ -114,7 +172,6 @@ class ScreenerAgent:
             belief_text = f"{belief_text}\n\n{analysis_text}"
 
         events_text = _format_events(events)
-
         prompt = f"{belief_text}\n\nAvailable events ({len(events)} total):\n{events_text}"
 
         response = self._client.chat.completions.create(
@@ -125,15 +182,26 @@ class ScreenerAgent:
             ],
             tools=[_SCREEN_TOOL],
             tool_choice={"type": "function", "function": {"name": "select_events"}},
-            max_tokens=1024,
+            max_tokens=2048,
         )
 
         tc = response.choices[0].message.tool_calls[0]
         result = json.loads(tc.function.arguments)
 
-        # Validate — only return tickers that actually exist in the cache
         valid_tickers = {e["event_ticker"] for e in events}
-        screened = [t for t in result["event_tickers"] if t in valid_tickers]
+        validated_candidates = []
+        for c in result.get("candidates", []):
+            if c["event_ticker"] not in valid_tickers:
+                continue
+            # Recalculate overall_score from components to ensure formula consistency
+            c["overall_score"] = round(
+                0.45 * c.get("expressiveness_score", 3) +
+                0.30 * c.get("causal_purity_score", 3) +
+                0.25 * c.get("timeframe_alignment_score", 3),
+                2
+            )
+            validated_candidates.append(c)
 
-        print(f"  Screener reasoning: {result['reasoning']}")
-        return screened
+        rejected_patterns = result.get("rejected_patterns", [])
+        print(f"  Screener: {len(validated_candidates)} candidates, {len(rejected_patterns)} rejected patterns")
+        return {"candidates": validated_candidates, "rejected_patterns": rejected_patterns}
