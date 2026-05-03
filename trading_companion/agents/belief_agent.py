@@ -31,6 +31,18 @@ WORKFLOW — follow this order strictly:
    - What specific outcome or threshold they're predicting (be precise)
    - What would change their mind — what evidence would falsify their belief
    - Any nuance in their view that goes beyond the mainstream take
+RESOLUTION CLARITY — FOR VAGUE BELIEFS:
+If the belief involves ambiguous outcome terms ("end", "win", "collapse", "stabilize", "succeed"),
+your FIRST follow-up question must clarify what specific outcome counts as the belief being true.
+
+Examples:
+- "Ukraine war will end soon" → "When you say 'end', do you mean a formal peace treaty, a ceasefire,
+  or a frozen-conflict pause in major fighting? And what timeframe — this year, next year?"
+- "Inflation will be fixed" → "What does 'fixed' mean to you — CPI back below 3%, or the Fed
+  declaring mission accomplished and cutting rates?"
+
+Only after resolution is clear should you probe conviction and reasoning.
+
 3. FINALIZE: After 3 exchanges, call finalize_belief.
 
 Rules:
@@ -95,10 +107,38 @@ _TOOLS = [
                         "type": "string",
                         "description": "Brief summary of what you learned from web search about the current state of affairs.",
                     },
+                    "resolution_target": {
+                        "type": "string",
+                        "description": "The specific, observable outcome that would count as the belief being true.",
+                    },
+                    "resolution_type": {
+                        "type": "string",
+                        "enum": ["formal_resolution", "ceasefire", "meeting_or_negotiation", "policy_change",
+                                 "price_move", "election_outcome", "other"],
+                    },
+                    "timeframe_start": {
+                        "type": "string",
+                        "description": "When this belief starts to be testable (e.g. 'now', 'Q3 2025').",
+                    },
+                    "timeframe_end": {
+                        "type": "string",
+                        "description": "Deadline by which the belief should resolve (e.g. 'end of 2025', 'within 6 months').",
+                    },
+                    "mechanism": {
+                        "type": "string",
+                        "description": "The user's stated causal mechanism — why they believe this will happen.",
+                    },
+                    "falsifiers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "2-3 pieces of evidence or events that would make the user doubt or abandon this belief.",
+                    },
                 },
                 "required": [
                     "core_belief", "time_horizon", "key_drivers",
                     "scope", "confidence_level", "supporting_reasoning", "current_context",
+                    "resolution_target", "resolution_type", "timeframe_start", "timeframe_end",
+                    "mechanism", "falsifiers",
                 ],
             },
         },

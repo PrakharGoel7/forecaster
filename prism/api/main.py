@@ -424,9 +424,10 @@ async def oracle_pipeline_stream(req: OraclePipelineRequest):
 
                 # Stage 2: Screener
                 await queue.put({"type": "stage", "stage": "screener", "status": "running"})
-                event_tickers = await loop.run_in_executor(
+                _screener_result = await loop.run_in_executor(
                     None, lambda: ScreenerAgent().run(belief, analysis)
                 )
+                event_tickers = [c["event_ticker"] for c in _screener_result.get("candidates", [])]
                 await queue.put({
                     "type": "stage", "stage": "screener", "status": "done",
                     "data": {"event_count": len(event_tickers)},
@@ -575,24 +576,61 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
                 asyncio.run_coroutine_threadsafe(
                     queue.put({"type": "progress", "label": "Screening Kalshi event catalog…"}), loop
                 )
-                tickers = ScreenerAgent().run(req.belief_summary, analysis)
-                asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "screener_done", "tickers": tickers, "count": len(tickers)}), loop
-                )
+                screener_result = ScreenerAgent().run(req.belief_summary, analysis)
+                all_candidates = screener_result["candidates"]
+                rejected_patterns = screener_result.get("rejected_patterns", [])
 
-                if not tickers:
+                # Debug logging
+                print(f"\n[COMPASS] Belief: {req.belief_summary.get('core_belief', '')}")
+                print(f"[COMPASS] Resolution target: {req.belief_summary.get('resolution_target', 'not set')}")
+                print(f"[COMPASS] Mechanism: {req.belief_summary.get('mechanism', 'not set')}")
+                print(f"[COMPASS] Timeframe: {req.belief_summary.get('timeframe_start', '?')} → {req.belief_summary.get('timeframe_end', req.belief_summary.get('time_horizon', '?'))}")
+                if analysis:
+                    kept_domains = [d for d in analysis.get("affected_domains", []) if d.get("keep_for_market_search")]
+                    print(f"[COMPASS] Domains kept for search ({len(kept_domains)}):")
+                    for d in kept_domains:
+                        print(f"  [{d.get('causal_distance','?')}] {d['domain']} | expr={d.get('expressiveness_score')} purity={d.get('causal_purity_score')} time={d.get('timeframe_alignment_score')}")
+                print(f"[COMPASS] Screener raw candidates: {len(all_candidates)}")
+                tier_groups: dict = {}
+                for c in all_candidates:
+                    t = c.get("tier", "unknown")
+                    tier_groups.setdefault(t, []).append(c)
+                for tier, cs in tier_groups.items():
+                    print(f"  [{tier}] {len(cs)} events: {', '.join(c['event_ticker'] for c in cs)}")
+                print(f"[COMPASS] Rejected patterns: {rejected_patterns}")
+
+                # Relevance filter
+                TIER_PRIORITY = {"direct_thesis": 0, "mechanism": 1, "first_order_consequence": 2, "hedge_or_falsifier": 3}
+                filtered_candidates = [
+                    c for c in all_candidates
+                    if c.get("overall_score", 0) >= 3.0
+                    and c.get("expressiveness_score", 0) >= 3
+                    and c.get("timeframe_alignment_score", 0) >= 2
+                    and not (c.get("tier") == "first_order_consequence" and c.get("causal_purity_score", 0) < 3)
+                ]
+                print(f"[COMPASS] After filter: {len(filtered_candidates)} candidates")
+
+                if not filtered_candidates:
                     asyncio.run_coroutine_threadsafe(
-                        queue.put({"type": "error", "message": "No relevant markets found."}), loop
+                        queue.put({"type": "error", "message": "No relevant markets found matching quality thresholds."}), loop
                     )
                     return
 
+                event_tickers = [c["event_ticker"] for c in filtered_candidates]
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "screener_done", "tickers": event_tickers, "count": len(event_tickers)}), loop
+                )
+
                 client = _get_client()
                 asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "progress", "label": f"Fetching live markets for {len(tickers)} events…"}), loop
+                    queue.put({"type": "progress", "label": f"Fetching live markets for {len(event_tickers)} events…"}), loop
                 )
+
+                # Fetch live markets
+                candidate_by_event: dict = {c["event_ticker"]: c for c in filtered_candidates}
                 markets: list = []
                 seen: set = set()
-                for ticker in tickers:
+                for ticker in event_tickers:
                     try:
                         batch, _ = client.get_markets(limit=20, status="open", event_ticker=ticker)
                         for m in batch:
@@ -604,14 +642,29 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
 
                 if not markets:
                     asyncio.run_coroutine_threadsafe(
-                        queue.put({"type": "error", "message": "No open markets found."}), loop
+                        queue.put({"type": "error", "message": "No open markets found for the shortlisted events."}), loop
                     )
                     return
+
+                # Sort markets: screener score desc → tier priority → volume desc
+                def _market_sort_key(m):
+                    c = candidate_by_event.get(m.event_ticker, {})
+                    score = c.get("overall_score", 0)
+                    tier_rank = TIER_PRIORITY.get(c.get("tier", ""), 99)
+                    return (-score, tier_rank, -m.volume)
+
+                markets.sort(key=_market_sort_key)
 
                 asyncio.run_coroutine_threadsafe(
                     queue.put({"type": "progress", "label": f"Curating best bets from {len(markets)} live markets…"}), loop
                 )
-                recommendations = CuratorAgent().run(req.belief_summary, markets, analysis)
+                recommendations = CuratorAgent().run(req.belief_summary, markets, analysis,
+                                                     screener_candidates=filtered_candidates)
+
+                # Debug: final portfolio
+                print(f"[COMPASS] Final portfolio ({len(recommendations)} markets):")
+                for r in recommendations:
+                    print(f"  [{r.get('tier','?')}] {r['ticker']} | {r['direction']} | score={r['score']}")
 
                 event_lookup: dict = {}
                 if CACHE_FILE.exists():
