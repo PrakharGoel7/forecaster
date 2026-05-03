@@ -7,10 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any, AsyncIterator
 
-# When running from prism/api/main.py (outside the repo), the forecaster repo
-# is a sibling directory called "forecaster". Fall back to three levels up if needed.
-_HERE = Path(__file__).resolve().parent.parent.parent  # claude_code/
-_REPO_ROOT = (_HERE / "forecaster") if (_HERE / "forecaster").exists() else _HERE
+# Repo root is three levels up from prism/api/main.py; forecaster package lives there
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
 # Trading companion lives inside the repo
