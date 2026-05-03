@@ -335,7 +335,7 @@ function HomeInner() {
                       {
                         n: "03",
                         title: "Your edge",
-                        desc: <span><span style={{ color: "#e36438" }}>Intel</span> tells you whether the odds are in your favor.</span>,
+                        desc: <span><span style={{ color: "#5aaa72" }}>Intel</span> tells you whether the odds are in your favor.</span>,
                       },
                     ].map((step) => (
                       <div
