@@ -17,8 +17,11 @@ export default function Header() {
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -30,14 +33,20 @@ export default function Header() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function signIn() {
-    if (!email.trim()) return;
+  async function submit() {
+    if (!email.trim() || !password.trim()) return;
     setLoading(true);
-    await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    setSent(true);
+    setError("");
+    setSuccess("");
+    if (mode === "signin") {
+      const { error: e } = await supabase.auth.signInWithPassword({ email, password });
+      if (e) setError(e.message);
+      else setShowModal(false);
+    } else {
+      const { error: e } = await supabase.auth.signUp({ email, password });
+      if (e) setError(e.message);
+      else setSuccess("Account created! Check your email to confirm, then sign in.");
+    }
     setLoading(false);
   }
 
@@ -143,7 +152,7 @@ export default function Header() {
                 </button>
               </div>
             ) : (
-              <button onClick={() => { setShowModal(true); setSent(false); setEmail(""); }} style={{
+              <button onClick={() => { setShowModal(true); setMode("signin"); setEmail(""); setPassword(""); setError(""); setSuccess(""); }} style={{
                 fontFamily: "var(--font-mono), monospace", fontSize: "10px",
                 fontWeight: 600, letterSpacing: "0.08em",
                 color: "#6b6865", background: "transparent",
@@ -179,24 +188,42 @@ export default function Header() {
               boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
             }}
           >
-            <div style={{ marginBottom: "24px" }}>
-              <div style={{ fontSize: "16px", fontWeight: 600, color: "#ede9e3", marginBottom: "6px" }}>
-                Sign in to Prism
-              </div>
-              <div style={{ fontSize: "13px", color: "#6b6865", lineHeight: 1.5 }}>
-                {sent ? "Check your email for a sign-in link." : "Enter your email and we'll send you a magic link."}
-              </div>
+            {/* Mode toggle */}
+            <div style={{ display: "flex", gap: "4px", marginBottom: "24px", background: "#141414", borderRadius: "8px", padding: "4px" }}>
+              {(["signin", "signup"] as const).map(m => (
+                <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }}
+                  style={{
+                    flex: 1, padding: "7px", border: "none", borderRadius: "6px",
+                    fontFamily: "var(--font-mono), monospace", fontSize: "11px",
+                    fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer",
+                    background: mode === m ? "#1e1e1e" : "transparent",
+                    color: mode === m ? "#ede9e3" : "#6b6865",
+                    transition: "all 0.15s",
+                  }}
+                >{m === "signin" ? "Sign in" : "Sign up"}</button>
+              ))}
             </div>
 
-            {!sent && (
+            {success ? (
+              <div style={{ fontSize: "13px", color: "#5aaa72", lineHeight: 1.6, marginBottom: "16px" }}>{success}</div>
+            ) : (
               <>
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
+                <input type="email" placeholder="Email" value={email}
                   onChange={e => setEmail(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") signIn(); }}
+                  onKeyDown={e => { if (e.key === "Enter") submit(); }}
                   autoFocus
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    background: "#181818", border: "1px solid #2a2826",
+                    borderRadius: "8px", padding: "10px 14px",
+                    fontSize: "13px", color: "#ede9e3",
+                    fontFamily: "var(--font-jakarta), system-ui, sans-serif",
+                    outline: "none", marginBottom: "8px",
+                  }}
+                />
+                <input type="password" placeholder="Password" value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") submit(); }}
                   style={{
                     width: "100%", boxSizing: "border-box",
                     background: "#181818", border: "1px solid #2a2826",
@@ -206,40 +233,24 @@ export default function Header() {
                     outline: "none", marginBottom: "12px",
                   }}
                 />
-                <button
-                  onClick={signIn}
-                  disabled={loading || !email.trim()}
+                {error && <div style={{ fontSize: "12px", color: "#f87171", marginBottom: "10px" }}>{error}</div>}
+                <button onClick={submit} disabled={loading || !email.trim() || !password.trim()}
                   style={{
-                    width: "100%", background: email.trim() ? "#e36438" : "#181818",
+                    width: "100%", background: (email.trim() && password.trim()) ? "#e36438" : "#181818",
                     color: "#fff", border: "none", borderRadius: "8px",
                     padding: "10px", fontSize: "12px",
                     fontFamily: "var(--font-mono), monospace",
                     fontWeight: 600, letterSpacing: "0.08em",
-                    cursor: email.trim() ? "pointer" : "default",
-                    opacity: email.trim() ? 1 : 0.4,
+                    cursor: (email.trim() && password.trim()) ? "pointer" : "default",
+                    opacity: (email.trim() && password.trim()) ? 1 : 0.4,
                     transition: "background 0.15s",
                   }}
-                  onMouseEnter={e => { if (email.trim()) e.currentTarget.style.background = "#c4421a"; }}
-                  onMouseLeave={e => { if (email.trim()) e.currentTarget.style.background = "#e36438"; }}
+                  onMouseEnter={e => { if (email.trim() && password.trim()) e.currentTarget.style.background = "#c4421a"; }}
+                  onMouseLeave={e => { if (email.trim() && password.trim()) e.currentTarget.style.background = "#e36438"; }}
                 >
-                  {loading ? "Sending…" : "Send magic link"}
+                  {loading ? "…" : mode === "signin" ? "Sign in →" : "Create account →"}
                 </button>
               </>
-            )}
-
-            {sent && (
-              <button
-                onClick={() => setShowModal(false)}
-                style={{
-                  width: "100%", background: "#181818", color: "#6b6865",
-                  border: "1px solid #252525", borderRadius: "8px",
-                  padding: "10px", fontSize: "12px",
-                  fontFamily: "var(--font-mono), monospace",
-                  fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer",
-                }}
-              >
-                Close
-              </button>
             )}
           </div>
         </div>

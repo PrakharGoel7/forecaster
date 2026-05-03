@@ -170,21 +170,17 @@ def save_forecast(*, ticker, event_title, question, close_date, category,
 
 
 def get_forecasts(limit: int = 48, user_id: str | None = None):
+    if not user_id:
+        return []
     _init()
     p = _ph()
     conn = _conn()
     try:
         cur = conn.cursor()
-        if user_id:
-            cur.execute(
-                f"SELECT * FROM forecasts WHERE user_id = {p} ORDER BY created_at DESC LIMIT {p}",
-                (user_id, limit)
-            )
-        else:
-            cur.execute(
-                f"SELECT * FROM forecasts ORDER BY created_at DESC LIMIT {p}",
-                (limit,)
-            )
+        cur.execute(
+            f"SELECT * FROM forecasts WHERE user_id = {p} ORDER BY created_at DESC LIMIT {p}",
+            (user_id, limit)
+        )
         rows = cur.fetchall()
         return _rows_to_dicts(rows, cur)
     finally:
@@ -235,21 +231,17 @@ def save_trading_session(*, core_belief, time_horizon, scope, key_drivers,
 
 
 def get_trading_sessions(limit: int = 20, user_id: str | None = None):
+    if not user_id:
+        return []
     _init()
     p = _ph()
     conn = _conn()
     try:
         cur = conn.cursor()
-        if user_id:
-            cur.execute(
-                f"SELECT * FROM trading_sessions WHERE user_id = {p} ORDER BY created_at DESC LIMIT {p}",
-                (user_id, limit)
-            )
-        else:
-            cur.execute(
-                f"SELECT * FROM trading_sessions ORDER BY created_at DESC LIMIT {p}",
-                (limit,)
-            )
+        cur.execute(
+            f"SELECT * FROM trading_sessions WHERE user_id = {p} ORDER BY created_at DESC LIMIT {p}",
+            (user_id, limit)
+        )
         rows = cur.fetchall()
         return _rows_to_dicts(rows, cur)
     finally:
