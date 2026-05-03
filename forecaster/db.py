@@ -181,7 +181,10 @@ def get_forecasts(limit: int = 48, user_id: str | None = None):
                 (user_id, limit)
             )
         else:
-            return []
+            cur.execute(
+                f"SELECT * FROM forecasts ORDER BY created_at DESC LIMIT {p}",
+                (limit,)
+            )
         rows = cur.fetchall()
         return _rows_to_dicts(rows, cur)
     finally:
@@ -243,7 +246,10 @@ def get_trading_sessions(limit: int = 20, user_id: str | None = None):
                 (user_id, limit)
             )
         else:
-            return []
+            cur.execute(
+                f"SELECT * FROM trading_sessions ORDER BY created_at DESC LIMIT {p}",
+                (limit,)
+            )
         rows = cur.fetchall()
         return _rows_to_dicts(rows, cur)
     finally:
