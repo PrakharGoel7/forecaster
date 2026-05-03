@@ -200,7 +200,7 @@ export default function IntelPage() {
                       transition: "border-color 0.15s, background 0.15s",
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = "rgba(91,156,246,0.22)";
+                      e.currentTarget.style.borderColor = "rgba(90,170,114,0.3)";
                       e.currentTarget.style.background = "rgba(18,18,18,0.98)";
                     }}
                     onMouseLeave={e => {

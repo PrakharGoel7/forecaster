@@ -214,7 +214,7 @@ function TradingPageInner() {
                   letterSpacing: "0.2em", textTransform: "uppercase",
                   color: "#3a3835", display: "flex", alignItems: "center", gap: "8px",
                 }}>
-                  <span style={{ color: "#9b7fe8" }}>◈</span> Trading Companion
+                  <span style={{ color: "#e36438" }}>◈</span> Trading Companion
                 </div>
                 <button
                   onClick={() => {
@@ -378,7 +378,7 @@ function TradingPageInner() {
                             cursor: "pointer",
                           }}
                           onMouseEnter={e => {
-                            e.currentTarget.style.borderColor = "rgba(227,100,56,0.22)";
+                            e.currentTarget.style.borderColor = "rgba(155,127,232,0.3)";
                             e.currentTarget.style.background = "rgba(18,18,18,0.98)";
                           }}
                           onMouseLeave={e => {
@@ -573,7 +573,7 @@ function IdleView({
                     cursor: "pointer",
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = "rgba(227,100,56,0.22)";
+                    e.currentTarget.style.borderColor = "rgba(155,127,232,0.3)";
                     e.currentTarget.style.background = "rgba(18,18,18,0.98)";
                   }}
                   onMouseLeave={e => {
@@ -742,13 +742,13 @@ function BeliefCard({ summary }: { summary: BeliefSummary }) {
       <SectionLabel label="Your Belief" dot="purple" />
       <div style={{
         background: "rgba(18,18,18,0.98)",
-        border: "1px solid rgba(91,156,246,0.18)",
+        border: "1px solid rgba(155,127,232,0.18)",
         borderRadius: "14px", padding: "22px 24px",
         position: "relative", overflow: "hidden",
       }}>
         <div style={{
           position: "absolute", top: 0, left: 0, right: 0, height: "1px",
-          background: "linear-gradient(90deg, transparent, rgba(91,156,246,0.5) 50%, transparent)",
+          background: "linear-gradient(90deg, transparent, rgba(155,127,232,0.5) 50%, transparent)",
         }} />
         <p style={{
           fontSize: "16px", fontWeight: 600, color: "#ede9e3",
@@ -861,15 +861,15 @@ function SurpriseCallout({ text }: { text: string }) {
     <div style={{
       margin: "16px 0 28px",
       padding: "15px 20px",
-      background: "rgba(91,156,246,0.04)",
-      border: "1px solid rgba(91,156,246,0.14)",
+      background: "rgba(155,127,232,0.04)",
+      border: "1px solid rgba(155,127,232,0.14)",
       borderRadius: "11px",
       display: "flex", gap: "14px", alignItems: "flex-start",
     }}>
       <span style={{
         fontFamily: "var(--font-mono), monospace", fontSize: "9px",
         fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em",
-        color: "#5b9cf6", flexShrink: 0, paddingTop: "2px",
+        color: "#9b7fe8", flexShrink: 0, paddingTop: "2px",
         whiteSpace: "nowrap",
       }}>
         Non-obvious bet
@@ -905,8 +905,8 @@ function RecCard({
         transition: "border-color 0.2s, box-shadow 0.2s",
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.borderColor = "rgba(227,100,56,0.28)";
-        e.currentTarget.style.boxShadow = "0 0 0 1px rgba(227,100,56,0.07), 0 12px 40px rgba(0,0,0,0.7)";
+        e.currentTarget.style.borderColor = "rgba(155,127,232,0.35)";
+        e.currentTarget.style.boxShadow = "0 0 0 1px rgba(155,127,232,0.07), 0 12px 40px rgba(0,0,0,0.7)";
       }}
       onMouseLeave={e => {
         e.currentTarget.style.borderColor = "#272727";
@@ -917,7 +917,7 @@ function RecCard({
       <div style={{
         position: "absolute", top: 0, left: 0,
         width: `${rec.score * 10}%`, height: "2px",
-        background: "linear-gradient(90deg, #e36438, rgba(227,100,56,0.2))",
+        background: "linear-gradient(90deg, #9b7fe8, rgba(155,127,232,0.2))",
       }} />
 
       {/* Main body */}
@@ -996,11 +996,11 @@ function RecCard({
                 style={{
                   background: "transparent", border: "none", padding: 0,
                   fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-                  color: "#e36438", letterSpacing: "0.04em", cursor: "pointer",
+                  color: "#9b7fe8", letterSpacing: "0.04em", cursor: "pointer",
                   transition: "color 0.15s",
                 }}
-                onMouseEnter={e => e.currentTarget.style.color = "#ff7a50"}
-                onMouseLeave={e => e.currentTarget.style.color = "#e36438"}
+                onMouseEnter={e => e.currentTarget.style.color = "#b89ff0"}
+                onMouseLeave={e => e.currentTarget.style.color = "#9b7fe8"}
               >
                 explore market →
               </button>
@@ -1025,13 +1025,13 @@ function RecCard({
         borderTop: "1px solid #222",
         padding: "12px 22px",
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
-        background: forecast ? "rgba(91,156,246,0.05)" : "rgba(227,100,56,0.03)",
+        background: forecast ? "rgba(91,156,246,0.05)" : "rgba(155,127,232,0.03)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
           <span style={{
             fontFamily: "var(--font-mono), monospace", fontSize: "9px",
             fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em",
-            color: forecast ? "#5b9cf6" : "#e36438", flexShrink: 0,
+            color: forecast ? "#5b9cf6" : "#9b7fe8", flexShrink: 0,
           }}>
             Prism Forecast
           </span>
@@ -1060,12 +1060,12 @@ function RecCard({
           style={{
             background: "transparent", border: "none", padding: 0, flexShrink: 0,
             fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-            color: forecast ? "#5b9cf6" : "#e36438",
+            color: forecast ? "#5b9cf6" : "#9b7fe8",
             letterSpacing: "0.04em", cursor: "pointer", transition: "color 0.15s",
             whiteSpace: "nowrap",
           }}
-          onMouseEnter={e => e.currentTarget.style.color = forecast ? "#7fb3ff" : "#ff7a50"}
-          onMouseLeave={e => e.currentTarget.style.color = forecast ? "#5b9cf6" : "#e36438"}
+          onMouseEnter={e => e.currentTarget.style.color = forecast ? "#7fb3ff" : "#b89ff0"}
+          onMouseLeave={e => e.currentTarget.style.color = forecast ? "#5b9cf6" : "#9b7fe8"}
         >
           {forecast ? "view report →" : "forecast →"}
         </button>

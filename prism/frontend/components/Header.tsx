@@ -45,6 +45,11 @@ export default function Header() {
         <nav style={{ display: "flex", alignItems: "center", gap: "2px", flex: 1 }}>
           {NAV.map(({ href, label }) => {
             const active = href === "/" ? path === "/" : path.startsWith(href);
+            const activeBorder = href === "/trading"
+              ? "1px solid rgba(155,127,232,0.35)"
+              : href === "/forecasts"
+              ? "1px solid rgba(90,170,114,0.35)"
+              : "1px solid #252525";
             const navStyle = {
               fontFamily: "var(--font-mono), monospace",
               fontSize: "12px", fontWeight: active ? 700 : 400,
@@ -54,7 +59,7 @@ export default function Header() {
               padding: "6px 14px",
               borderRadius: "6px",
               background: active ? "rgba(255,255,255,0.04)" : "transparent",
-              border: active ? "1px solid #252525" : "1px solid transparent",
+              border: active ? activeBorder : "1px solid transparent",
               transition: "color 0.15s, background 0.15s",
             };
             if (href === "/" || href === "/trading") {
