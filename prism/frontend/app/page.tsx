@@ -288,7 +288,7 @@ function HomeInner() {
                         marginBottom: "10px",
                       }}
                     >
-                      You have views on geopolitics,<br />markets, AI, sports.
+                      Turn your opinions into trades.
                     </motion.h1>
                     <motion.p
                       initial={{ opacity: 0, y: 8 }}
@@ -300,7 +300,7 @@ function HomeInner() {
                         margin: 0,
                       }}
                     >
-                      Prism turns them into researched Kalshi positions.
+                      Tell us what you think will happen. Prism finds the Kalshi markets that match your view.
                     </motion.p>
                   </div>
                   <div style={{ flexShrink: 0, maxWidth: "215px", paddingTop: "6px" }}>
@@ -308,7 +308,7 @@ function HomeInner() {
                       fontFamily: "var(--font-mono), monospace", fontSize: "12px",
                       letterSpacing: "0.06em", color: "#9b9790", lineHeight: 1.7,
                     }}>
-                      <Typewriter text="Hedge fund-level research, built for individual Kalshi users" delay={600} speed={60} />
+                      <Typewriter text="For people who think the odds are wrong." delay={600} speed={60} />
                     </div>
                   </div>
                 </div>
@@ -324,18 +324,18 @@ function HomeInner() {
                     {[
                       {
                         n: "01",
-                        title: "Your opinion",
+                        title: "Start with a take",
                         desc: <span>You think something&apos;s going to happen.</span>,
                       },
                       {
                         n: "02",
-                        title: "Your markets",
-                        desc: <span><span style={{ color: "#9b7fe8" }}>Compass</span> finds every market that pays if you&apos;re right.</span>,
+                        title: "See the matching markets",
+                        desc: <span><span style={{ color: "#9b7fe8" }}>Compass</span> finds direct and hidden ways to bet on it.</span>,
                       },
                       {
                         n: "03",
-                        title: "Your edge",
-                        desc: <span><span style={{ color: "#5aaa72" }}>Intel</span> tells you whether the odds are in your favor.</span>,
+                        title: "Know the odds",
+                        desc: <span><span style={{ color: "#5aaa72" }}>Intel</span> conducts deep research to find which market odds are mispriced.</span>,
                       },
                     ].map((step) => (
                       <div
