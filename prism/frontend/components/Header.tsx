@@ -5,7 +5,6 @@ import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 
 const NAV = [
   { href: "/",          label: "Home"      },
-  { href: "/trading",   label: "Compass"   },
   { href: "/forecasts", label: "Intel"     },
   { href: "/model",     label: "Model"     },
 ];
@@ -62,7 +61,7 @@ export default function Header() {
               border: active ? activeBorder : "1px solid transparent",
               transition: "color 0.15s, background 0.15s",
             };
-            if (href === "/" || href === "/trading") {
+            if (href === "/") {
               return (
                 <a
                   key={href}

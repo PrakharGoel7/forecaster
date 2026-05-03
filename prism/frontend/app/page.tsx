@@ -330,7 +330,7 @@ function HomeInner() {
                       {
                         n: "02",
                         title: "See the matching markets",
-                        desc: <span><span style={{ color: "#9b7fe8" }}>Compass</span> finds direct and hidden ways to bet on it.</span>,
+                        desc: <span>Prism finds direct and hidden ways to bet on it.</span>,
                       },
                       {
                         n: "03",
