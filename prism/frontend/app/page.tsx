@@ -67,25 +67,7 @@ function HomeInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn]);
 
-  const recsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-    }
-  }, [chatMessages, progressLabel]);
-
-  useEffect(() => {
-    if (recommendations.length === 0) return;
-    setTimeout(() => {
-      if (recsRef.current && scrollRef.current) {
-        const containerRect = scrollRef.current.getBoundingClientRect();
-        const recsRect = recsRef.current.getBoundingClientRect();
-        const offset = recsRect.top - containerRect.top + scrollRef.current.scrollTop - 16;
-        scrollRef.current.scrollTo({ top: offset, behavior: "smooth" });
-      }
-    }, 80);
-  }, [recommendations]);
 
   async function _token() {
     return isSignedIn ? ((await getToken()) ?? undefined) : undefined;
@@ -635,7 +617,7 @@ function HomeInner() {
               </AnimatePresence>
 
               {recommendations.length > 0 && (
-                <div ref={recsRef} style={{ marginTop: "28px" }}>
+                <div style={{ marginTop: "28px" }}>
                   <SectionLabel label={`${recommendations.length} recommended markets`} dot="orange" />
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {recommendations.map((rec, i) => (
