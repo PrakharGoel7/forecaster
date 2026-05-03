@@ -73,15 +73,18 @@ function HomeInner() {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }
-  }, [chatMessages, beliefSummary, analysis, progressLabel]);
+  }, [chatMessages, progressLabel]);
 
   useEffect(() => {
     if (recommendations.length === 0) return;
     setTimeout(() => {
-      if (recsRef.current) {
-        recsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (recsRef.current && scrollRef.current) {
+        const containerRect = scrollRef.current.getBoundingClientRect();
+        const recsRect = recsRef.current.getBoundingClientRect();
+        const offset = recsRect.top - containerRect.top + scrollRef.current.scrollTop - 16;
+        scrollRef.current.scrollTo({ top: offset, behavior: "smooth" });
       }
-    }, 50);
+    }, 80);
   }, [recommendations]);
 
   async function _token() {
