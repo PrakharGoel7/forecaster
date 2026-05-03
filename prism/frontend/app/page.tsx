@@ -335,7 +335,7 @@ function HomeInner() {
                       {
                         n: "03",
                         title: "Know the odds",
-                        desc: <span><span style={{ color: "#5aaa72" }}>Intel</span> conducts deep research to find which market odds are mispriced.</span>,
+                        desc: <span>Prism conducts deep research to find which market odds are mispriced.</span>,
                       },
                     ].map((step) => (
                       <div
