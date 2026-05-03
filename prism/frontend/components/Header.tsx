@@ -27,7 +27,7 @@ export default function Header() {
         height: "56px", display: "flex", alignItems: "center", gap: "40px",
       }}>
         {/* Logo */}
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", flexShrink: 0 }}>
+        <a href="/" style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", flexShrink: 0 }}>
           <div style={{
             width: "28px", height: "28px", borderRadius: "7px",
             background: "linear-gradient(135deg, #181818 0%, #0a0a0a 100%)",
@@ -39,28 +39,42 @@ export default function Header() {
             fontFamily: "var(--font-mono), monospace", fontWeight: 700,
             fontSize: "13px", letterSpacing: "0.22em", color: "#ede9e3",
           }}>PRISM</span>
-        </Link>
+        </a>
 
         {/* Nav links */}
         <nav style={{ display: "flex", alignItems: "center", gap: "2px", flex: 1 }}>
           {NAV.map(({ href, label }) => {
             const active = href === "/" ? path === "/" : path.startsWith(href);
+            const navStyle = {
+              fontFamily: "var(--font-mono), monospace",
+              fontSize: "12px", fontWeight: active ? 700 : 400,
+              letterSpacing: "0.08em",
+              color: active ? "#ede9e3" : "#6b6865",
+              textDecoration: "none",
+              padding: "6px 14px",
+              borderRadius: "6px",
+              background: active ? "rgba(255,255,255,0.04)" : "transparent",
+              border: active ? "1px solid #252525" : "1px solid transparent",
+              transition: "color 0.15s, background 0.15s",
+            };
+            if (href === "/") {
+              return (
+                <a
+                  key={href}
+                  href={href}
+                  style={navStyle}
+                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "#ede9e3"; }}
+                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "#6b6865"; }}
+                >
+                  {label}
+                </a>
+              );
+            }
             return (
               <Link
                 key={href}
                 href={href}
-                style={{
-                  fontFamily: "var(--font-mono), monospace",
-                  fontSize: "12px", fontWeight: active ? 700 : 400,
-                  letterSpacing: "0.08em",
-                  color: active ? "#ede9e3" : "#6b6865",
-                  textDecoration: "none",
-                  padding: "6px 14px",
-                  borderRadius: "6px",
-                  background: active ? "rgba(255,255,255,0.04)" : "transparent",
-                  border: active ? "1px solid #252525" : "1px solid transparent",
-                  transition: "color 0.15s, background 0.15s",
-                }}
+                style={navStyle}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.color = "#ede9e3"; }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#6b6865"; }}
               >
