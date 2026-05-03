@@ -67,11 +67,22 @@ function HomeInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn]);
 
+  const recsRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }
-  }, [chatMessages, beliefSummary, analysis, recommendations, progressLabel]);
+  }, [chatMessages, beliefSummary, analysis, progressLabel]);
+
+  useEffect(() => {
+    if (recommendations.length === 0) return;
+    setTimeout(() => {
+      if (recsRef.current) {
+        recsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 50);
+  }, [recommendations]);
 
   async function _token() {
     return isSignedIn ? ((await getToken()) ?? undefined) : undefined;
@@ -621,7 +632,7 @@ function HomeInner() {
               </AnimatePresence>
 
               {recommendations.length > 0 && (
-                <div style={{ marginTop: "28px" }}>
+                <div ref={recsRef} style={{ marginTop: "28px" }}>
                   <SectionLabel label={`${recommendations.length} recommended markets`} dot="orange" />
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {recommendations.map((rec, i) => (
