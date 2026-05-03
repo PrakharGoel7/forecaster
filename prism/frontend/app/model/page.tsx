@@ -126,21 +126,10 @@ export default function ModelPage() {
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "80px 32px 100px" }}>
 
         {/* Page header */}
-        <div style={{ marginBottom: "52px", maxWidth: "600px" }}>
-          <div style={{
-            fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
-            textTransform: "uppercase", letterSpacing: "0.2em", color: "#9b9790", marginBottom: "8px",
-          }}>
-            Model Architecture
-          </div>
-          <h1 style={{ fontSize: "26px", fontWeight: 700, color: "#ede9e3", letterSpacing: "-0.01em", marginBottom: "14px" }}>
+        <div style={{ marginBottom: "52px" }}>
+          <h1 style={{ fontSize: "56px", fontWeight: 700, color: "#ede9e3", letterSpacing: "-0.03em" }}>
             How Prism Works
           </h1>
-          <p style={{ fontSize: "14px", color: "#6b6865", lineHeight: 1.75 }}>
-            Prism runs two intelligence pipelines.{" "}
-            <span style={{ color: "#e36438" }}>Intel</span> forecasts the probability of a market resolving YES.{" "}
-            <span style={{ color: "#a78bfa" }}>Compass</span> maps your beliefs about the future to the best prediction market positions to express them.
-          </p>
         </div>
 
         {/* Two-column layout */}

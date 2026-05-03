@@ -8,12 +8,16 @@ class ForecasterConfig:
     model: str = "openai/gpt-4o"
     api_key: str = field(default_factory=lambda: os.environ.get("OPENROUTER_API_KEY", ""))
 
-    # M independent agents per ensemble run
-    num_agents: int = 3
+    # Outside view agents (base rate research only)
+    num_ov_agents: int = 2
+    max_ov_iterations: int = 3
+
+    # Inside view agents (current evidence, updates from base rate)
+    num_iv_agents: int = 3
+    max_iv_iterations: int = 5
+
     # K ensemble runs (final probability = geometric mean over K runs)
     num_ensemble_runs: int = 1
-
-    max_search_iterations: int = 8   # per agent
     max_tokens_per_agent: int = 4096
     search_max_results: int = 5
     fetch_max_chars: int = 6000

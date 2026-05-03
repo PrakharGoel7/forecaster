@@ -51,7 +51,7 @@ export default function MarketsPage() {
   };
 
   const goMarket = (event: KalshiEvent) =>
-    router.push(`/market/${event.event_ticker}?title=${encodeURIComponent(event.title)}&cat=${encodeURIComponent(event.category)}&sub=${encodeURIComponent(event.sub_title)}&runForecast=1`);
+    router.push(`/market/${event.event_ticker}?title=${encodeURIComponent(event.title)}&cat=${encodeURIComponent(event.category)}&sub=${encodeURIComponent(event.sub_title)}`);
 
   return (
     <div style={{ minHeight: "100vh", background: "#080808" }}>
@@ -123,7 +123,7 @@ export default function MarketsPage() {
             gap: "10px",
           }}>
             {events.map((e, i) => (
-              <MarketCard key={e.event_ticker} event={e} index={i} onForecast={goMarket} />
+              <MarketCard key={e.event_ticker} event={e} index={i} onSelect={goMarket} />
             ))}
           </div>
         ) : (

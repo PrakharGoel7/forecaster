@@ -2,38 +2,62 @@ import json
 from datetime import datetime, timezone
 
 from forecaster.models import (
-    AgentForecast, EvidenceItem, EvidenceLedger, SourceType, EvidenceDirection, ParsedQuestion,
+    AgentForecast, OutsideViewConsensus, EvidenceItem, EvidenceLedger,
+    SourceType, EvidenceDirection, EvidenceMagnitude, Reliability, EvidenceAge,
+    ParsedQuestion,
 )
 from forecaster.config import ForecasterConfig
 from forecaster.agents.base import LLMClient
 from forecaster.tools.search import web_search, web_fetch
+from forecaster.utils.temporal import (
+    score_source_reliability, estimate_evidence_age, detect_stale_year_in_query,
+    current_date_str, current_year,
+)
 
-SYSTEM_PROMPT = """You are an independent probabilistic forecasting agent. Estimate the probability that a prediction question resolves YES.
+SYSTEM_PROMPT = """You are an Inside View forecasting agent. The historical base rate has already been established and will be given to you. Your job is to find specific, current evidence about THIS situation that updates from that base rate.
 
-METHODOLOGY — follow this order strictly:
-1. OUTSIDE VIEW FIRST: Search for the historical base rate of this type of event. What fraction of similar situations resolved YES historically? Anchor on this.
-2. INSIDE VIEW SECOND: What is specific about this situation? Search for current evidence that updates you from the base rate — upward or downward.
-3. SYNTHESIZE: Combine outside view and inside view into a final probability. Be explicit about how much each view moves you.
+DO NOT re-research historical base rates — that work is done.
+DO NOT use stale evidence unless it is structurally important.
+DO NOT treat speculation as fact.
+DO NOT drift toward 50% because evidence is mixed.
+
+Your job:
+1. Determine the current state of the specific situation.
+2. Find recent, high-quality evidence relevant to the key unknowns.
+3. Identify which evidence updates the base rate upward or downward, and by how much.
+4. Produce a calibrated probability.
+
+TEMPORAL RULES:
+- Prefer evidence from the last 12 months unless older evidence is structurally important.
+- Include the current year or recent phrasing in search queries.
+- If using older evidence, explicitly explain why it still applies.
+- Check whether the event may already be resolved.
+
+SOURCE QUALITY RULES:
+- Prefer: official statements, filings, regulators, exchanges, reputable news outlets, primary data.
+- Low reliability: blogs, SEO finance sites, prediction-market commentary, unsourced claims.
+- Low-reliability evidence should not drive large updates.
 
 CALIBRATION RULES:
-- Avoid anchoring to 50% without strong justification. Most questions have informative base rates.
-- "Uncertain" ≠ 50%. Uncertainty about a rare event should still yield a low probability.
-- State your probability as a single number, not a range. Express uncertainty through your confidence level.
-- Consider what would have to be true for the question to resolve YES. Is that scenario plausible given the evidence?
-- For questions near a deadline, consider how much new information could realistically arrive.
+- Start from the given base rate. Each update must include direction AND rough magnitude:
+  - strong_raise / modest_raise / neutral / modest_lower / strong_lower
+- If evidence is weak or mixed, stay near the base rate.
+- "Uncertain" does not mean 50%.
+- State a single probability.
 
-SEARCH STRATEGY:
-- First searches: base rates, historical frequencies, reference class data
-- Second searches: current state, recent developments, expert forecasts
-- Third searches: specific facts that resolve key unknowns
-
-Add evidence with add_evidence as you go. When you have enough to form a well-reasoned estimate, call submit_forecast.
+BAD REASONING TO AVOID:
+- Overweighting speculative rumors or low-reliability sources.
+- Confusing valuation/size/activity with event probability.
+- Treating "possible" as "likely."
+- Ignoring the time horizon to resolution.
+- Large updates from weak evidence.
+- Drifting to 50% because both sides have some evidence.
 """
 
 _TOOLS = [
     {
         "name": "web_search",
-        "description": "Search the web for evidence relevant to the forecast.",
+        "description": "Search for current, situation-specific evidence.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -54,7 +78,7 @@ _TOOLS = [
     },
     {
         "name": "add_evidence",
-        "description": "Record a piece of evidence in the ledger.",
+        "description": "Record a piece of situation-specific evidence in the ledger.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -63,49 +87,80 @@ _TOOLS = [
                 "source_title": {"type": "string"},
                 "source_type": {
                     "type": "string",
-                    "enum": ["official_primary", "regulatory", "reputable_secondary", "social_media", "unknown"],
+                    "enum": ["official", "primary_data", "reputable_news",
+                             "expert_analysis", "market_data", "blog", "unknown"],
                 },
                 "relevant_quote_or_snippet": {"type": "string"},
                 "direction": {
                     "type": "string",
-                    "enum": ["raises", "lowers", "base_rate", "context"],
-                    "description": "Whether this evidence raises P(YES), lowers it, is a base rate, or is context",
+                    "enum": ["raises", "lowers", "neutral", "context"],
+                    "description": "How this evidence moves P(YES) relative to the base rate",
+                },
+                "magnitude": {
+                    "type": "string",
+                    "enum": ["strong", "moderate", "weak"],
+                    "description": "How large is the update this evidence justifies",
+                },
+                "date_published": {
+                    "type": "string",
+                    "description": "Publication date YYYY-MM-DD or YYYY-MM (leave blank if unknown)",
+                },
+                "why_it_matters": {
+                    "type": "string",
+                    "description": "Why this evidence is relevant to the forecast",
+                },
+                "limitations": {
+                    "type": "string",
+                    "description": "Reliability caveats or reasons to discount this evidence",
                 },
                 "notes": {"type": "string"},
             },
             "required": ["claim", "source_url", "source_title", "source_type",
-                         "relevant_quote_or_snippet", "direction", "notes"],
+                         "relevant_quote_or_snippet", "direction", "magnitude",
+                         "why_it_matters", "limitations"],
         },
     },
     {
         "name": "submit_forecast",
-        "description": "Submit your final probability estimate with full reasoning.",
+        "description": "Submit your final probability estimate.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "probability": {
                     "type": "number",
-                    "description": "P(YES) as a decimal between 0.001 and 0.999",
+                    "description": "P(YES) as decimal 0.001-0.999",
                 },
-                "outside_view_base_rate": {
+                "starting_base_rate": {
                     "type": "number",
-                    "description": "Your base rate estimate from the reference class before inside-view adjustments",
+                    "description": "The base rate you started from (should match the OV consensus given to you)",
                 },
-                "outside_view_reasoning": {
-                    "type": "string",
-                    "description": "What reference class you used and what the historical rate was",
+                "adjustment_from_base": {
+                    "type": "number",
+                    "description": "Net adjustment: positive = raised from base rate, negative = lowered",
+                },
+                "key_updates_from_base": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List each update with magnitude, e.g. 'strong_raise: CEO confirmed IPO target by Q3 2025'",
                 },
                 "inside_view_reasoning": {
                     "type": "string",
-                    "description": "What specific factors about this situation updated you from the base rate, and in which direction",
+                    "description": "What specific factors about this situation updated you from the base rate and in which direction",
                 },
                 "key_factors_for": {
-                    "type": "array", "items": {"type": "string"},
-                    "description": "3-5 most important factors that increase P(YES)",
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "3-5 most important factors increasing P(YES)",
                 },
                 "key_factors_against": {
-                    "type": "array", "items": {"type": "string"},
-                    "description": "3-5 most important factors that decrease P(YES)",
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "3-5 most important factors decreasing P(YES)",
+                },
+                "unresolved_cruxes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Key factual questions that remain unresolved and would most change the forecast",
                 },
                 "uncertainty_reasoning": {
                     "type": "string",
@@ -114,13 +169,14 @@ _TOOLS = [
                 "epistemic_confidence": {
                     "type": "string",
                     "enum": ["low", "medium", "high"],
-                    "description": "Your confidence in your own probability estimate (not whether YES will happen)",
+                    "description": "Your confidence in this probability estimate",
                 },
             },
             "required": [
-                "probability", "outside_view_base_rate", "outside_view_reasoning",
-                "inside_view_reasoning", "key_factors_for", "key_factors_against",
-                "uncertainty_reasoning", "epistemic_confidence",
+                "probability", "starting_base_rate", "adjustment_from_base",
+                "key_updates_from_base", "inside_view_reasoning",
+                "key_factors_for", "key_factors_against",
+                "unresolved_cruxes", "uncertainty_reasoning", "epistemic_confidence",
             ],
         },
     },
@@ -130,6 +186,7 @@ _TOOLS = [
 def run_forecasting_agent(
     parsed_question: ParsedQuestion,
     agent_id: int,
+    ov_consensus: OutsideViewConsensus,
     config: ForecasterConfig | None = None,
 ) -> AgentForecast:
     if config is None:
@@ -137,32 +194,43 @@ def run_forecasting_agent(
 
     llm = LLMClient(config)
     ledger = EvidenceLedger()
+    today = current_date_str()
 
     user_message = (
         f"Forecast the following question.\n\n"
+        f"Current date: {today}\n\n"
         f"{parsed_question.format_for_prompt()}\n\n"
-        "Start with the OUTSIDE VIEW: search for base rates in the reference class. "
-        "Then gather inside-view evidence. Add items to the ledger as you go. "
+        f"ESTABLISHED OUTSIDE VIEW:\n"
+        f"  Base rate: {ov_consensus.base_rate:.3f} ({ov_consensus.base_rate * 100:.0f}%)\n"
+        f"  Statistical object: {ov_consensus.statistical_object or 'see reference class'}\n"
+        f"  Reference class: {ov_consensus.reference_class}\n"
+        f"  Basis: {ov_consensus.denominator_or_basis or 'see reasoning'}\n"
+        f"  Limitations: {ov_consensus.reference_class_limitations or 'none noted'}\n"
+        f"  Reasoning: {ov_consensus.reasoning}\n\n"
+        "Start from this base rate. Search for CURRENT, SITUATION-SPECIFIC evidence. "
+        "Include the current year in search queries. "
+        "Add items to the ledger as you go. "
         "Call submit_forecast when you have a well-reasoned estimate."
     )
 
     messages = [{"role": "user", "content": user_message}]
     forecast_input: dict | None = None
 
-    _SUBMIT_ONLY = [_TOOLS[-1]]  # just submit_forecast
+    _SUBMIT_ONLY = [_TOOLS[-1]]
 
-    for iteration in range(config.max_search_iterations):
-        # On the penultimate iteration, nudge the agent to wrap up
-        if iteration == config.max_search_iterations - 2:
+    for iteration in range(config.max_iv_iterations):
+        if iteration == config.max_iv_iterations - 2:
             messages.append({
                 "role": "user",
-                "content": "You have one more search available. After that, please call submit_forecast with your best estimate.",
+                "content": (
+                    "One more search available. Then call submit_forecast. "
+                    "List each update from base rate with its direction and magnitude."
+                ),
             })
 
         response = llm.complete(SYSTEM_PROMPT, messages, _TOOLS)
 
         if not response.tool_blocks:
-            # Model stopped generating tool calls — force a submission
             break
 
         tool_results = []
@@ -180,53 +248,78 @@ def run_forecasting_agent(
         if submitted:
             break
 
-    # Forced fallback: if agent never called submit_forecast, require it now
     if forecast_input is None:
         ledger.incomplete = True
         messages.append({
             "role": "user",
-            "content": "Research complete. You must now submit your probability estimate by calling submit_forecast.",
+            "content": "Research complete. You must now call submit_forecast with your best estimate.",
         })
         final = llm.complete(SYSTEM_PROMPT, messages, _SUBMIT_ONLY, force_tool=True)
         if final.tool_blocks:
             forecast_input = final.tool_blocks[0].input
         else:
-            raise ValueError(f"Forecasting Agent {agent_id} failed to submit even after forced prompt")
+            raise ValueError(f"Inside View Agent {agent_id} failed to submit")
 
     return AgentForecast(
         agent_id=agent_id,
         probability=float(forecast_input["probability"]),
-        outside_view_base_rate=float(forecast_input["outside_view_base_rate"]),
-        outside_view_reasoning=forecast_input["outside_view_reasoning"],
+        outside_view_base_rate=ov_consensus.base_rate,
+        outside_view_reasoning=ov_consensus.reasoning,
         inside_view_reasoning=forecast_input["inside_view_reasoning"],
         key_factors_for=forecast_input.get("key_factors_for", []),
         key_factors_against=forecast_input.get("key_factors_against", []),
         uncertainty_reasoning=forecast_input["uncertainty_reasoning"],
         epistemic_confidence=forecast_input["epistemic_confidence"],
         evidence_ledger=ledger,
+        starting_base_rate=float(forecast_input.get("starting_base_rate", ov_consensus.base_rate)),
+        key_updates_from_base=forecast_input.get("key_updates_from_base", []),
+        unresolved_cruxes=forecast_input.get("unresolved_cruxes", []),
     )
 
 
 def _execute_tool(name: str, args: dict, ledger: EvidenceLedger, config: ForecasterConfig) -> dict:
     if name == "web_search":
-        return {"results": web_search(args["query"], args.get("max_results", config.search_max_results))}
+        query = args["query"]
+        result = {"results": web_search(query, args.get("max_results", config.search_max_results))}
+        stale_yr = detect_stale_year_in_query(query)
+        if stale_yr:
+            result["temporal_warning"] = (
+                f"Query references {stale_yr} which may be stale. "
+                f"Current year is {current_year()}. Prefer recent evidence."
+            )
+        return result
 
     if name == "web_fetch":
         return web_fetch(args["url"], config.fetch_max_chars)
 
     if name == "add_evidence":
+        url = args["source_url"]
+        auto_reliability = score_source_reliability(url, args.get("source_title", ""))
+        date_pub = args.get("date_published") or None
         item = EvidenceItem(
             claim=args["claim"],
-            source_url=args["source_url"],
+            source_url=url,
             source_title=args["source_title"],
             source_type=SourceType(args["source_type"]),
+            reliability=Reliability(auto_reliability),
             retrieved_at=datetime.now(timezone.utc),
+            date_published=date_pub,
+            evidence_age=EvidenceAge(estimate_evidence_age(date_pub)),
             relevant_quote_or_snippet=args["relevant_quote_or_snippet"],
             direction=EvidenceDirection(args["direction"]),
-            notes=args["notes"],
+            magnitude=EvidenceMagnitude(args["magnitude"]) if args.get("magnitude") else None,
+            why_it_matters=args.get("why_it_matters", ""),
+            limitations=args.get("limitations", ""),
+            notes=args.get("notes", ""),
         )
         ledger.items.append(item)
-        return {"status": "added", "index": len(ledger.items) - 1}
+        feedback = {"status": "added", "index": len(ledger.items) - 1, "auto_reliability": auto_reliability}
+        if auto_reliability == "low":
+            feedback["reliability_warning"] = (
+                "Source auto-scored as LOW reliability. "
+                "Do not make large updates based on this evidence alone."
+            )
+        return feedback
 
     if name == "submit_forecast":
         return {"status": "received"}

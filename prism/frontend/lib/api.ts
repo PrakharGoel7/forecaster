@@ -1,4 +1,4 @@
-import type { StreamMessage, TradingChatResponse, TradingStreamMessage, BeliefSummary, TradingSession, OracleTurnResponse, OraclePipelineMessage } from "./types";
+import type { StreamMessage, TradingChatResponse, TradingStreamMessage, BeliefSummary, TradingSession } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -12,8 +12,8 @@ async function apiFetch(path: string, init?: RequestInit, token?: string) {
   return res.json();
 }
 
-export const searchEvents = (query = "", limit = 24) =>
-  apiFetch(`/api/events?query=${encodeURIComponent(query)}&limit=${limit}`);
+export const searchEvents = (query = "", limit = 24, category = "") =>
+  apiFetch(`/api/events?query=${encodeURIComponent(query)}&limit=${limit}${category ? `&category=${encodeURIComponent(category)}` : ""}`);
 
 export const getMarkets = (eventTicker: string) =>
   apiFetch(`/api/events/${eventTicker}/markets`);
@@ -66,53 +66,6 @@ export function streamForecast(
     }
   })();
 
-  return () => { cancelled = true; };
-}
-
-// ── Legacy Oracle endpoints ───────────────────────────────────────────────────
-
-export async function oracleTurn(
-  history: unknown[],
-  message: string,
-): Promise<OracleTurnResponse> {
-  return apiFetch("/api/oracle/turn", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ history, message }),
-  });
-}
-
-export function streamOraclePipeline(
-  beliefSummary: Record<string, unknown>,
-  onMessage: (msg: OraclePipelineMessage) => void,
-): () => void {
-  let cancelled = false;
-  (async () => {
-    try {
-      const res = await fetch(`${BASE}/api/oracle/pipeline/stream`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ belief_summary: beliefSummary }),
-      });
-      if (!res.body) return;
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (!cancelled) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() ?? "";
-        for (const part of parts) {
-          const line = part.replace(/^data: /, "").trim();
-          if (line) { try { onMessage(JSON.parse(line)); } catch {} }
-        }
-      }
-    } catch (err) {
-      if (!cancelled) onMessage({ type: "error", message: err instanceof Error ? err.message : "Connection lost" });
-    }
-  })();
   return () => { cancelled = true; };
 }
 

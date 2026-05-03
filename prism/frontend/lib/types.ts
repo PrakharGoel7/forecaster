@@ -63,8 +63,21 @@ export interface SavedForecast {
   memo_json: string;
 }
 
+export interface OVData {
+  base_rate: number;
+  reference_class: string;
+  reasoning: string;
+}
+
+export interface IVData {
+  key_factors_for: string[];
+  key_factors_against: string[];
+}
+
 export type StreamMessage =
   | { type: "progress"; label: string }
+  | { type: "ov_complete"; base_rate: number; reference_class: string; reasoning: string }
+  | { type: "iv_complete"; agent_forecasts: { key_factors_for: string[]; key_factors_against: string[] }[] }
   | { type: "complete"; memo: ForecastMemo; kalshi_price: number; close_date: string }
   | { type: "error"; message: string };
 

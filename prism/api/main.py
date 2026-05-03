@@ -7,8 +7,10 @@ import sys
 from pathlib import Path
 from typing import Any, AsyncIterator
 
-# Repo root is three levels up from prism/api/main.py; forecaster package lives there
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+# When running from prism/api/main.py (outside the repo), the forecaster repo
+# is a sibling directory called "forecaster". Fall back to three levels up if needed.
+_HERE = Path(__file__).resolve().parent.parent.parent  # claude_code/
+_REPO_ROOT = (_HERE / "forecaster") if (_HERE / "forecaster").exists() else _HERE
 sys.path.insert(0, str(_REPO_ROOT))
 
 # Trading companion lives inside the repo
@@ -251,14 +253,36 @@ async def stream_forecast(req: ForecastRequest, request: Request):
         loop = asyncio.get_running_loop()
         queue: asyncio.Queue = asyncio.Queue()
 
-        def on_step(name: str, stage: str):
-            if "Agent" in name:
+        def on_step(name: str, stage: str, data=None):
+            if name == "OV Phase" and stage == "complete" and data is not None:
+                asyncio.run_coroutine_threadsafe(queue.put({
+                    "type": "ov_complete",
+                    "base_rate": data.base_rate,
+                    "reference_class": data.reference_class,
+                    "reasoning": data.reasoning,
+                }), loop)
+            elif name == "IV Phase" and stage == "complete" and data is not None:
+                asyncio.run_coroutine_threadsafe(queue.put({
+                    "type": "iv_complete",
+                    "agent_forecasts": [
+                        {"key_factors_for": f.key_factors_for, "key_factors_against": f.key_factors_against}
+                        for f in data
+                    ],
+                }), loop)
+            elif "OV Agent" in name and stage == "done":
+                try:
+                    i, n = map(int, name.split("OV Agent ")[1].split("/"))
+                    asyncio.run_coroutine_threadsafe(
+                        queue.put({"type": "progress", "label": f"Researching base rate ({int(i / n * 100)}%)"}), loop
+                    )
+                except Exception:
+                    pass
+            elif "Agent" in name and stage == "done":
                 try:
                     i, n = map(int, name.split("Agent ")[1].split("/"))
-                    if stage == "done":
-                        label = (f"Collecting evidence ({int(i / n * 100)}%)"
-                                 if i < n else "Analyzing findings...")
-                        asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": label}), loop)
+                    label = (f"Collecting evidence ({int(i / n * 100)}%)"
+                             if i < n else "Analyzing findings...")
+                    asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": label}), loop)
                 except Exception:
                     pass
             elif "Supervisor" in name and stage == "done":

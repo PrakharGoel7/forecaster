@@ -44,17 +44,15 @@ class ForecasterSystem:
                                    ev_category=ev_category),
         )
 
-        raw_prob, run_probs, agent_forecasts, reconciliation = run_ensemble(
+        raw_prob, run_probs, ov_forecasts, ov_consensus, agent_forecasts, reconciliation = run_ensemble(
             parsed, cfg, on_step=on_step
         )
 
         calibration = platt_scale(raw_prob, cfg.platt_coefficient)
         spread = probability_spread(run_probs)
 
-        # Summarise across agents for the memo
         all_for = [f for agent in agent_forecasts for f in agent.key_factors_for]
         all_against = [f for agent in agent_forecasts for f in agent.key_factors_against]
-        outside_views = [a.outside_view_reasoning for a in agent_forecasts]
         inside_views = [a.inside_view_reasoning for a in agent_forecasts]
 
         return ForecastMemo(
@@ -65,10 +63,11 @@ class ForecasterSystem:
             probability_spread=spread,
             calibration=calibration,
             parsed_question=parsed,
+            ov_forecasts=ov_forecasts,
             agent_forecasts=agent_forecasts,
             supervisor_reconciliation=reconciliation,
             inside_view_summary=reconciliation.reconciliation_reasoning,
-            outside_view_summary="; ".join(dict.fromkeys(outside_views)),
+            outside_view_summary=ov_consensus.reasoning,
             key_evidence_summary=f"Factors for YES: {'; '.join(all_for[:5])}. "
                                   f"Factors against YES: {'; '.join(all_against[:5])}.",
             open_questions=parsed.key_unknowns,
@@ -76,7 +75,7 @@ class ForecasterSystem:
                 [f"Foreknowledge risk: {parsed.foreknowledge_risk.value}"]
                 if parsed.foreknowledge_risk.value != "low" else []
             ),
-            num_agents=cfg.num_agents,
+            num_agents=cfg.num_ov_agents + cfg.num_iv_agents,
             num_ensemble_runs=cfg.num_ensemble_runs,
         )
 

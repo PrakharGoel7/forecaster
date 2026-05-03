@@ -51,6 +51,16 @@ body { background: var(--bg); min-height: 100vh; }
   50%       { transform: translate(-50%, -50%) rotate(-4deg) scaleX(1.1); }
 }
 
+@keyframes spin-cog {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.cog-spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin-cog 2.4s linear infinite;
+}
+
 .blink { animation: blink 1.4s ease-in-out infinite; }
 .shimmer-bar {
   background: linear-gradient(90deg, #e36438, #5b9cf6, #e36438);

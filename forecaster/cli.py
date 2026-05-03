@@ -106,7 +106,7 @@ def _print_memo(memo: ForecastMemo) -> None:
 
 
 def _run(question, context, output, model, agents, runs):
-    config = ForecasterConfig(model=model, num_agents=agents, num_ensemble_runs=runs)
+    config = ForecasterConfig(model=model, num_ensemble_runs=runs)
     system = ForecasterSystem(config)
 
     console.print(Panel.fit("[bold]Oracle Agentic Forecaster[/bold]", border_style="blue"))
@@ -278,7 +278,7 @@ def kalshi(query, limit, output, model, agents, runs, key_id, private_key_file) 
     except Exception as e:
         console.print(f"[red]Failed to load Kalshi credentials:[/red] {e}")
         sys.exit(1)
-    config = ForecasterConfig(model=model, num_agents=agents, num_ensemble_runs=runs)
+    config = ForecasterConfig(model=model, num_ensemble_runs=runs)
     system = ForecasterSystem(config)
 
     # ── Step 1: Browse events ──────────────────────────────────────────────
