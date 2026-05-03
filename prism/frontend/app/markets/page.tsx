@@ -123,7 +123,7 @@ export default function MarketsPage() {
             gap: "10px",
           }}>
             {events.map((e, i) => (
-              <MarketCard key={e.event_ticker} event={e} index={i} onSelect={goMarket} />
+              <MarketCard key={e.event_ticker} event={e} index={i} onForecast={goMarket} />
             ))}
           </div>
         ) : (
