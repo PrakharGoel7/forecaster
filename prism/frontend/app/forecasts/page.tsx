@@ -154,7 +154,7 @@ export default function IntelPage() {
             }}>
               <div style={{
                 fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
-                textTransform: "uppercase", letterSpacing: "0.18em", color: "#e36438",
+                textTransform: "uppercase", letterSpacing: "0.18em", color: "#5aaa72",
                 display: "flex", alignItems: "center", gap: "8px",
               }}>
                 <span className="blink" style={{ fontSize: "7px", animationDelay: "0.7s" }}>●</span>
@@ -273,7 +273,7 @@ export default function IntelPage() {
         {/* ── Live Markets ── */}
         <div style={{
           fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
-          textTransform: "uppercase", letterSpacing: "0.2em", color: "#e36438",
+          textTransform: "uppercase", letterSpacing: "0.2em", color: "#5aaa72",
           display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px",
         }}>
           <span className="blink" style={{ fontSize: "7px" }}>●</span>

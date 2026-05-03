@@ -328,7 +328,7 @@ function TradingPageInner() {
               {/* Recommendation cards */}
               {recommendations.length > 0 && (
                 <div style={{ marginTop: "28px" }}>
-                  <SectionLabel label={`${recommendations.length} recommended markets`} dot="orange" />
+                  <SectionLabel label={`${recommendations.length} recommended markets`} dot="purple" />
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {recommendations.map((rec, i) => (
                       <motion.div
@@ -631,7 +631,7 @@ function ChatThread({ messages, loading }: { messages: ChatMsg[]; loading: boole
   if (messages.length === 0 && !loading) return null;
   return (
     <div style={{ marginBottom: "28px" }}>
-      <SectionLabel label="Belief Interview" dot="orange" />
+      <SectionLabel label="Belief Interview" dot="purple" />
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         {messages.map((msg, i) => (
           <motion.div
@@ -739,7 +739,7 @@ function ReplyBar({
 function BeliefCard({ summary }: { summary: BeliefSummary }) {
   return (
     <div style={{ marginBottom: "28px" }}>
-      <SectionLabel label="Your Belief" dot="blue" />
+      <SectionLabel label="Your Belief" dot="purple" />
       <div style={{
         background: "rgba(18,18,18,0.98)",
         border: "1px solid rgba(91,156,246,0.18)",
@@ -799,7 +799,7 @@ function MetaField({ label, value, color }: { label: string; value: string; colo
 function DomainGrid({ analysis }: { analysis: BeliefAnalysis }) {
   return (
     <div style={{ marginBottom: "8px" }}>
-      <SectionLabel label="Domain Impact Map" dot="orange" />
+      <SectionLabel label="Domain Impact Map" dot="purple" />
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fill, minmax(195px, 1fr))",
@@ -1074,7 +1074,8 @@ function RecCard({
   );
 }
 
-function SectionLabel({ label, dot }: { label: string; dot?: "orange" | "blue" }) {
+function SectionLabel({ label, dot }: { label: string; dot?: "orange" | "blue" | "purple" }) {
+  const dotColor = dot === "orange" ? "#e36438" : dot === "purple" ? "#9b7fe8" : "#5b9cf6";
   return (
     <div style={{
       fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700,
@@ -1085,7 +1086,7 @@ function SectionLabel({ label, dot }: { label: string; dot?: "orange" | "blue" }
       {dot && (
         <span
           className="blink"
-          style={{ fontSize: "7px", color: dot === "orange" ? "#e36438" : "#5b9cf6", animationDelay: dot === "blue" ? "0.7s" : "0s" }}
+          style={{ fontSize: "7px", color: dotColor, animationDelay: dot === "blue" ? "0.7s" : "0s" }}
         >●</span>
       )}
       {label}
