@@ -32,7 +32,8 @@ Rules:
 - Do not recommend broad macro markets unless the causal link is clear and tight.
 - If no good direct markets exist, explicitly say the portfolio uses proxy markets.
 - Include at most 2 first_order_consequence markets.
-- Include at most 1 hedge_or_falsifier unless the user specifically asked for hedges."""
+- Include at most 1 hedge_or_falsifier unless the user specifically asked for hedges.
+- Include at most 1 market per event (event_ticker). If multiple contracts from the same event qualify, pick the single best one."""
 
 _CURATE_TOOL = {
     "type": "function",
@@ -169,10 +170,14 @@ class CuratorAgent:
 
         market_map = {m.ticker: m for m in markets}
         enriched = []
+        seen_events: set[str] = set()
         for rec in result["recommendations"]:
             m = market_map.get(rec["ticker"])
             if m is None:
                 continue
+            if m.event_ticker in seen_events:
+                continue
+            seen_events.add(m.event_ticker)
             enriched.append({
                 "ticker": m.ticker,
                 "event_ticker": m.event_ticker,
