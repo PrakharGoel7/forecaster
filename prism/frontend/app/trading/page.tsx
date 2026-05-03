@@ -212,6 +212,42 @@ function TradingPageInner() {
           {/* ── Active: chat + progressive results ── */}
           {stage !== "idle" && (
             <div>
+              {/* New session button */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
+                <div style={{
+                  fontFamily: "var(--font-mono), monospace", fontSize: "9px",
+                  letterSpacing: "0.2em", textTransform: "uppercase",
+                  color: "#3a3835", display: "flex", alignItems: "center", gap: "8px",
+                }}>
+                  <span style={{ color: "#e36438" }}>◈</span> Trading Companion
+                </div>
+                <button
+                  onClick={() => {
+                    setStage("idle");
+                    setBeliefSummary(null);
+                    setAnalysis(null);
+                    setRecommendations([]);
+                    setChatMessages([]);
+                    setApiHistory([]);
+                    setError("");
+                    setProgressLabel("");
+                    setScreenedCount(0);
+                    setSessionId(null);
+                    router.replace("/trading", { scroll: false });
+                  }}
+                  style={{
+                    background: "transparent", border: "1px solid #282828",
+                    borderRadius: "7px", padding: "6px 14px",
+                    fontFamily: "var(--font-mono), monospace", fontSize: "9px",
+                    fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
+                    color: "#3a3835", cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#e36438"; e.currentTarget.style.color = "#e36438"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#282828"; e.currentTarget.style.color = "#3a3835"; }}
+                >
+                  + New Session
+                </button>
+              </div>
               {/* Chat thread */}
               <ChatThread messages={chatMessages} loading={loading && stage === "chatting"} />
 
@@ -319,6 +355,75 @@ function TradingPageInner() {
                         />
                       </motion.div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Previous sessions (done state only) */}
+              {stage === "done" && sessions.filter(s => s.id !== sessionId).length > 0 && (
+                <div style={{ marginTop: "48px" }}>
+                  <SectionLabel label="Previous Sessions" />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
+                    {sessions.filter(s => s.id !== sessionId).map((s, i) => {
+                      const recs = (() => { try { return JSON.parse(s.recommendations_json).length; } catch { return 0; } })();
+                      const drivers = (() => { try { return JSON.parse(s.key_drivers_json) as string[]; } catch { return [] as string[]; } })();
+                      return (
+                        <motion.button
+                          key={s.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: i * 0.04 }}
+                          onClick={() => restoreSession(s)}
+                          style={{
+                            width: "100%", textAlign: "left",
+                            background: "rgba(14,14,14,0.95)",
+                            border: "1px solid #222", borderRadius: "11px",
+                            padding: "14px 16px",
+                            transition: "border-color 0.15s, background 0.15s",
+                            cursor: "pointer",
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = "rgba(227,100,56,0.22)";
+                            e.currentTarget.style.background = "rgba(18,18,18,0.98)";
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = "#222";
+                            e.currentTarget.style.background = "rgba(14,14,14,0.95)";
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: "13px", fontWeight: 600, color: "#ede9e3",
+                                lineHeight: 1.4, marginBottom: "6px",
+                                overflow: "hidden", display: "-webkit-box",
+                                WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
+                              }}>
+                                {s.core_belief}
+                              </div>
+                              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                                {drivers.slice(0, 3).map((d, j) => (
+                                  <span key={j} style={{
+                                    fontSize: "10px", color: "#4a4845",
+                                    background: "rgba(255,255,255,0.03)",
+                                    border: "1px solid #1e1e1e", borderRadius: "4px",
+                                    padding: "2px 7px",
+                                  }}>{d}</span>
+                                ))}
+                              </div>
+                            </div>
+                            <div style={{ flexShrink: 0, textAlign: "right" }}>
+                              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#e36438", marginBottom: "4px" }}>
+                                {recs} market{recs !== 1 ? "s" : ""}
+                              </div>
+                              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#2a2826" }}>
+                                {relTime(s.created_at)}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
