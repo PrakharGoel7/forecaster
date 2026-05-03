@@ -214,7 +214,7 @@ function TradingPageInner() {
                   letterSpacing: "0.2em", textTransform: "uppercase",
                   color: "#3a3835", display: "flex", alignItems: "center", gap: "8px",
                 }}>
-                  <span style={{ color: "#e36438" }}>◈</span> Trading Companion
+                  <span style={{ color: "#9b7fe8" }}>◈</span> Trading Companion
                 </div>
                 <button
                   onClick={() => {
@@ -237,7 +237,7 @@ function TradingPageInner() {
                     fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
                     color: "#3a3835", cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#e36438"; e.currentTarget.style.color = "#e36438"; }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#9b7fe8"; e.currentTarget.style.color = "#9b7fe8"; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = "#282828"; e.currentTarget.style.color = "#3a3835"; }}
                 >
                   + New Session
@@ -299,7 +299,7 @@ function TradingPageInner() {
                     display: "flex", alignItems: "center", gap: "8px",
                   }}
                 >
-                  <span style={{ color: "#e36438" }}>→</span>
+                  <span style={{ color: "#9b7fe8" }}>→</span>
                   {screenedCount} relevant events screened from Kalshi catalog
                 </motion.div>
               )}
@@ -319,7 +319,7 @@ function TradingPageInner() {
                       display: "flex", alignItems: "center", gap: "10px",
                     }}
                   >
-                    <span className="blink" style={{ color: "#e36438", fontSize: "7px" }}>●</span>
+                    <span className="blink" style={{ color: "#9b7fe8", fontSize: "7px" }}>●</span>
                     {progressLabel}
                   </motion.div>
                 )}
@@ -481,7 +481,7 @@ function IdleView({
         color: "#3a3835", marginBottom: "20px",
         display: "flex", alignItems: "center", gap: "8px",
       }}>
-        <span style={{ color: "#e36438" }}>◈</span> Trading Companion
+        <span style={{ color: "#9b7fe8" }}>◈</span> Trading Companion
       </div>
 
       <h1 style={{
@@ -532,7 +532,7 @@ function IdleView({
             onClick={onSubmit}
             disabled={!input.trim()}
             style={{
-              background: input.trim() ? "#e36438" : "#181818",
+              background: input.trim() ? "#9b7fe8" : "#181818",
               color: "#fff", border: "none", borderRadius: "8px",
               padding: "9px 22px", fontSize: "11px",
               fontFamily: "var(--font-mono), monospace",
@@ -541,8 +541,8 @@ function IdleView({
               opacity: input.trim() ? 1 : 0.35,
               cursor: input.trim() ? "pointer" : "default",
             }}
-            onMouseEnter={e => { if (input.trim()) e.currentTarget.style.background = "#c4421a"; }}
-            onMouseLeave={e => { if (input.trim()) e.currentTarget.style.background = "#e36438"; }}
+            onMouseEnter={e => { if (input.trim()) e.currentTarget.style.background = "#7b5fc8"; }}
+            onMouseLeave={e => { if (input.trim()) e.currentTarget.style.background = "#9b7fe8"; }}
           >
             Find Markets →
           </button>
@@ -673,7 +673,7 @@ function ChatThread({ messages, loading }: { messages: ChatMsg[]; loading: boole
             fontFamily: "var(--font-mono), monospace", fontSize: "11px",
             color: "#3a3835", display: "flex", alignItems: "center", gap: "8px",
           }}>
-            <span className="blink" style={{ color: "#e36438", fontSize: "7px" }}>●</span>
+            <span className="blink" style={{ color: "#9b7fe8", fontSize: "7px" }}>●</span>
             thinking…
           </div>
         )}
@@ -718,7 +718,7 @@ function ReplyBar({
         onClick={onSubmit}
         disabled={disabled || !input.trim()}
         style={{
-          background: disabled || !input.trim() ? "#181818" : "#e36438",
+          background: disabled || !input.trim() ? "#181818" : "#9b7fe8",
           color: "#fff", border: "none", borderRadius: "8px",
           padding: "8px 18px", fontSize: "11px",
           fontFamily: "var(--font-mono), monospace",
@@ -727,8 +727,8 @@ function ReplyBar({
           opacity: disabled || !input.trim() ? 0.4 : 1,
           cursor: disabled || !input.trim() ? "default" : "pointer",
         }}
-        onMouseEnter={e => { if (!disabled && input.trim()) e.currentTarget.style.background = "#c4421a"; }}
-        onMouseLeave={e => { if (!disabled && input.trim()) e.currentTarget.style.background = "#e36438"; }}
+        onMouseEnter={e => { if (!disabled && input.trim()) e.currentTarget.style.background = "#7b5fc8"; }}
+        onMouseLeave={e => { if (!disabled && input.trim()) e.currentTarget.style.background = "#9b7fe8"; }}
       >
         {disabled ? "…" : "Reply →"}
       </button>
