@@ -73,11 +73,6 @@ function TradingPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-    }
-  }, [chatMessages, beliefSummary, analysis, recommendations, progressLabel]);
 
   function startAnalysis(summary: BeliefSummary) {
     streamTradingAnalysis(summary, (msg) => {
