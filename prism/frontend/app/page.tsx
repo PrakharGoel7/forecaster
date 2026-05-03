@@ -330,7 +330,7 @@ function HomeInner() {
                       {
                         n: "02",
                         title: "Your markets",
-                        desc: <span><span style={{ color: "#5b9cf6" }}>Compass</span> finds every market that pays if you&apos;re right.</span>,
+                        desc: <span><span style={{ color: "#9b7fe8" }}>Compass</span> finds every market that pays if you&apos;re right.</span>,
                       },
                       {
                         n: "03",

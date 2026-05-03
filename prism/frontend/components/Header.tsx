@@ -5,8 +5,8 @@ import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 
 const NAV = [
   { href: "/",          label: "Home"      },
-  { href: "/forecasts", label: "Intel"     },
   { href: "/trading",   label: "Compass"   },
+  { href: "/forecasts", label: "Intel"     },
   { href: "/model",     label: "Model"     },
 ];
 
