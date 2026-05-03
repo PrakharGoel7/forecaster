@@ -57,7 +57,7 @@ export default function Header() {
               border: active ? "1px solid #252525" : "1px solid transparent",
               transition: "color 0.15s, background 0.15s",
             };
-            if (href === "/") {
+            if (href === "/" || href === "/trading") {
               return (
                 <a
                   key={href}
