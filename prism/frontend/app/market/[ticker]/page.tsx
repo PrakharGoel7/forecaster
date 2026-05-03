@@ -211,9 +211,18 @@ export default function MarketPage() {
                   {displayCat}{displaySub ? ` · ${displaySub}` : ""}
                 </div>
               )}
-              <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#ede9e3", lineHeight: 1.4, marginBottom: "20px" }}>
+              <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#ede9e3", lineHeight: 1.4, marginBottom: markets.length > 1 && mkt.yes_sub_title ? "12px" : "20px" }}>
                 {displayTitle || mkt.yes_sub_title || mkt.ticker}
               </h1>
+              {markets.length > 1 && mkt.yes_sub_title && (
+                <div style={{
+                  fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
+                  textTransform: "uppercase", letterSpacing: "0.16em", color: "#6b6865",
+                  marginBottom: "20px",
+                }}>
+                  Selected Option · <span style={{ color: "#ede9e3" }}>{mkt.yes_sub_title}</span>
+                </div>
+              )}
               <YesNoBar price={mkt.mid_price} />
             </div>
 
