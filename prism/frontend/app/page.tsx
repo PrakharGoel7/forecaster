@@ -324,18 +324,18 @@ function HomeInner() {
                     {[
                       {
                         n: "01",
-                        title: "State your thesis",
-                        desc: "Describe what you believe will happen — geopolitics, macro, policy.",
+                        title: "Your opinion",
+                        desc: <span>You think something&apos;s going to happen.</span>,
                       },
                       {
                         n: "02",
-                        title: "Map the effects",
-                        desc: "We identify the downstream markets your thesis implies — the connections you wouldn't think to look for.",
+                        title: "Your markets",
+                        desc: <span><span style={{ color: "#5b9cf6" }}>Compass</span> finds every market that pays if you&apos;re right.</span>,
                       },
                       {
                         n: "03",
-                        title: "Find the edge",
-                        desc: "We independently estimate the true probability of each event and flag where the market is wrong.",
+                        title: "Your edge",
+                        desc: <span><span style={{ color: "#e36438" }}>Intel</span> tells you whether the odds are in your favor.</span>,
                       },
                     ].map((step) => (
                       <div
