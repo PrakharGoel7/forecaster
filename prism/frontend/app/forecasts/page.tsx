@@ -93,9 +93,12 @@ export default function IntelPage() {
 
         {/* Page header */}
         <div style={{ marginBottom: "28px" }}>
-          <h1 style={{ fontSize: "26px", fontWeight: 700, color: "#ede9e3", letterSpacing: "-0.01em" }}>
+          <h1 style={{ fontSize: "26px", fontWeight: 700, color: "#ede9e3", letterSpacing: "-0.01em", marginBottom: "8px" }}>
             Intel
           </h1>
+          <p style={{ fontSize: "14px", color: "#7a7570", lineHeight: 1.5, margin: 0 }}>
+            Already have a market in mind? Enter the ticker and we&apos;ll run deep research to tell you if the odds are right.
+          </p>
         </div>
 
         {/* Search bar */}
