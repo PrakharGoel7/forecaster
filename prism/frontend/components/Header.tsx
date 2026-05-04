@@ -56,6 +56,10 @@ export default function Header() {
     router.refresh();
   }
 
+  function hardNavigate(href: string) {
+    window.location.href = href;
+  }
+
   return (
     <>
       <header style={{
@@ -70,7 +74,14 @@ export default function Header() {
           height: "56px", display: "flex", alignItems: "center", gap: "40px",
         }}>
           {/* Logo */}
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", flexShrink: 0 }}>
+          <Link
+            href="/"
+            onClick={e => {
+              e.preventDefault();
+              hardNavigate("/");
+            }}
+            style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", flexShrink: 0 }}
+          >
             <div style={{
               width: "28px", height: "28px", borderRadius: "7px",
               background: "linear-gradient(135deg, #181818 0%, #0a0a0a 100%)",
@@ -102,7 +113,14 @@ export default function Header() {
                 transition: "color 0.15s, background 0.15s",
               };
               return (
-                <Link key={href} href={href} style={navStyle}
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={e => {
+                    e.preventDefault();
+                    hardNavigate(href);
+                  }}
+                  style={navStyle}
                   onMouseEnter={e => { if (!active) e.currentTarget.style.color = "#ede9e3"; }}
                   onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#6b6865"; }}
                 >{label}</Link>
