@@ -7,10 +7,10 @@ no API calls here. Real-time market details are fetched after screening.
 from __future__ import annotations
 import json
 import os
-from pathlib import Path
 
 from openai import OpenAI
 from cache_paths import EVENTS_CACHE_FILE
+from event_cache_db import load_all_events, search_events_fts
 
 CACHE_FILE = EVENTS_CACHE_FILE
 
@@ -115,8 +115,7 @@ def _load_cache() -> list[dict]:
             f"Event cache not found at {CACHE_FILE}. "
             "Run `python sync_events.py` first."
         )
-    data = json.loads(CACHE_FILE.read_text())
-    return data["events"]
+    return load_all_events()
 
 
 def _format_events(events: list[dict]) -> str:
@@ -145,13 +144,33 @@ class ScreenerAgent:
             (belief_summary.get("core_belief", "") + " " + belief_summary.get("scope", "")).lower().split()
         )
         include_elections = bool(belief_words & ELECTION_KEYWORDS)
-        events = [
+        baseline_events = [
             e for e in all_events
             if e["category"] != "Elections" or include_elections
         ]
+        search_text = " ".join(
+            part for part in [
+                belief_summary.get("core_belief", ""),
+                belief_summary.get("scope", ""),
+                belief_summary.get("resolution_target", ""),
+                belief_summary.get("mechanism", ""),
+                " ".join(belief_summary.get("key_drivers", [])),
+                " ".join(belief_summary.get("falsifiers", [])),
+            ]
+            if part
+        )
+        fts_events = search_events_fts(search_text, limit=1200)
+        events = [
+            e for e in fts_events
+            if e["category"] != "Elections" or include_elections
+        ] if fts_events else baseline_events
+        if len(events) < 200:
+            events = baseline_events
 
         if include_elections:
             print(f"  Including Elections category ({sum(1 for e in all_events if e['category'] == 'Elections')} events)")
+        if fts_events:
+            print(f"  FTS prefilter: {len(events)} candidate events from cached index")
 
         resolution_target = belief_summary.get("resolution_target", "")
         timeframe_start = belief_summary.get("timeframe_start", "")

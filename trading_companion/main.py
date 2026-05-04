@@ -16,8 +16,6 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env")
 load_dotenv(Path(__file__).parent.parent / "forecaster" / ".env")
 
-import json
-
 # Make the forecaster package importable
 _FORECASTER_PATH = str(Path(__file__).parent.parent / "forecaster")
 if _FORECASTER_PATH not in sys.path:
@@ -26,9 +24,10 @@ if _FORECASTER_PATH not in sys.path:
 from kalshi import KalshiClient, KalshiMarket
 from agents.belief_agent import BeliefAgent
 from agents.analyst_agent import AnalystAgent
-from agents.screener_agent import ScreenerAgent, CACHE_FILE
+from agents.screener_agent import ScreenerAgent
 from agents.curator_agent import CuratorAgent
 from cache_paths import EVENTS_CACHE_FILE
+from event_cache_db import get_event_lookup
 
 DIVIDER = "─" * 60
 
@@ -51,8 +50,7 @@ def _load_event_lookup() -> dict[str, dict]:
     """Return a dict of event_ticker -> {series_ticker, title, sub_title} from cache."""
     if not EVENTS_CACHE_FILE.exists():
         return {}
-    data = json.loads(EVENTS_CACHE_FILE.read_text())
-    return {e["event_ticker"]: e for e in data["events"]}
+    return get_event_lookup()
 
 
 def _display_recommendations(recommendations: list[dict], event_lookup: dict) -> None:

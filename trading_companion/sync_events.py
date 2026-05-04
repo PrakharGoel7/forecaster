@@ -21,6 +21,7 @@ load_dotenv(Path(__file__).parent.parent / "forecaster" / ".env")
 
 from kalshi import KalshiClient
 from cache_paths import EVENTS_CACHE_FILE
+from event_cache_db import rebuild_event_cache_db
 
 CACHE_FILE = EVENTS_CACHE_FILE
 
@@ -77,6 +78,7 @@ def sync(verbose: bool = True) -> int:
     }
 
     CACHE_FILE.write_text(json.dumps(payload, indent=2))
+    rebuild_event_cache_db(all_events)
 
     if verbose:
         print(f"\nSynced {len(all_events)} events → {CACHE_FILE}")

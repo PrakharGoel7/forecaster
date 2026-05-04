@@ -547,6 +547,7 @@ async def oracle_pipeline_stream(req: OraclePipelineRequest):
     from agents.analyst_agent import AnalystAgent
     from agents.screener_agent import ScreenerAgent
     from agents.curator_agent import CuratorAgent
+    from event_cache_db import get_event_lookup
     from kalshi import KalshiClient as TradingKalshiClient
 
     async def _generate() -> AsyncIterator[str]:
@@ -706,7 +707,7 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
         def _run():
             try:
                 from agents.analyst_agent import AnalystAgent
-                from agents.screener_agent import ScreenerAgent, CACHE_FILE
+                from agents.screener_agent import ScreenerAgent
                 from agents.curator_agent import CuratorAgent
 
                 asyncio.run_coroutine_threadsafe(
@@ -810,10 +811,7 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
                 for r in recommendations:
                     print(f"  [{r.get('tier','?')}] {r['ticker']} | {r['direction']} | score={r['score']}")
 
-                event_lookup: dict = {}
-                if CACHE_FILE.exists():
-                    _data = json.loads(CACHE_FILE.read_text())
-                    event_lookup = {e["event_ticker"]: e for e in _data.get("events", [])}
+                event_lookup = get_event_lookup([rec.get("event_ticker", "") for rec in recommendations])
                 for rec in recommendations:
                     evt = event_lookup.get(rec.get("event_ticker", ""), {})
                     rec["event_title"]   = evt.get("title", "")
