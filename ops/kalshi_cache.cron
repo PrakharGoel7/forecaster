@@ -1,0 +1,8 @@
+# Run the full Kalshi cache refresh every day at 2:00 AM local server time.
+#
+# Install with:
+#   crontab ops/kalshi_cache.cron
+#
+# Adjust the repo path if needed.
+
+0 2 * * * cd /Users/PrakharGoel/Desktop/Stanford/Classes/Junior/Spring/BUSGEN116/claude_code/forecaster && /usr/bin/env python3 trading_companion/sync_caches.py >> /tmp/kalshi_cache_sync.log 2>&1

@@ -16,11 +16,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 load_dotenv(Path(__file__).parent.parent / "forecaster" / ".env")
 
 from kalshi import KalshiClient
+from cache_paths import EVENTS_CACHE_FILE
 
-CACHE_FILE = Path(__file__).parent / "events_cache.json"
+CACHE_FILE = EVENTS_CACHE_FILE
 
 # Categories to skip — not useful for most beliefs
 SKIP_CATEGORIES = {"Sports", "Entertainment", "Mentions"}

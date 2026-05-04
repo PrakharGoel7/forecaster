@@ -28,6 +28,7 @@ from agents.belief_agent import BeliefAgent
 from agents.analyst_agent import AnalystAgent
 from agents.screener_agent import ScreenerAgent, CACHE_FILE
 from agents.curator_agent import CuratorAgent
+from cache_paths import EVENTS_CACHE_FILE
 
 DIVIDER = "─" * 60
 
@@ -48,9 +49,9 @@ def _fetch_markets_for_events(client: KalshiClient, event_tickers: list[str]) ->
 
 def _load_event_lookup() -> dict[str, dict]:
     """Return a dict of event_ticker -> {series_ticker, title, sub_title} from cache."""
-    if not CACHE_FILE.exists():
+    if not EVENTS_CACHE_FILE.exists():
         return {}
-    data = json.loads(CACHE_FILE.read_text())
+    data = json.loads(EVENTS_CACHE_FILE.read_text())
     return {e["event_ticker"]: e for e in data["events"]}
 
 

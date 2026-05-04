@@ -10,8 +10,9 @@ import os
 from pathlib import Path
 
 from openai import OpenAI
+from cache_paths import EVENTS_CACHE_FILE
 
-CACHE_FILE = Path(__file__).parent.parent / "events_cache.json"
+CACHE_FILE = EVENTS_CACHE_FILE
 
 # Elections adds ~1,400 events (~28k tokens). Include only when the belief is election-related.
 ELECTION_KEYWORDS = {
