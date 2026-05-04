@@ -118,7 +118,7 @@ def _market_dict(m) -> dict:
 
 def _seconds_until_next_cache_refresh(now: datetime | None = None) -> float:
     now = now or datetime.now(_PACIFIC_TZ)
-    target = now.replace(hour=2, minute=0, second=0, microsecond=0)
+    target = now.replace(hour=14, minute=20, second=0, microsecond=0)
     if now >= target:
         target += timedelta(days=1)
     return max((target - now).total_seconds(), 0.0)
