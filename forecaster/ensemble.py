@@ -5,6 +5,7 @@ Two-phase ensemble:
   Supervisor reconciles IV agents with OV consensus as context.
 Runs K independent passes; final probability = geometric mean of reconciled probabilities.
 """
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Optional
 from forecaster.models import (
     AgentForecast, OutsideViewForecast, OutsideViewConsensus,
@@ -31,6 +32,33 @@ def _aggregate_outside_views(ov_forecasts: list[OutsideViewForecast]) -> Outside
     )
 
 
+def _run_parallel_agents(
+    count: int,
+    label_fmt: str,
+    worker_fn,
+    on_step: Optional[Callable] = None,
+):
+    results = [None] * count
+    if count <= 0:
+        return results
+
+    with ThreadPoolExecutor(max_workers=count) as executor:
+        future_to_idx = {}
+        for i in range(count):
+            if on_step:
+                on_step(label_fmt(i), "running")
+            future = executor.submit(worker_fn, i)
+            future_to_idx[future] = i
+
+        for future in as_completed(future_to_idx):
+            i = future_to_idx[future]
+            results[i] = future.result()
+            if on_step:
+                on_step(label_fmt(i), "done")
+
+    return results
+
+
 def run_single_pass(
     parsed_question: ParsedQuestion,
     config: ForecasterConfig,
@@ -38,26 +66,24 @@ def run_single_pass(
     on_step: Optional[Callable] = None,
 ) -> tuple[list[OutsideViewForecast], OutsideViewConsensus, list[AgentForecast], SupervisorReconciliation]:
     # Phase 1: outside view
-    ov_forecasts: list[OutsideViewForecast] = []
-    for i in range(config.num_ov_agents):
-        if on_step:
-            on_step(f"Run {run_id+1} · OV Agent {i+1}/{config.num_ov_agents}", "running")
-        ov_forecasts.append(run_outside_view_agent(parsed_question, agent_id=i, config=config))
-        if on_step:
-            on_step(f"Run {run_id+1} · OV Agent {i+1}/{config.num_ov_agents}", "done")
+    ov_forecasts = _run_parallel_agents(
+        config.num_ov_agents,
+        lambda i: f"Run {run_id+1} · OV Agent {i+1}/{config.num_ov_agents}",
+        lambda i: run_outside_view_agent(parsed_question, agent_id=i, config=config),
+        on_step=on_step,
+    )
 
     ov_consensus = _aggregate_outside_views(ov_forecasts)
     if on_step:
         on_step("OV Phase", "complete", ov_consensus)
 
     # Phase 2: inside view
-    iv_forecasts: list[AgentForecast] = []
-    for i in range(config.num_iv_agents):
-        if on_step:
-            on_step(f"Run {run_id+1} · Agent {i+1}/{config.num_iv_agents}", "running")
-        iv_forecasts.append(run_forecasting_agent(parsed_question, agent_id=i, ov_consensus=ov_consensus, config=config))
-        if on_step:
-            on_step(f"Run {run_id+1} · Agent {i+1}/{config.num_iv_agents}", "done")
+    iv_forecasts = _run_parallel_agents(
+        config.num_iv_agents,
+        lambda i: f"Run {run_id+1} · Agent {i+1}/{config.num_iv_agents}",
+        lambda i: run_forecasting_agent(parsed_question, agent_id=i, ov_consensus=ov_consensus, config=config),
+        on_step=on_step,
+    )
 
     if on_step:
         on_step("IV Phase", "complete", iv_forecasts)
