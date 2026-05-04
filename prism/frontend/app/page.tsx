@@ -263,7 +263,7 @@ function HomeInner() {
                         value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={onIdleKey}
-                        placeholder="Enter your opinion - e.g. I think the Fed will cut rates this summer"
+                        placeholder="Enter your opinion (e.g. I think the Fed will cut rates this summer)"
                         rows={2}
                         autoFocus
                         style={{
@@ -349,7 +349,7 @@ function HomeInner() {
                               handleIntelSubmit();
                             }
                           }}
-                          placeholder="Enter the market you're looking for - e.g. date of OpenAI IPO"
+                          placeholder="Enter the market you're looking for (e.g. date of OpenAI IPO)"
                           style={{
                             flex: 1, background: "transparent", border: "none",
                             fontSize: "14px", color: "#ede9e3", outline: "none",
