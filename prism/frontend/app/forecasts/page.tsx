@@ -88,7 +88,7 @@ function IntelInner() {
   };
 
   const goRunForecast = (event: KalshiEvent) =>
-    router.push(`/market/${event.event_ticker}?title=${encodeURIComponent(event.title)}&cat=${encodeURIComponent(event.category)}&sub=${encodeURIComponent(event.sub_title)}&runForecast=1`);
+    router.push(`/market/${event.event_ticker}?title=${encodeURIComponent(event.title)}&cat=${encodeURIComponent(event.category)}&sub=${encodeURIComponent(event.sub_title)}`);
 
   const goForecast = (f: SavedForecast) =>
     router.push(`/market/${f.ticker}?saved=${f.id}`);

@@ -410,7 +410,7 @@ function HomeInner() {
                           key={event.event_ticker}
                           event={event}
                           index={i}
-                          onForecast={e => router.push(`/market/${e.event_ticker}?title=${encodeURIComponent(e.title)}&cat=${encodeURIComponent(e.category)}&sub=${encodeURIComponent(e.sub_title)}&runForecast=1`)}
+                          onForecast={e => router.push(`/market/${e.event_ticker}?title=${encodeURIComponent(e.title)}&cat=${encodeURIComponent(e.category)}&sub=${encodeURIComponent(e.sub_title)}`)}
                         />
                       ))}
                     </div>
