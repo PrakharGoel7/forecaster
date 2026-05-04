@@ -263,7 +263,7 @@ function HomeInner() {
                         value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={onIdleKey}
-                        placeholder="e.g. I think the Fed will cut rates this summer"
+                        placeholder="Enter your opinion - e.g. I think the Fed will cut rates this summer"
                         rows={3}
                         autoFocus
                         style={{
@@ -274,29 +274,33 @@ function HomeInner() {
                           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
                         }}
                       />
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px", gap: "12px", flexWrap: "wrap" }}>
-                        <span style={{
-                          fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-                          color: "#6b5a51", letterSpacing: "0.08em",
-                        }}>
-                          belief → relevant markets
-                        </span>
+                      <div style={{ display: "flex", justifyContent: "center", marginTop: "16px" }}>
                         <button
                           onClick={handleSubmit}
                           disabled={!input.trim()}
                           style={{
-                            background: input.trim() ? "#e36438" : "#181818",
-                            color: "#fff", border: "none", borderRadius: "10px",
-                            padding: "10px 18px", fontSize: "11px",
+                            background: input.trim() ? "linear-gradient(180deg, #f07a4b, #d95426)" : "#181818",
+                            color: "#fff", border: input.trim() ? "1px solid rgba(255,255,255,0.14)" : "1px solid #242424", borderRadius: "12px",
+                            padding: "12px 22px", fontSize: "11px",
                             fontFamily: "var(--font-mono), monospace",
                             fontWeight: 700, letterSpacing: "0.06em",
-                            transition: "background 0.15s, box-shadow 0.15s",
+                            transition: "transform 0.15s, filter 0.15s, box-shadow 0.15s",
                             opacity: input.trim() ? 1 : 0.4,
                             cursor: input.trim() ? "pointer" : "default",
-                            boxShadow: input.trim() ? "0 0 24px rgba(227,100,56,0.22)" : "none",
+                            boxShadow: input.trim() ? "0 10px 28px rgba(227,100,56,0.28), inset 0 1px 0 rgba(255,255,255,0.16)" : "none",
                           }}
-                          onMouseEnter={e => { if (input.trim()) e.currentTarget.style.background = "#c4421a"; }}
-                          onMouseLeave={e => { if (input.trim()) e.currentTarget.style.background = "#e36438"; }}
+                          onMouseEnter={e => {
+                            if (input.trim()) {
+                              e.currentTarget.style.transform = "translateY(-1px)";
+                              e.currentTarget.style.filter = "brightness(1.05)";
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            if (input.trim()) {
+                              e.currentTarget.style.transform = "translateY(0)";
+                              e.currentTarget.style.filter = "brightness(1)";
+                            }
+                          }}
                         >
                           Find relevant markets →
                         </button>
@@ -345,29 +349,31 @@ function HomeInner() {
                               handleIntelSubmit();
                             }
                           }}
-                          placeholder="Search markets — Bitcoin, elections, Fed, AI…"
+                          placeholder="Enter the market you're looking for - e.g. date of OpenAI IPO"
                           style={{
                             flex: 1, background: "transparent", border: "none",
                             fontSize: "14px", color: "#ede9e3", outline: "none",
                             fontFamily: "var(--font-jakarta), system-ui, sans-serif",
                           }}
                         />
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "center", marginTop: "16px" }}>
                         <button
                           onClick={handleIntelSubmit}
                           style={{
-                            background: "#1a1a1a", color: "#fff",
-                            border: "1px solid #2a2a2a", borderRadius: "10px", padding: "10px 16px",
+                            background: "linear-gradient(180deg, #6faeff, #3f79e6)", color: "#fff",
+                            border: "1px solid rgba(255,255,255,0.14)", borderRadius: "12px", padding: "12px 22px",
                             fontSize: "11px", fontFamily: "var(--font-mono), monospace",
-                            fontWeight: 700, letterSpacing: "0.06em", transition: "background 0.15s, border-color 0.15s",
-                            cursor: "pointer",
+                            fontWeight: 700, letterSpacing: "0.06em", transition: "transform 0.15s, filter 0.15s, box-shadow 0.15s",
+                            cursor: "pointer", boxShadow: "0 10px 28px rgba(91,156,246,0.24), inset 0 1px 0 rgba(255,255,255,0.18)",
                           }}
                           onMouseEnter={e => {
-                            e.currentTarget.style.background = "#202020";
-                            e.currentTarget.style.borderColor = "#3a3a3a";
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                            e.currentTarget.style.filter = "brightness(1.05)";
                           }}
                           onMouseLeave={e => {
-                            e.currentTarget.style.background = "#1a1a1a";
-                            e.currentTarget.style.borderColor = "#2a2a2a";
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.filter = "brightness(1)";
                           }}
                         >
                           Run analysis →
