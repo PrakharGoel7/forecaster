@@ -264,7 +264,7 @@ function HomeInner() {
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={onIdleKey}
                         placeholder="Enter your opinion - e.g. I think the Fed will cut rates this summer"
-                        rows={3}
+                        rows={2}
                         autoFocus
                         style={{
                           width: "100%", background: "rgba(8,8,8,0.9)", border: "1px solid rgba(227,100,56,0.18)",
@@ -279,15 +279,15 @@ function HomeInner() {
                           onClick={handleSubmit}
                           disabled={!input.trim()}
                           style={{
-                            background: input.trim() ? "linear-gradient(180deg, #f07a4b, #d95426)" : "#181818",
-                            color: "#fff", border: input.trim() ? "1px solid rgba(255,255,255,0.14)" : "1px solid #242424", borderRadius: "12px",
+                            background: "linear-gradient(180deg, #f07a4b, #d95426)",
+                            color: "#fff", border: "1px solid rgba(255,255,255,0.14)", borderRadius: "12px",
                             padding: "12px 22px", fontSize: "11px",
                             fontFamily: "var(--font-mono), monospace",
                             fontWeight: 700, letterSpacing: "0.06em",
                             transition: "transform 0.15s, filter 0.15s, box-shadow 0.15s",
-                            opacity: input.trim() ? 1 : 0.4,
+                            opacity: input.trim() ? 1 : 0.55,
                             cursor: input.trim() ? "pointer" : "default",
-                            boxShadow: input.trim() ? "0 10px 28px rgba(227,100,56,0.28), inset 0 1px 0 rgba(255,255,255,0.16)" : "none",
+                            boxShadow: "0 10px 28px rgba(227,100,56,0.28), inset 0 1px 0 rgba(255,255,255,0.16)",
                           }}
                           onMouseEnter={e => {
                             if (input.trim()) {
@@ -338,7 +338,7 @@ function HomeInner() {
                       <div style={{
                         display: "flex", gap: "8px",
                         background: "rgba(8,8,8,0.92)", border: "1px solid #282828",
-                        borderRadius: "14px", padding: "6px 6px 6px 16px",
+                        borderRadius: "14px", padding: "0 16px", minHeight: "69px", alignItems: "center",
                       }}>
                         <input
                           value={marketQuery}
@@ -390,13 +390,30 @@ function HomeInner() {
                     transition={{ duration: 0.4, delay: 0.22 }}
                     style={{ marginBottom: sessions.length > 0 ? "36px" : 0 }}
                   >
-                    <SectionLabel label="Live markets" />
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "14px", paddingBottom: "10px", borderBottom: "1px solid #1e1e1e" }}>
+                      <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.18em", color: "#9b9790" }}>
+                        Live markets
+                      </div>
+                      <button
+                        onClick={() => router.push("/forecasts")}
+                        style={{
+                          background: "transparent", border: "none", padding: 0,
+                          fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700,
+                          letterSpacing: "0.08em", color: "#5b9cf6", cursor: "pointer",
+                          transition: "color 0.15s",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.color = "#8cbcff")}
+                        onMouseLeave={e => (e.currentTarget.style.color = "#5b9cf6")}
+                      >
+                        View all →
+                      </button>
+                    </div>
                     <div style={{
                       display: "grid",
                       gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
                       gap: "10px",
                     }}>
-                      {liveMarkets.slice(0, 4).map((event, i) => (
+                      {liveMarkets.slice(0, 6).map((event, i) => (
                         <MarketCard
                           key={event.event_ticker}
                           event={event}
