@@ -331,14 +331,14 @@ export default function MarketPage() {
 
                       {/* Row 2: For | Against */}
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", alignItems: "stretch" }}>
-                        <GridCell label="For YES" labelColor="#4ade80">
+                        <GridCell label="Arguments for" labelColor="#4ade80">
                           {!ivData ? <Skeleton lines={[75, 60, 80, 55]} /> : (
                             allFor.length > 0
                               ? allFor.map((f, i) => <div key={i} style={{ fontSize: "12px", color: "#ede9e3", padding: "5px 0", borderBottom: "1px solid #141414" }}>+ {f}</div>)
                               : <div style={{ fontSize: "12px", color: "#3a3835" }}>—</div>
                           )}
                         </GridCell>
-                        <GridCell label="Against" labelColor="#f87171">
+                        <GridCell label="Arguments against" labelColor="#f87171">
                           {!ivData ? <Skeleton lines={[65, 75, 55, 80]} /> : (
                             allAgainst.length > 0
                               ? allAgainst.map((f, i) => <div key={i} style={{ fontSize: "12px", color: "#ede9e3", padding: "5px 0", borderBottom: "1px solid #141414" }}>− {f}</div>)
