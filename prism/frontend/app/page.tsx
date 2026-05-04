@@ -335,12 +335,7 @@ function HomeInner() {
                       <p style={{ fontSize: "14px", color: "#948d86", lineHeight: 1.6, margin: "0 0 18px" }}>
                         Already have a particular market in mind? Run deep research to see if it is underpriced on Kalshi.
                       </p>
-                      <div style={{
-                        display: "flex", gap: "8px",
-                        background: "rgba(8,8,8,0.92)", border: "1px solid #282828",
-                        borderRadius: "14px", padding: "0 16px", minHeight: "69px", alignItems: "center",
-                      }}>
-                        <input
+                      <textarea
                           value={marketQuery}
                           onChange={e => setMarketQuery(e.target.value)}
                           onKeyDown={e => {
@@ -350,13 +345,15 @@ function HomeInner() {
                             }
                           }}
                           placeholder="Enter the market you're looking for (e.g. date of OpenAI IPO)"
+                          rows={2}
                           style={{
-                            flex: 1, background: "transparent", border: "none",
-                            fontSize: "14px", color: "#ede9e3", outline: "none",
+                            width: "100%", background: "rgba(8,8,8,0.92)", border: "1px solid #282828",
+                            borderRadius: "14px", fontSize: "14px", color: "#ede9e3",
                             fontFamily: "var(--font-jakarta), system-ui, sans-serif",
+                            outline: "none", resize: "none", lineHeight: 1.65, padding: "16px 16px 14px",
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
                           }}
                         />
-                      </div>
                       <div style={{ display: "flex", justifyContent: "center", marginTop: "16px" }}>
                         <button
                           onClick={handleIntelSubmit}
