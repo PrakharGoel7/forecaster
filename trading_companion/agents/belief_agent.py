@@ -10,6 +10,7 @@ change their mind.
 from __future__ import annotations
 import json
 import os
+import re
 
 import httpx
 from bs4 import BeautifulSoup
@@ -165,6 +166,46 @@ def _web_search(query: str, max_results: int = 4) -> list[dict]:
         return [{"error": str(e)}]
 
 
+def _clean_question(text: str) -> str:
+    text = " ".join((text or "").strip().split())
+    if not text:
+        return text
+
+    # If the model leaked context, keep only the last question-like sentence.
+    question_spans = list(re.finditer(r"[^?]*\?", text))
+    if question_spans:
+        text = question_spans[-1].group(0).strip()
+
+    lower = text.lower()
+    if "for example," in lower:
+        text = re.split(r"\bfor example,\b", text, flags=re.IGNORECASE)[0].strip()
+    if "for example:" in lower:
+        text = re.split(r"\bfor example:\b", text, flags=re.IGNORECASE)[0].strip()
+
+    # Remove common prefaces that turn the question into a mini-paragraph.
+    prefixes = [
+        "would you like to specify",
+        "would you like to clarify",
+        "do you want to specify",
+        "do you want to clarify",
+        "can you clarify",
+        "could you clarify",
+    ]
+    for prefix in prefixes:
+        if lower.startswith(prefix):
+            if "when" in lower:
+                return "When do you think this will happen?"
+            return "What exactly would count as this being true?"
+
+    words = text.split()
+    if len(words) > 20 and " when " in f" {lower} ":
+        return "When do you think this will happen?"
+    if len(words) > 20 and " what " in f" {lower} ":
+        return "What exactly would count as this being true?"
+
+    return text
+
+
 class BeliefAgent:
     def __init__(self, api_key: str | None = None, model: str = "openai/gpt-4o"):
         self._client = OpenAI(
@@ -239,7 +280,7 @@ class BeliefAgent:
 
             return {
                 "status": "asking",
-                "agent_message": (choice.message.content or "").strip(),
+                "agent_message": _clean_question((choice.message.content or "").strip()),
                 "search_queries": search_queries,
                 "belief_summary": None,
                 "history": msgs,
@@ -312,7 +353,7 @@ class BeliefAgent:
                 continue
 
             # No tool call — model produced a conversational reply
-            assistant_text = (choice.message.content or "").strip()
+            assistant_text = _clean_question((choice.message.content or "").strip())
             if assistant_text:
                 print(f"\nAssistant: {assistant_text}")
                 user_reply = input("\nYou: ").strip()
