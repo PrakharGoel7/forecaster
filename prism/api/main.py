@@ -1,13 +1,16 @@
 """Prism API — FastAPI backend wrapping the forecaster package."""
 import asyncio
+import contextlib
 import csv
 import dataclasses
 import json
 import logging
 import os
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, AsyncIterator
+from zoneinfo import ZoneInfo
 
 # Repo root is three levels up from prism/api/main.py; forecaster package lives there
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -33,6 +36,11 @@ from pydantic import BaseModel
 
 _SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
 _KALSHI_API_LOG_FILE = (_REPO_ROOT / os.environ.get("KALSHI_API_LOG_FILE", "runtime_logs/kalshi_api_log.csv")).resolve()
+_PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
+_ENABLE_CACHE_REFRESH_SCHEDULER = os.environ.get("ENABLE_CACHE_REFRESH_SCHEDULER", "").lower() == "true"
+_cache_refresh_logger = logging.getLogger("prism.cache_refresh")
+_cache_refresh_lock = asyncio.Lock()
+_cache_refresh_task: asyncio.Task | None = None
 
 def _get_user_id(request: Request) -> str | None:
     """Extract and verify Supabase JWT; return user_id (sub) or None."""
@@ -62,6 +70,7 @@ _TC_AVAILABLE = _TC_PATH.exists()
 
 app = FastAPI(title="Prism API")
 logging.getLogger("prism.kalshi").setLevel(logging.INFO)
+_cache_refresh_logger.setLevel(logging.INFO)
 
 _raw_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001")
 _origins = list({o.strip() for o in _raw_origins.split(",") if o.strip()} | {
@@ -105,6 +114,74 @@ def _market_dict(m) -> dict:
         "close_date": m.close_date, "mid_price": m.mid_price,
         "question": m.question, "status": m.status,
     }
+
+
+def _seconds_until_next_cache_refresh(now: datetime | None = None) -> float:
+    now = now or datetime.now(_PACIFIC_TZ)
+    target = now.replace(hour=2, minute=0, second=0, microsecond=0)
+    if now >= target:
+        target += timedelta(days=1)
+    return max((target - now).total_seconds(), 0.0)
+
+
+async def _run_cache_refresh() -> None:
+    if _cache_refresh_lock.locked():
+        _cache_refresh_logger.warning("Skipping cache refresh because a previous run is still in progress")
+        return
+
+    async with _cache_refresh_lock:
+        started_at = datetime.now(_PACIFIC_TZ).isoformat()
+        _cache_refresh_logger.info("Starting scheduled cache refresh at %s", started_at)
+        try:
+            from sync_caches import main as sync_caches_main
+
+            await asyncio.to_thread(sync_caches_main)
+            finished_at = datetime.now(_PACIFIC_TZ).isoformat()
+            _cache_refresh_logger.info("Scheduled cache refresh succeeded at %s", finished_at)
+        except Exception:
+            _cache_refresh_logger.exception("Scheduled cache refresh failed")
+
+
+async def _cache_refresh_scheduler_loop() -> None:
+    _cache_refresh_logger.info("Cache refresh scheduler started")
+    while True:
+        sleep_seconds = _seconds_until_next_cache_refresh()
+        next_run = datetime.now(_PACIFIC_TZ) + timedelta(seconds=sleep_seconds)
+        _cache_refresh_logger.info(
+            "Next cache refresh scheduled for %s",
+            next_run.isoformat(),
+        )
+        await asyncio.sleep(sleep_seconds)
+        await _run_cache_refresh()
+
+
+@app.on_event("startup")
+async def _startup_cache_refresh_scheduler() -> None:
+    global _cache_refresh_task
+
+    if not _ENABLE_CACHE_REFRESH_SCHEDULER:
+        _cache_refresh_logger.info("Cache refresh scheduler disabled")
+        return
+    if not _TC_AVAILABLE:
+        _cache_refresh_logger.warning("Cache refresh scheduler not started because trading_companion is unavailable")
+        return
+    if _cache_refresh_task is not None and not _cache_refresh_task.done():
+        _cache_refresh_logger.warning("Cache refresh scheduler already running")
+        return
+
+    _cache_refresh_task = asyncio.create_task(_cache_refresh_scheduler_loop())
+
+
+@app.on_event("shutdown")
+async def _shutdown_cache_refresh_scheduler() -> None:
+    global _cache_refresh_task
+
+    if _cache_refresh_task is None:
+        return
+    _cache_refresh_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await _cache_refresh_task
+    _cache_refresh_task = None
 
 
 def _read_kalshi_log_rows(limit: int) -> list[dict[str, str]]:
