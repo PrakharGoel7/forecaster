@@ -107,7 +107,7 @@ function IntelInner() {
             Intel
           </h1>
           <p style={{ fontSize: "14px", color: "#7a7570", lineHeight: 1.5, margin: 0 }}>
-            Already have a market in mind? Enter the ticker and we&apos;ll run deep research to tell you if the odds are right.
+            Already have a market in mind? Look up the market and we&apos;ll run deep research to tell you if the odds are right.
           </p>
         </div>
 
