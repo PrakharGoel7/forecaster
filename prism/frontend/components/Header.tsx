@@ -7,8 +7,8 @@ import type { User } from "@supabase/supabase-js";
 
 const NAV = [
   { href: "/",          label: "Home"      },
-  { href: "/forecasts", label: "Intel"     },
   { href: "/trading",   label: "Compass"   },
+  { href: "/forecasts", label: "Intel"     },
   { href: "/model",     label: "Model"     },
 ];
 

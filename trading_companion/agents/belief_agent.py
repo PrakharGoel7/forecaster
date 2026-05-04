@@ -34,30 +34,38 @@ WORKFLOW
 - Detect any ambiguous terms (e.g. “end”, “win”, “crash”, “soon”, “successful”, “replace”).
 - If the belief is already clear and specific, DO NOT ask any questions → proceed to finalize.
 
-3. ASK AT MOST ONE QUESTION (ONLY IF NEEDED)
-- If the belief contains ambiguity in outcome or timeframe, ask exactly ONE clarification question.
-- Focus ONLY on resolution clarity (what counts as the belief being true).
-- Keep the question short, concrete, and easy to answer.
+3. ASK A SHORT CLARIFICATION RESPONSE (ONLY IF NEEDED)
+- If the belief contains ambiguity in outcome or timeframe, ask a short clarification response.
+- Focus ONLY on resolution clarity and timeframe.
+- Ask 1 short question by default.
+- If the user has not given a timeframe and a timeframe is important, you may ask 2 short questions in the SAME response:
+  1. what counts as the belief being true
+  2. when they expect it to happen
 - Use the web research only for your own context. Do NOT explain the background, summarize recent news, justify the question, hedge with market expectations, or challenge the user's premise.
-- In most cases the question should be a single sentence under 20 words.
+- Each question should usually be a single sentence under 20 words.
 
 Examples:
 - “Ukraine war will end soon” → “When you say ‘end’, do you mean a ceasefire, peace agreement, or reduced fighting?”
 - “AI will replace programmers” → “What would count as ‘replace’ — majority of code written by AI, or widespread job loss?”
 - “I think the Fed will cut rates” → “When do you think the Fed will cut rates?”
+- “I think the Fed will cut interest rates” → “When do you think the Fed will cut rates? By how much?”
 
 4. FINALIZE
 - After either:
   a) zero questions (if already clear), OR
-  b) one user response to your clarification
+  b) one user response to your clarification, if that response resolves the ambiguity
 → call finalize_belief
 
+- If ambiguity remains after the first reply, you may ask one more short follow-up question before finalizing.
+
 RULES
-- Ask 0 or 1 question MAX — never more
+- Ask as few questions as possible
+- Ask at most 2 questions in a single response, and only when the second is needed to pin down timeframe
+- Ask at most 2 total clarification turns before finalizing
 - Keep responses extremely concise
 - Never include research backstory in the user-facing question
 - Never preface the question with context like “current context indicates”, “markets expect”, “despite”, or similar framing
-- If you ask a question, output only the question itself"""
+- If you ask questions, output only the questions themselves"""
 
 _TOOLS = [
     {
@@ -171,10 +179,10 @@ def _clean_question(text: str) -> str:
     if not text:
         return text
 
-    # If the model leaked context, keep only the last question-like sentence.
-    question_spans = list(re.finditer(r"[^?]*\?", text))
+    # If the model leaked context, keep only the last one or two question-like sentences.
+    question_spans = [m.group(0).strip() for m in re.finditer(r"[^?]*\?", text) if m.group(0).strip()]
     if question_spans:
-        text = question_spans[-1].group(0).strip()
+        text = " ".join(question_spans[-2:]).strip()
 
     lower = text.lower()
     if "for example," in lower:
@@ -193,15 +201,22 @@ def _clean_question(text: str) -> str:
     ]
     for prefix in prefixes:
         if lower.startswith(prefix):
+            if "when" in lower and ("what" in lower or "count" in lower):
+                return "What exactly would count as this being true? When do you think this will happen?"
             if "when" in lower:
                 return "When do you think this will happen?"
             return "What exactly would count as this being true?"
 
     words = text.split()
-    if len(words) > 20 and " when " in f" {lower} ":
-        return "When do you think this will happen?"
-    if len(words) > 20 and " what " in f" {lower} ":
-        return "What exactly would count as this being true?"
+    if len(words) > 28:
+        has_when = " when " in f" {lower} "
+        has_what = " what " in f" {lower} " or " count " in f" {lower} "
+        if has_when and has_what:
+            return "What exactly would count as this being true? When do you think this will happen?"
+        if has_when:
+            return "When do you think this will happen?"
+        if has_what:
+            return "What exactly would count as this being true?"
 
     return text
 
