@@ -1,7 +1,9 @@
 """Prism API — FastAPI backend wrapping the forecaster package."""
 import asyncio
+import csv
 import dataclasses
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -24,12 +26,13 @@ except ImportError:
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 # ── Supabase JWT verification ─────────────────────────────────────────────────
 
 _SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
+_KALSHI_API_LOG_FILE = (_REPO_ROOT / os.environ.get("KALSHI_API_LOG_FILE", "runtime_logs/kalshi_api_log.csv")).resolve()
 
 def _get_user_id(request: Request) -> str | None:
     """Extract and verify Supabase JWT; return user_id (sub) or None."""
@@ -58,6 +61,7 @@ from forecaster import db
 _TC_AVAILABLE = _TC_PATH.exists()
 
 app = FastAPI(title="Prism API")
+logging.getLogger("prism.kalshi").setLevel(logging.INFO)
 
 _raw_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001")
 _origins = list({o.strip() for o in _raw_origins.split(",") if o.strip()} | {
@@ -103,11 +107,43 @@ def _market_dict(m) -> dict:
     }
 
 
+def _read_kalshi_log_rows(limit: int) -> list[dict[str, str]]:
+    if not _KALSHI_API_LOG_FILE.exists():
+        return []
+    with _KALSHI_API_LOG_FILE.open("r", newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    if limit <= 0:
+        return rows
+    return rows[-limit:]
+
+
 @app.get("/api/me")
 async def me(request: Request):
     """Debug: returns the user_id extracted from the Bearer token."""
     user_id = _get_user_id(request)
     return {"user_id": user_id, "error": None if user_id else "invalid or missing token"}
+
+
+@app.get("/api/debug/kalshi-log")
+async def get_kalshi_log(limit: int = 200):
+    rows = _read_kalshi_log_rows(limit)
+    return {
+        "path": str(_KALSHI_API_LOG_FILE),
+        "exists": _KALSHI_API_LOG_FILE.exists(),
+        "row_count": len(rows),
+        "rows": rows,
+    }
+
+
+@app.get("/api/debug/kalshi-log/download")
+async def download_kalshi_log():
+    if not _KALSHI_API_LOG_FILE.exists():
+        raise HTTPException(status_code=404, detail="Kalshi API log file not found")
+    return FileResponse(
+        path=_KALSHI_API_LOG_FILE,
+        media_type="text/csv",
+        filename=_KALSHI_API_LOG_FILE.name,
+    )
 
 
 @app.get("/api/events")

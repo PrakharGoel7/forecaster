@@ -1,6 +1,8 @@
 """Kalshi API client using RSA-PSS signed request authentication."""
 from __future__ import annotations
 import base64
+import csv
+import logging
 import os
 import time
 from dataclasses import dataclass
@@ -13,6 +15,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 PROD_BASE = "https://api.elections.kalshi.com/trade-api/v2"
+logger = logging.getLogger("prism.kalshi")
+_DEFAULT_LOG_FILE = Path(os.environ.get("KALSHI_API_LOG_FILE", "runtime_logs/kalshi_api_log.csv"))
 
 
 def _strip_html(text: str) -> str:
@@ -160,6 +164,159 @@ class KalshiClient:
             timeout=15,
         )
 
+    def _append_csv_rows(self, rows: list[dict]) -> None:
+        if not rows:
+            return
+        log_file = _DEFAULT_LOG_FILE
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        fieldnames = [
+            "timestamp_ms",
+            "endpoint",
+            "query",
+            "status",
+            "cursor",
+            "count",
+            "item_index",
+            "item_kind",
+            "event_ticker",
+            "series_ticker",
+            "title",
+            "category",
+            "ticker",
+            "question",
+            "market_status",
+            "mid_price",
+            "yes_bid",
+            "yes_ask",
+            "last_price",
+            "volume",
+            "close_time",
+        ]
+        write_header = not log_file.exists()
+        with log_file.open("a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if write_header:
+                writer.writeheader()
+            for row in rows:
+                writer.writerow(row)
+
+    def _log_request(self, endpoint: str, params: dict | None = None, **extra) -> None:
+        payload = {"endpoint": endpoint, "params": params or {}}
+        payload.update(extra)
+        logger.info("Kalshi request: %s", payload)
+
+    def _log_events_response(
+        self,
+        endpoint: str,
+        params: dict,
+        events: list[KalshiEvent],
+        cursor: str | None,
+    ) -> None:
+        timestamp_ms = int(time.time() * 1000)
+        logger.info(
+            "Kalshi response: %s",
+            {
+                "endpoint": endpoint,
+                "params": params,
+                "count": len(events),
+                "next_cursor": cursor,
+                "events": [
+                    {
+                        "event_ticker": e.event_ticker,
+                        "series_ticker": e.series_ticker,
+                        "title": e.title,
+                        "category": e.category,
+                    }
+                    for e in events
+                ],
+            },
+        )
+        self._append_csv_rows([
+            {
+                "timestamp_ms": timestamp_ms,
+                "endpoint": endpoint,
+                "query": str(params),
+                "status": "ok",
+                "cursor": cursor or "",
+                "count": len(events),
+                "item_index": i,
+                "item_kind": "event",
+                "event_ticker": e.event_ticker,
+                "series_ticker": e.series_ticker,
+                "title": e.title,
+                "category": e.category,
+                "ticker": "",
+                "question": "",
+                "market_status": "",
+                "mid_price": "",
+                "yes_bid": "",
+                "yes_ask": "",
+                "last_price": "",
+                "volume": "",
+                "close_time": "",
+            }
+            for i, e in enumerate(events)
+        ])
+
+    def _log_markets_response(
+        self,
+        endpoint: str,
+        params: dict,
+        markets: list[KalshiMarket],
+        cursor: str | None = None,
+    ) -> None:
+        timestamp_ms = int(time.time() * 1000)
+        logger.info(
+            "Kalshi response: %s",
+            {
+                "endpoint": endpoint,
+                "params": params,
+                "count": len(markets),
+                "next_cursor": cursor,
+                "markets": [
+                    {
+                        "ticker": m.ticker,
+                        "event_ticker": m.event_ticker,
+                        "question": m.question,
+                        "status": m.status,
+                        "mid_price": round(m.mid_price, 4),
+                        "yes_bid": round(m.yes_bid, 4),
+                        "yes_ask": round(m.yes_ask, 4),
+                        "last_price": round(m.last_price, 4),
+                        "volume": m.volume,
+                        "close_time": m.close_time,
+                    }
+                    for m in markets
+                ],
+            },
+        )
+        self._append_csv_rows([
+            {
+                "timestamp_ms": timestamp_ms,
+                "endpoint": endpoint,
+                "query": str(params),
+                "status": "ok",
+                "cursor": cursor or "",
+                "count": len(markets),
+                "item_index": i,
+                "item_kind": "market",
+                "event_ticker": m.event_ticker,
+                "series_ticker": "",
+                "title": "",
+                "category": "",
+                "ticker": m.ticker,
+                "question": m.question,
+                "market_status": m.status,
+                "mid_price": round(m.mid_price, 4),
+                "yes_bid": round(m.yes_bid, 4),
+                "yes_ask": round(m.yes_ask, 4),
+                "last_price": round(m.last_price, 4),
+                "volume": m.volume,
+                "close_time": m.close_time,
+            }
+            for i, m in enumerate(markets)
+        ])
+
     @classmethod
     def from_env(cls) -> "KalshiClient":
         """Load key ID from KALSHI_API_KEY and private key from KALSHI_PRIVATE_KEY_FILE."""
@@ -192,12 +349,14 @@ class KalshiClient:
         if event_ticker:
             params["event_ticker"] = event_ticker
 
+        self._log_request("/markets", params)
         resp = self._http.get("/markets", params=params)
         resp.raise_for_status()
         data = resp.json()
 
         markets = [self._parse(m) for m in data.get("markets", [])]
         next_cursor = data.get("cursor") or None
+        self._log_markets_response("/markets", params, markets, next_cursor)
         return markets, next_cursor
 
     def get_events(
@@ -212,6 +371,7 @@ class KalshiClient:
             params["cursor"] = cursor
         if series_ticker:
             params["series_ticker"] = series_ticker
+        self._log_request("/events", params)
         resp = self._http.get("/events", params=params)
         resp.raise_for_status()
         data = resp.json()
@@ -225,7 +385,9 @@ class KalshiClient:
             )
             for e in data.get("events", [])
         ]
-        return events, data.get("cursor") or None
+        next_cursor = data.get("cursor") or None
+        self._log_events_response("/events", params, events, next_cursor)
+        return events, next_cursor
 
     def search_series(self, query: str, limit: int = 200) -> list[str]:
         """Return series tickers whose title or ticker contains the query."""
@@ -237,6 +399,7 @@ class KalshiClient:
             params: dict = {"limit": 200}
             if cursor:
                 params["cursor"] = cursor
+            self._log_request("/series", params, query=query)
             resp = self._http.get("/series", params=params)
             resp.raise_for_status()
             data = resp.json()
@@ -251,9 +414,12 @@ class KalshiClient:
         return tickers
 
     def get_market(self, ticker: str) -> KalshiMarket:
+        self._log_request(f"/markets/{ticker}", {"ticker": ticker})
         resp = self._http.get(f"/markets/{ticker}")
         resp.raise_for_status()
-        return self._parse(resp.json().get("market", {}))
+        market = self._parse(resp.json().get("market", {}))
+        self._log_markets_response(f"/markets/{ticker}", {"ticker": ticker}, [market])
+        return market
 
     def _parse(self, m: dict) -> KalshiMarket:
         return KalshiMarket(
