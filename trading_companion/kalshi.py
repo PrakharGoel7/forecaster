@@ -273,12 +273,20 @@ class KalshiClient:
     @classmethod
     def from_env(cls) -> "KalshiClient":
         key_id = os.environ.get("KALSHI_API_KEY", "")
+        pem = os.environ.get("KALSHI_PRIVATE_KEY_PEM", "")
+        pem_b64 = os.environ.get("KALSHI_PRIVATE_KEY_B64", "")
         pem_file = os.environ.get("KALSHI_PRIVATE_KEY_FILE", "")
-        if not key_id or not pem_file:
-            raise ValueError(
-                "Set KALSHI_API_KEY and KALSHI_PRIVATE_KEY_FILE in your .env"
-            )
-        return cls(key_id=key_id, private_key_pem=Path(pem_file).read_bytes())
+        if key_id and pem_b64:
+            return cls(key_id=key_id, private_key_pem=pem_b64.strip())
+        if key_id and pem:
+            pem = pem.replace("\\n", "\n").strip()
+            return cls(key_id=key_id, private_key_pem=pem.encode())
+        if key_id and pem_file and Path(pem_file).exists():
+            return cls(key_id=key_id, private_key_pem=Path(pem_file).read_bytes())
+        raise ValueError(
+            "Set KALSHI_API_KEY and one of KALSHI_PRIVATE_KEY_B64, "
+            "KALSHI_PRIVATE_KEY_PEM, or KALSHI_PRIVATE_KEY_FILE in your environment"
+        )
 
     def search_series(self, query: str, limit: int = 10) -> list[str]:
         """Return series tickers whose title or ticker contains the query string."""
