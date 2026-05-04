@@ -304,7 +304,7 @@ export default function MarketPage() {
                             Prism
                           </div>
                           <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "16px", fontWeight: 700, color: prismColor }}>
-                            {(prismProb * 100).toFixed(0)}%
+                            {(result.probability * 100).toFixed(0)}%
                           </div>
                         </div>
                       )}
