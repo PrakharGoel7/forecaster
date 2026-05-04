@@ -127,6 +127,11 @@ export default function MarketPage() {
   const displayTitle = eventTitle || savedEventTitle;
   const displayCat   = evCat     || savedEvCat;
   const displaySub   = evSub     || savedEvSub;
+  const isMultiEvent = !savedId && markets.length > 1;
+  const primaryMarket = mkt ?? markets[0] ?? null;
+  const multiEventCloseDate = primaryMarket?.close_date ?? "";
+  const multiEventRules = primaryMarket?.rules_primary ?? "";
+  const multiEventVolume = markets.reduce((sum, market) => sum + market.volume, 0);
 
   const runForecast = useCallback(() => {
     if (!mkt) return;
@@ -184,10 +189,10 @@ export default function MarketPage() {
   }, [displayCat, displaySub, displayTitle, markets, rawTicker]);
 
   useEffect(() => {
-    if (!shouldAutoRun || !mkt || savedId || hasAutoRunRef.current) return;
+    if (!shouldAutoRun || !mkt || savedId || isMultiEvent || hasAutoRunRef.current) return;
     hasAutoRunRef.current = true;
     runForecast();
-  }, [mkt, runForecast, savedId, shouldAutoRun]);
+  }, [isMultiEvent, mkt, runForecast, savedId, shouldAutoRun]);
 
   const pColor = (p: number) => p >= 0.6 ? "#4ade80" : p >= 0.35 ? "#fbbf24" : "#f87171";
 
@@ -216,10 +221,45 @@ export default function MarketPage() {
         </button>
 
         {/* Multi-market picker */}
-        {!savedId && markets.length > 1 && !mkt && (
+        {isMultiEvent && (
           <div>
+            <div style={{ marginBottom: "20px" }}>
+              {displayCat && (
+                <div style={{
+                  fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
+                  textTransform: "uppercase", letterSpacing: "0.16em", color: "#e36438", marginBottom: "10px",
+                }}>
+                  {displayCat}{displaySub ? ` · ${displaySub}` : ""}
+                </div>
+              )}
+              <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#ede9e3", lineHeight: 1.4, marginBottom: "20px" }}>
+                {displayTitle || rawTicker}
+              </h1>
+            </div>
+
+            <div style={{
+              display: "flex", gap: "32px", alignItems: "center",
+              padding: "14px 0", borderTop: "1px solid #141414",
+              marginBottom: "24px", flexWrap: "wrap",
+            }}>
+              {multiEventCloseDate && <VitalStat label="Closes" value={multiEventCloseDate} accent />}
+              <VitalStat label="Volume" value={fmtVol(multiEventVolume)} />
+              <VitalStat label="Options" value={String(markets.length)} />
+            </div>
+
+            {multiEventRules && (
+              <div style={{ marginBottom: "28px" }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#2a2826", marginBottom: "8px" }}>
+                  Resolution Rules
+                </div>
+                <div style={{ background: "#080808", border: "1px solid #1a1a1a", borderRadius: "8px", padding: "12px 14px", fontSize: "12px", color: "#6b6865", lineHeight: 1.75 }}>
+                  {multiEventRules}
+                </div>
+              </div>
+            )}
+
             <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#ede9e3", marginBottom: "20px" }}>
-              {displayTitle || rawTicker}
+              Market options
             </h2>
             <div style={{ marginBottom: "18px", fontSize: "13px", color: "#7a7570", lineHeight: 1.6 }}>
               This event has multiple options. Prism will compare them jointly and produce one probability distribution across the full set.
@@ -276,20 +316,18 @@ export default function MarketPage() {
                 const prismProb = result ? result.probability : null;
                 const prismColor = prismProb != null ? pColor(prismProb) : "#6b6865";
                 return (
-                  <button key={m.ticker} onClick={() => setMkt(m)} style={{
+                  <div key={m.ticker} style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                     padding: "14px 18px", background: "#0f0f0f", border: "1px solid #1c1c1c",
                     borderRadius: "10px", transition: "border-color 0.15s", textAlign: "left",
                   }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(227,100,56,0.3)")}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = "#1c1c1c")}
                   >
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: "14px", color: "#ede9e3", fontWeight: 500, marginBottom: "4px" }}>
                         {m.yes_sub_title || m.ticker}
                       </div>
                       <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#3a3835", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                        {result ? "jointly compared across all options" : comparativePhase === "running" ? `comparing option set ${idx + 1}/${markets.length}` : "click for single-option detail"}
+                        {result ? "jointly compared across all options" : comparativePhase === "running" ? `comparing option set ${idx + 1}/${markets.length}` : "waiting for comparative analysis"}
                       </div>
                       {result?.rationale && (
                         <div style={{ fontSize: "12px", color: "#6b6865", lineHeight: 1.6, marginTop: "8px" }}>
@@ -317,7 +355,7 @@ export default function MarketPage() {
                         </div>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -325,7 +363,7 @@ export default function MarketPage() {
         )}
 
         {/* ── Main single-column layout ── */}
-        {mkt && (
+        {!isMultiEvent && mkt && (
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
