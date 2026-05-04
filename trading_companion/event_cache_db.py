@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from pathlib import Path
 
 from cache_paths import EVENTS_CACHE_DB_FILE, EVENTS_CACHE_FILE
 
@@ -59,6 +58,74 @@ def rebuild_event_cache_db(events: list[dict]) -> None:
         )
         cur.executemany(
             "INSERT INTO events_fts (event_ticker, series_ticker, title, sub_title, category) VALUES (?, ?, ?, ?, ?)",
+            rows,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def init_event_cache_db() -> None:
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("DROP TABLE IF EXISTS events")
+        cur.execute("DROP TABLE IF EXISTS events_fts")
+        cur.execute("""
+            CREATE TABLE events (
+                event_ticker  TEXT PRIMARY KEY,
+                series_ticker TEXT NOT NULL,
+                title         TEXT NOT NULL,
+                sub_title     TEXT NOT NULL,
+                category      TEXT NOT NULL
+            )
+        """)
+        cur.execute("""
+            CREATE VIRTUAL TABLE events_fts USING fts5(
+                event_ticker UNINDEXED,
+                series_ticker,
+                title,
+                sub_title,
+                category,
+                tokenize = 'porter unicode61'
+            )
+        """)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def append_events_to_cache_db(events: list[dict]) -> None:
+    if not events:
+        return
+    rows = [
+        (
+            e.get("event_ticker", ""),
+            e.get("series_ticker", ""),
+            e.get("title", ""),
+            e.get("sub_title", ""),
+            e.get("category", ""),
+        )
+        for e in events
+    ]
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.executemany(
+            """
+            INSERT OR REPLACE INTO events
+            (event_ticker, series_ticker, title, sub_title, category)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            rows,
+        )
+        cur.executemany(
+            """
+            INSERT INTO events_fts
+            (event_ticker, series_ticker, title, sub_title, category)
+            VALUES (?, ?, ?, ?, ?)
+            """,
             rows,
         )
         conn.commit()
