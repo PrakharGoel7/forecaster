@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
@@ -26,6 +26,10 @@ function edgeColor(edge: number) {
 }
 
 export default function IntelPage() {
+  return <Suspense><IntelInner /></Suspense>;
+}
+
+function IntelInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
