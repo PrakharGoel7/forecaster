@@ -1,17 +1,17 @@
 "use client";
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
+import MarketCard from "@/components/MarketCard";
 import ProbabilityArc from "@/components/ProbabilityArc";
-import { tradingChat, streamTradingAnalysis, listForecasts, listTradingSessions } from "@/lib/api";
+import { tradingChat, streamTradingAnalysis, listForecasts, listTradingSessions, searchEvents } from "@/lib/api";
 import type {
   BeliefSummary, BeliefAnalysis, DomainAnalysis,
-  TradeRecommendation, SavedForecast, TradingSession,
+  TradeRecommendation, SavedForecast, TradingSession, KalshiEvent,
 } from "@/lib/types";
 
 type Stage = "idle" | "chatting" | "analyzing" | "done" | "error";
@@ -40,8 +40,8 @@ function HomeInner() {
   const [savedForecasts, setSavedForecasts] = useState<SavedForecast[]>([]);
   const [sessions, setSessions]             = useState<TradingSession[]>([]);
   const [sessionId, setSessionId]           = useState<number | null>(null);
-  const [showAuthModal, setShowAuthModal]   = useState(false);
-  const [pendingInput, setPendingInput]     = useState("");
+  const [marketQuery, setMarketQuery]       = useState("");
+  const [liveMarkets, setLiveMarkets]       = useState<KalshiEvent[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +71,10 @@ function HomeInner() {
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  useEffect(() => {
+    searchEvents("", 6).then(setLiveMarkets).catch(() => {});
+  }, []);
 
   function _token() {
     return session?.access_token;
@@ -153,6 +157,11 @@ function HomeInner() {
     proceedWithSubmit(input);
   }
 
+  function handleIntelSubmit() {
+    const q = marketQuery.trim();
+    router.push(q ? `/forecasts?q=${encodeURIComponent(q)}` : "/forecasts");
+  }
+
   function onIdleKey(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
   }
@@ -185,150 +194,213 @@ function HomeInner() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12, transition: { duration: 0.2 } }}
               >
-                {/* Headline + pill row */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "32px", marginBottom: "28px" }}>
-                  <div style={{ flex: 1 }}>
-                    <motion.h1
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.05 }}
-                      style={{
-                        fontSize: "clamp(24px, 3.2vw, 34px)", fontWeight: 600,
-                        color: "#ede9e3", lineHeight: 1.25, letterSpacing: "-0.02em",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      Turn your opinions into trades.
-                    </motion.h1>
-                    <motion.p
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.1 }}
-                      style={{
-                        fontSize: "clamp(16px, 2vw, 20px)", fontWeight: 400,
-                        color: "#7a7570", lineHeight: 1.35, letterSpacing: "-0.01em",
-                        margin: 0,
-                      }}
-                    >
-                      Tell us what you think will happen. Prism finds the Kalshi markets that match your view.
-                    </motion.p>
-                  </div>
-                  <div style={{ flexShrink: 0, maxWidth: "215px", paddingTop: "6px" }}>
-                    <div style={{
-                      fontFamily: "var(--font-mono), monospace", fontSize: "12px",
-                      letterSpacing: "0.06em", color: "#9b9790", lineHeight: 1.7,
-                    }}>
-                      <Typewriter text="For people who think the odds are wrong." delay={600} speed={60} />
-                    </div>
-                  </div>
+                <div style={{ marginBottom: "32px" }}>
+                  <motion.h1
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.05 }}
+                    style={{
+                      fontSize: "clamp(30px, 5vw, 54px)", fontWeight: 600,
+                      color: "#ede9e3", lineHeight: 1.02, letterSpacing: "-0.045em",
+                      marginBottom: "12px", maxWidth: "720px",
+                    }}
+                  >
+                    Turn your opinions into trades.
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    style={{
+                      fontSize: "clamp(16px, 2.1vw, 20px)", fontWeight: 400,
+                      color: "#8a847d", lineHeight: 1.45, letterSpacing: "-0.01em",
+                      margin: 0, maxWidth: "620px",
+                    }}
+                  >
+                    Start from a belief, or analyze a market you already have in mind.
+                  </motion.p>
                 </div>
 
-                {/* How it works */}
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, delay: 0.14 }}
-                  style={{ marginBottom: "28px" }}
-                >
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    {[
-                      {
-                        n: "01",
-                        title: "Start with a take",
-                        desc: <span>You think something&apos;s going to happen.</span>,
-                      },
-                      {
-                        n: "02",
-                        title: "See the matching markets",
-                        desc: <span>Prism finds direct and hidden ways to bet on it.</span>,
-                      },
-                      {
-                        n: "03",
-                        title: "Know the odds",
-                        desc: <span>Prism conducts deep research to find which market odds are mispriced.</span>,
-                      },
-                    ].map((step) => (
-                      <div
-                        key={step.n}
-                        style={{
-                          flex: "1 1 160px",
-                          background: "rgba(14,14,14,0.95)",
-                          border: "1px solid #222",
-                          borderRadius: "10px",
-                          padding: "14px 16px",
-                        }}
-                      >
-                        <div style={{
-                          fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                          fontWeight: 700, color: "#e36438", letterSpacing: "0.16em",
-                          marginBottom: "8px",
-                        }}>{step.n}</div>
-                        <div style={{
-                          fontSize: "12px", fontWeight: 600, color: "#ede9e3",
-                          marginBottom: "6px", lineHeight: 1.3,
-                        }}>{step.title}</div>
-                        <div style={{
-                          fontSize: "11px", color: "#7a7570", lineHeight: 1.6,
-                        }}>{step.desc}</div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-
-                {/* Input */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.45, delay: 0.16 }}
                   style={{
-                    background: "rgba(14,14,14,0.95)",
-                    border: "1px solid #282828", borderRadius: "14px",
-                    padding: "18px 20px",
-                    backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-                    boxShadow: "0 0 0 1px rgba(255,255,255,0.02), 0 8px 32px rgba(0,0,0,0.5)",
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                    gap: "14px",
+                    marginBottom: "34px",
                   }}
                 >
-                  <textarea
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={onIdleKey}
-                    placeholder="e.g. I think the Fed will cut rates this summer"
-                    rows={2}
-                    autoFocus
-                    style={{
-                      width: "100%", background: "transparent", border: "none",
-                      fontSize: "14px", color: "#ede9e3",
-                      fontFamily: "var(--font-jakarta), system-ui, sans-serif",
-                      outline: "none", resize: "none", lineHeight: 1.65,
-                    }}
-                  />
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px" }}>
-                    <span style={{
-                      fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                      color: "#2a2826", letterSpacing: "0.1em",
-                    }}>
-                      ↵ enter to submit
-                    </span>
-                    <button
-                      onClick={handleSubmit}
-                      disabled={!input.trim()}
-                      style={{
-                        background: input.trim() ? "#e36438" : "#181818",
-                        color: "#fff", border: "none", borderRadius: "8px",
-                        padding: "9px 22px", fontSize: "11px",
-                        fontFamily: "var(--font-mono), monospace",
-                        fontWeight: 600, letterSpacing: "0.06em",
-                        transition: "background 0.15s",
-                        opacity: input.trim() ? 1 : 0.35,
-                        cursor: input.trim() ? "pointer" : "default",
-                      }}
-                      onMouseEnter={e => { if (input.trim()) e.currentTarget.style.background = "#c4421a"; }}
-                      onMouseLeave={e => { if (input.trim()) e.currentTarget.style.background = "#e36438"; }}
-                    >
-                      Find Markets →
-                    </button>
+                  <div style={{
+                    background: "linear-gradient(180deg, rgba(23,18,15,0.98), rgba(13,13,13,0.98))",
+                    border: "1px solid rgba(227,100,56,0.34)",
+                    borderRadius: "20px",
+                    padding: "22px 22px 18px",
+                    boxShadow: "0 0 0 1px rgba(227,100,56,0.05), 0 18px 44px rgba(0,0,0,0.45), 0 0 38px rgba(227,100,56,0.08)",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}>
+                    <div style={{
+                      position: "absolute", inset: 0,
+                      background: "radial-gradient(circle at top right, rgba(227,100,56,0.16), transparent 42%)",
+                      pointerEvents: "none",
+                    }} />
+                    <div style={{ position: "relative" }}>
+                      <div style={{
+                        fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700,
+                        textTransform: "uppercase", letterSpacing: "0.16em", color: "#e36438", marginBottom: "14px",
+                      }}>
+                        Compass
+                      </div>
+                      <div style={{ fontSize: "24px", fontWeight: 600, color: "#ede9e3", letterSpacing: "-0.03em", marginBottom: "10px" }}>
+                        Start with a take
+                      </div>
+                      <p style={{ fontSize: "14px", color: "#948d86", lineHeight: 1.6, margin: "0 0 18px" }}>
+                        You think something will happen. Prism finds the Kalshi markets that let you directly and indirectly bet on it.
+                      </p>
+                      <textarea
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={onIdleKey}
+                        placeholder="e.g. I think the Fed will cut rates this summer"
+                        rows={3}
+                        autoFocus
+                        style={{
+                          width: "100%", background: "rgba(8,8,8,0.9)", border: "1px solid rgba(227,100,56,0.18)",
+                          borderRadius: "14px", fontSize: "14px", color: "#ede9e3",
+                          fontFamily: "var(--font-jakarta), system-ui, sans-serif",
+                          outline: "none", resize: "none", lineHeight: 1.65, padding: "16px 16px 14px",
+                          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
+                        }}
+                      />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px", gap: "12px", flexWrap: "wrap" }}>
+                        <span style={{
+                          fontFamily: "var(--font-mono), monospace", fontSize: "10px",
+                          color: "#6b5a51", letterSpacing: "0.08em",
+                        }}>
+                          belief → relevant markets
+                        </span>
+                        <button
+                          onClick={handleSubmit}
+                          disabled={!input.trim()}
+                          style={{
+                            background: input.trim() ? "#e36438" : "#181818",
+                            color: "#fff", border: "none", borderRadius: "10px",
+                            padding: "10px 18px", fontSize: "11px",
+                            fontFamily: "var(--font-mono), monospace",
+                            fontWeight: 700, letterSpacing: "0.06em",
+                            transition: "background 0.15s, box-shadow 0.15s",
+                            opacity: input.trim() ? 1 : 0.4,
+                            cursor: input.trim() ? "pointer" : "default",
+                            boxShadow: input.trim() ? "0 0 24px rgba(227,100,56,0.22)" : "none",
+                          }}
+                          onMouseEnter={e => { if (input.trim()) e.currentTarget.style.background = "#c4421a"; }}
+                          onMouseLeave={e => { if (input.trim()) e.currentTarget.style.background = "#e36438"; }}
+                        >
+                          Find relevant markets →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: "rgba(14,14,14,0.96)",
+                    border: "1px solid #262626",
+                    borderRadius: "20px",
+                    padding: "22px 22px 18px",
+                    boxShadow: "0 14px 38px rgba(0,0,0,0.38)",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}>
+                    <div style={{
+                      position: "absolute", inset: 0,
+                      background: "radial-gradient(circle at top left, rgba(91,156,246,0.08), transparent 42%)",
+                      pointerEvents: "none",
+                    }} />
+                    <div style={{ position: "relative" }}>
+                      <div style={{
+                        fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700,
+                        textTransform: "uppercase", letterSpacing: "0.16em", color: "#5b9cf6", marginBottom: "14px",
+                      }}>
+                        Intel
+                      </div>
+                      <div style={{ fontSize: "24px", fontWeight: 600, color: "#ede9e3", letterSpacing: "-0.03em", marginBottom: "10px" }}>
+                        Analyze a market
+                      </div>
+                      <p style={{ fontSize: "14px", color: "#948d86", lineHeight: 1.6, margin: "0 0 18px" }}>
+                        Already have a particular market in mind? Run deep research to see if it is underpriced on Kalshi.
+                      </p>
+                      <div style={{
+                        display: "flex", gap: "8px",
+                        background: "rgba(8,8,8,0.92)", border: "1px solid #282828",
+                        borderRadius: "14px", padding: "6px 6px 6px 16px",
+                      }}>
+                        <input
+                          value={marketQuery}
+                          onChange={e => setMarketQuery(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleIntelSubmit();
+                            }
+                          }}
+                          placeholder="Search markets — Bitcoin, elections, Fed, AI…"
+                          style={{
+                            flex: 1, background: "transparent", border: "none",
+                            fontSize: "14px", color: "#ede9e3", outline: "none",
+                            fontFamily: "var(--font-jakarta), system-ui, sans-serif",
+                          }}
+                        />
+                        <button
+                          onClick={handleIntelSubmit}
+                          style={{
+                            background: "#1a1a1a", color: "#fff",
+                            border: "1px solid #2a2a2a", borderRadius: "10px", padding: "10px 16px",
+                            fontSize: "11px", fontFamily: "var(--font-mono), monospace",
+                            fontWeight: 700, letterSpacing: "0.06em", transition: "background 0.15s, border-color 0.15s",
+                            cursor: "pointer",
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = "#202020";
+                            e.currentTarget.style.borderColor = "#3a3a3a";
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = "#1a1a1a";
+                            e.currentTarget.style.borderColor = "#2a2a2a";
+                          }}
+                        >
+                          Run analysis →
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
+
+                {liveMarkets.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4, delay: 0.22 }}
+                    style={{ marginBottom: sessions.length > 0 ? "36px" : 0 }}
+                  >
+                    <SectionLabel label="Live markets" />
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                      gap: "10px",
+                    }}>
+                      {liveMarkets.slice(0, 4).map((event, i) => (
+                        <MarketCard
+                          key={event.event_ticker}
+                          event={event}
+                          index={i}
+                          onForecast={e => router.push(`/market/${e.event_ticker}?title=${encodeURIComponent(e.title)}&cat=${encodeURIComponent(e.category)}&sub=${encodeURIComponent(e.sub_title)}&runForecast=1`)}
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Previous sessions */}
                 {sessions.length > 0 && (
@@ -409,61 +481,6 @@ function HomeInner() {
                   </motion.div>
                 )}
 
-                {/* Footer: recent Intel */}
-                {savedForecasts.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.4, delay: 0.35 }}
-                    style={{ marginTop: "48px" }}
-                  >
-                    <SectionLabel label="Recent Intel" />
-                    <div style={{ display: "flex", gap: "7px", overflowX: "auto", scrollbarWidth: "none" }}>
-                      {savedForecasts.slice(0, 6).map((f, i) => {
-                        const edge = f.edge ?? 0;
-                        const edgeColor = edge > 0.03 ? "#5b9cf6" : edge < -0.03 ? "#f87171" : "#3a3835";
-                        return (
-                          <motion.button
-                            key={f.id}
-                            initial={{ opacity: 0, x: 8 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.28, delay: 0.38 + i * 0.04 }}
-                            onClick={() => router.push(`/market/${f.ticker}?saved=${f.id}`)}
-                            style={{
-                              flexShrink: 0, maxWidth: "240px",
-                              background: "rgba(18,18,18,0.95)",
-                              border: "1px solid #1e1e1e", borderRadius: "8px",
-                              padding: "7px 12px",
-                              display: "flex", alignItems: "center", gap: "10px",
-                              cursor: "pointer", transition: "border-color 0.15s",
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.borderColor = "#2a2826")}
-                            onMouseLeave={e => (e.currentTarget.style.borderColor = "#1e1e1e")}
-                          >
-                            <span style={{
-                              fontFamily: "var(--font-mono), monospace", fontSize: "11px",
-                              fontWeight: 700, color: "#9b9790", flexShrink: 0,
-                            }}>
-                              {(f.forecaster_prob * 100).toFixed(0)}%
-                            </span>
-                            <span style={{
-                              fontSize: "11px", color: "#3a3835",
-                              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                            }}>
-                              {f.question}
-                            </span>
-                            <span style={{
-                              fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-                              color: edgeColor, flexShrink: 0, fontWeight: 600,
-                            }}>
-                              {edge > 0.03 ? "+" : ""}{(edge * 100).toFixed(1)}pp
-                            </span>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -836,30 +853,6 @@ function RecCard({ rec, forecast, onExplore, onViewForecast, onRunForecast }: {
         </button>
       </div>
     </div>
-  );
-}
-
-function Typewriter({ text, delay = 0, speed = 35 }: { text: string; delay?: number; speed?: number }) {
-  const [displayed, setDisplayed] = useState("");
-  const [started, setStarted] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setStarted(true), delay);
-    return () => clearTimeout(t);
-  }, [delay]);
-
-  useEffect(() => {
-    if (!started || displayed.length >= text.length) return;
-    const t = setTimeout(() => setDisplayed(text.slice(0, displayed.length + 1)), speed);
-    return () => clearTimeout(t);
-  }, [started, displayed, text, speed]);
-
-  const done = displayed.length >= text.length;
-  return (
-    <span>
-      {displayed}
-      <span className="blink" style={{ color: "#e36438", opacity: done ? 0.5 : 1 }}>▋</span>
-    </span>
   );
 }
 

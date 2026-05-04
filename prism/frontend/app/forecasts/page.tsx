@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import Header from "@/components/Header";
@@ -27,9 +27,11 @@ function edgeColor(edge: number) {
 
 export default function IntelPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+  const initialQuery = searchParams.get("q") ?? "";
 
-  const [query, setQuery]         = useState("");
+  const [query, setQuery]         = useState(initialQuery);
   const [events, setEvents]       = useState<KalshiEvent[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched]   = useState(false);
@@ -39,11 +41,14 @@ export default function IntelPage() {
   const [forecastsLoading, setForecastsLoading] = useState(true);
 
   useEffect(() => {
-    setSearching(true);
-    searchEvents("", 48)
-      .then(e => { setEvents(e); setSearching(false); })
+    searchEvents(initialQuery, 48)
+      .then(e => {
+        setEvents(e);
+        setSearched(Boolean(initialQuery.trim()));
+        setSearching(false);
+      })
       .catch(() => setSearching(false));
-  }, []);
+  }, [initialQuery]);
 
   useEffect(() => {
     (async () => {
