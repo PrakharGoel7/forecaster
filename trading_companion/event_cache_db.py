@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import json
 import re
 import sqlite3
 
-from cache_paths import EVENTS_CACHE_DB_FILE, EVENTS_CACHE_FILE
+from cache_paths import EVENTS_CACHE_DB_FILE
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9]{3,}")
 
@@ -133,32 +132,36 @@ def append_events_to_cache_db(events: list[dict]) -> None:
         conn.close()
 
 
-def _load_events_from_json() -> list[dict]:
-    if not EVENTS_CACHE_FILE.exists():
-        return []
-    data = json.loads(EVENTS_CACHE_FILE.read_text())
-    return data.get("events", [])
+def _require_db() -> None:
+    if not EVENTS_CACHE_DB_FILE.exists():
+        raise FileNotFoundError(
+            f"Event cache DB not found at {EVENTS_CACHE_DB_FILE}. "
+            "Run `python sync_events.py` first."
+        )
 
 
-def load_all_events() -> list[dict]:
-    if EVENTS_CACHE_DB_FILE.exists():
-        conn = _conn()
-        try:
-            cur = conn.cursor()
-            cur.execute("""
-                SELECT event_ticker, series_ticker, title, sub_title, category
-                FROM events
-                ORDER BY category, event_ticker
-            """)
-            return [dict(r) for r in cur.fetchall()]
-        finally:
-            conn.close()
-    return _load_events_from_json()
+def load_all_events(limit: int | None = None) -> list[dict]:
+    _require_db()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        query = """
+            SELECT event_ticker, series_ticker, title, sub_title, category
+            FROM events
+            ORDER BY category, event_ticker
+        """
+        params: tuple = ()
+        if limit is not None:
+            query += " LIMIT ?"
+            params = (limit,)
+        cur.execute(query, params)
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
 
 
 def search_events_fts(query_text: str, limit: int = 1200) -> list[dict]:
-    if not EVENTS_CACHE_DB_FILE.exists():
-        return []
+    _require_db()
     terms = []
     seen: set[str] = set()
     for token in _TOKEN_RE.findall(query_text.lower()):
@@ -187,32 +190,55 @@ def search_events_fts(query_text: str, limit: int = 1200) -> list[dict]:
         conn.close()
 
 
-def get_event_lookup(event_tickers: list[str] | None = None) -> dict[str, dict]:
-    if EVENTS_CACHE_DB_FILE.exists():
-        conn = _conn()
-        try:
-            cur = conn.cursor()
-            if event_tickers:
-                placeholders = ",".join("?" for _ in event_tickers)
-                cur.execute(
-                    f"""
-                    SELECT event_ticker, series_ticker, title, sub_title, category
-                    FROM events
-                    WHERE event_ticker IN ({placeholders})
-                    """,
-                    event_tickers,
-                )
-            else:
-                cur.execute("""
-                    SELECT event_ticker, series_ticker, title, sub_title, category
-                    FROM events
-                """)
-            return {row["event_ticker"]: dict(row) for row in cur.fetchall()}
-        finally:
-            conn.close()
+def search_events(query_text: str, limit: int = 48) -> list[dict]:
+    _require_db()
+    q = query_text.strip().lower()
+    if not q:
+        return load_all_events(limit=limit)
 
-    events = _load_events_from_json()
-    if event_tickers:
-        wanted = set(event_tickers)
-        events = [e for e in events if e.get("event_ticker", "") in wanted]
-    return {e["event_ticker"]: e for e in events}
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        like = f"%{q}%"
+        cur.execute(
+            """
+            SELECT event_ticker, series_ticker, title, sub_title, category
+            FROM events
+            WHERE lower(title) LIKE ?
+               OR lower(sub_title) LIKE ?
+               OR lower(event_ticker) LIKE ?
+               OR lower(series_ticker) LIKE ?
+               OR lower(category) LIKE ?
+            ORDER BY category, event_ticker
+            LIMIT ?
+            """,
+            (like, like, like, like, like, limit),
+        )
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_event_lookup(event_tickers: list[str] | None = None) -> dict[str, dict]:
+    _require_db()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        if event_tickers:
+            placeholders = ",".join("?" for _ in event_tickers)
+            cur.execute(
+                f"""
+                SELECT event_ticker, series_ticker, title, sub_title, category
+                FROM events
+                WHERE event_ticker IN ({placeholders})
+                """,
+                event_tickers,
+            )
+        else:
+            cur.execute("""
+                SELECT event_ticker, series_ticker, title, sub_title, category
+                FROM events
+            """)
+        return {row["event_ticker"]: dict(row) for row in cur.fetchall()}
+    finally:
+        conn.close()

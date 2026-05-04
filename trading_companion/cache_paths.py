@@ -9,3 +9,4 @@ _CACHE_DIR = Path(os.environ.get("TRADING_COMPANION_CACHE_DIR", str(_BASE_DIR)))
 EVENTS_CACHE_FILE = _CACHE_DIR / "events_cache.json"
 EVENTS_CACHE_DB_FILE = _CACHE_DIR / "events_cache.db"
 MARKETS_CACHE_FILE = _CACHE_DIR / "markets_cache.json"
+MARKETS_CACHE_DB_FILE = _CACHE_DIR / "markets_cache.db"

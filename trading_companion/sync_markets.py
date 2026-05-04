@@ -23,6 +23,7 @@ load_dotenv(Path(__file__).parent.parent / "forecaster" / ".env")
 
 from kalshi import KalshiClient
 from cache_paths import MARKETS_CACHE_FILE
+from market_cache_db import append_markets_to_cache_db, init_market_cache_db
 
 CACHE_FILE = MARKETS_CACHE_FILE
 CHECKPOINT_EVERY_PAGES = 10
@@ -53,6 +54,7 @@ def sync(verbose: bool = True) -> int:
     seen_tickers: set[str] = set()
     cursor = None
     page = 0
+    init_market_cache_db()
 
     while True:
         markets = None
@@ -81,11 +83,12 @@ def sync(verbose: bool = True) -> int:
             break
 
         added = 0
+        kept_batch: list[dict] = []
         for market in markets:
             if market.ticker in seen_tickers:
                 continue
             seen_tickers.add(market.ticker)
-            all_markets.append({
+            kept_market = {
                 "ticker": market.ticker,
                 "event_ticker": market.event_ticker,
                 "question": market.question,
@@ -101,8 +104,11 @@ def sync(verbose: bool = True) -> int:
                 "close_date": market.close_date,
                 "rules_primary": market.rules_primary,
                 "rules_secondary": getattr(market, "rules_secondary", ""),
-            })
+            }
+            all_markets.append(kept_market)
+            kept_batch.append(kept_market)
             added += 1
+        append_markets_to_cache_db(kept_batch)
 
         page += 1
         if page % CHECKPOINT_EVERY_PAGES == 0:

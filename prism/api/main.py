@@ -225,28 +225,10 @@ async def download_kalshi_log():
 
 @app.get("/api/events")
 async def search_events(query: str = "", limit: int = 24):
-    client = _get_client()
+    from event_cache_db import search_events as search_cached_events
+
     loop = asyncio.get_event_loop()
-
-    def _fetch():
-        pages = 10 if query else 3
-        events, cursor = [], None
-        for _ in range(pages):
-            batch, cursor = client.get_events(limit=100, cursor=cursor)
-            events += batch
-            if not cursor:
-                break
-        if query:
-            q = query.lower()
-            events = [e for e in events if e.matches(q)]
-        return events[:limit]
-
-    events = await loop.run_in_executor(None, _fetch)
-    return [
-        {"event_ticker": e.event_ticker, "series_ticker": e.series_ticker,
-         "title": e.title, "sub_title": e.sub_title, "category": e.category}
-        for e in events
-    ]
+    return await loop.run_in_executor(None, lambda: search_cached_events(query, limit))
 
 
 @app.get("/api/events/{event_ticker}/markets")
@@ -766,28 +748,37 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
                     queue.put({"type": "screener_done", "tickers": event_tickers, "count": len(event_tickers)}), loop
                 )
 
-                client = _get_client()
+                from event_cache_db import get_event_lookup
+                from market_cache_db import get_markets_for_events
+                from forecaster.kalshi import KalshiMarket
+
                 asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "progress", "label": f"Fetching live markets for {len(event_tickers)} events…"}), loop
+                    queue.put({"type": "progress", "label": f"Loading cached markets for {len(event_tickers)} events…"}), loop
                 )
 
-                # Fetch live markets
+                # Load cached markets for shortlisted events
                 candidate_by_event: dict = {c["event_ticker"]: c for c in filtered_candidates}
-                markets: list = []
-                seen: set = set()
-                for ticker in event_tickers:
-                    try:
-                        batch, _ = client.get_markets(limit=20, status="open", event_ticker=ticker)
-                        for m in batch:
-                            if m.ticker not in seen:
-                                seen.add(m.ticker)
-                                markets.append(m)
-                    except Exception:
-                        pass
+                markets = [
+                    KalshiMarket(**{
+                        "ticker": row["ticker"],
+                        "event_ticker": row["event_ticker"],
+                        "yes_sub_title": row["yes_sub_title"],
+                        "no_sub_title": row["no_sub_title"],
+                        "yes_bid": row["yes_bid"],
+                        "yes_ask": row["yes_ask"],
+                        "last_price": row["last_price"],
+                        "volume": row["volume"],
+                        "rules_primary": row["rules_primary"],
+                        "rules_secondary": row["rules_secondary"],
+                        "close_time": row["close_time"],
+                        "status": row["status"],
+                    })
+                    for row in get_markets_for_events(event_tickers)
+                ]
 
                 if not markets:
                     asyncio.run_coroutine_threadsafe(
-                        queue.put({"type": "error", "message": "No open markets found for the shortlisted events."}), loop
+                        queue.put({"type": "error", "message": "No cached markets found for the shortlisted events."}), loop
                     )
                     return
 
