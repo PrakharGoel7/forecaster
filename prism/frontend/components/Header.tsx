@@ -8,6 +8,7 @@ import type { User } from "@supabase/supabase-js";
 const NAV = [
   { href: "/",          label: "Home"      },
   { href: "/forecasts", label: "Intel"     },
+  { href: "/trading",   label: "Compass"   },
   { href: "/model",     label: "Model"     },
 ];
 
@@ -69,7 +70,7 @@ export default function Header() {
           height: "56px", display: "flex", alignItems: "center", gap: "40px",
         }}>
           {/* Logo */}
-          <a href="/" style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", flexShrink: 0 }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", flexShrink: 0 }}>
             <div style={{
               width: "28px", height: "28px", borderRadius: "7px",
               background: "linear-gradient(135deg, #181818 0%, #0a0a0a 100%)",
@@ -81,7 +82,7 @@ export default function Header() {
               fontFamily: "var(--font-mono), monospace", fontWeight: 700,
               fontSize: "13px", letterSpacing: "0.22em", color: "#ede9e3",
             }}>PRISM</span>
-          </a>
+          </Link>
 
           {/* Nav links */}
           <nav style={{ display: "flex", alignItems: "center", gap: "2px", flex: 1 }}>
@@ -100,14 +101,6 @@ export default function Header() {
                 border: active ? activeBorder : "1px solid transparent",
                 transition: "color 0.15s, background 0.15s",
               };
-              if (href === "/") {
-                return (
-                  <a key={href} href={href} style={navStyle}
-                    onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "#ede9e3"; }}
-                    onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = "#6b6865"; }}
-                  >{label}</a>
-                );
-              }
               return (
                 <Link key={href} href={href} style={navStyle}
                   onMouseEnter={e => { if (!active) e.currentTarget.style.color = "#ede9e3"; }}
