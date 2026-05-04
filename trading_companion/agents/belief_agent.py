@@ -37,10 +37,13 @@ WORKFLOW
 - If the belief contains ambiguity in outcome or timeframe, ask exactly ONE clarification question.
 - Focus ONLY on resolution clarity (what counts as the belief being true).
 - Keep the question short, concrete, and easy to answer.
+- Use the web research only for your own context. Do NOT explain the background, summarize recent news, justify the question, hedge with market expectations, or challenge the user's premise.
+- In most cases the question should be a single sentence under 20 words.
 
 Examples:
 - “Ukraine war will end soon” → “When you say ‘end’, do you mean a ceasefire, peace agreement, or reduced fighting?”
 - “AI will replace programmers” → “What would count as ‘replace’ — majority of code written by AI, or widespread job loss?”
+- “I think the Fed will cut rates” → “When do you think the Fed will cut rates?”
 
 4. FINALIZE
 - After either:
@@ -50,7 +53,10 @@ Examples:
 
 RULES
 - Ask 0 or 1 question MAX — never more
-- Keep responses extremely concise"""
+- Keep responses extremely concise
+- Never include research backstory in the user-facing question
+- Never preface the question with context like “current context indicates”, “markets expect”, “despite”, or similar framing
+- If you ask a question, output only the question itself"""
 
 _TOOLS = [
     {

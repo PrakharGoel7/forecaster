@@ -146,15 +146,10 @@ function HomeInner() {
     listForecasts(500, t).then(setSavedForecasts).catch(() => {});
   }
 
-  async function proceedWithSubmit(text: string) {
-    setStage("chatting");
-    const token = await _token();
-    sendMessage(text, [], token);
-  }
-
   function handleSubmit() {
-    if (!input.trim()) return;
-    proceedWithSubmit(input);
+    const belief = input.trim();
+    if (!belief) return;
+    router.push(`/trading?belief=${encodeURIComponent(belief)}`);
   }
 
   function handleIntelSubmit() {

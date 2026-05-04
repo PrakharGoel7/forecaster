@@ -36,6 +36,7 @@ export default function TradingPage() {
 function TradingPageInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const initialBelief = searchParams.get("belief") ?? "";
   const [stage, setStage]                 = useState<Stage>("idle");
   const [input, setInput]                 = useState("");
   const [chatMessages, setChatMessages]   = useState<ChatMsg[]>([]);
@@ -53,6 +54,7 @@ function TradingPageInner() {
 
   const scrollRef  = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const bootstrappedBeliefRef = useRef(false);
 
   useEffect(() => {
     const sid = searchParams.get("session");
@@ -72,6 +74,15 @@ function TradingPageInner() {
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!initialBelief.trim() || bootstrappedBeliefRef.current) return;
+    bootstrappedBeliefRef.current = true;
+    setStage("chatting");
+    setInput(initialBelief);
+    void sendMessage(initialBelief, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialBelief]);
 
 
   function startAnalysis(summary: BeliefSummary) {
