@@ -1,4 +1,13 @@
-import type { StreamMessage, TradingChatResponse, TradingStreamMessage, BeliefSummary, TradingSession, OracleTurnResponse, OraclePipelineMessage } from "./types";
+import type {
+  StreamMessage,
+  ComparativeStreamMessage,
+  TradingChatResponse,
+  TradingStreamMessage,
+  BeliefSummary,
+  TradingSession,
+  OracleTurnResponse,
+  OraclePipelineMessage,
+} from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -36,6 +45,51 @@ export function streamForecast(
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`${BASE}/api/forecasts/stream`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+      if (!res.body) return;
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (!cancelled) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.replace(/^data: /, "").trim();
+          if (line) {
+            try { onMessage(JSON.parse(line)); } catch {}
+          }
+        }
+      }
+    } catch (err) {
+      if (!cancelled) {
+        onMessage({ type: "error", message: err instanceof Error ? err.message : "Connection lost" });
+      }
+    }
+  })();
+
+  return () => { cancelled = true; };
+}
+
+export function streamComparativeForecast(
+  body: { event_title: string; ev_sub?: string; ev_category?: string; markets: Record<string, unknown>[] },
+  onMessage: (msg: ComparativeStreamMessage) => void,
+  token?: string,
+): () => void {
+  let cancelled = false;
+
+  (async () => {
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`${BASE}/api/forecasts/compare/stream`, {
         method: "POST",
         headers,
         body: JSON.stringify(body),

@@ -291,3 +291,48 @@ class ForecastMemo(BaseModel):
     num_agents: int
     num_ensemble_runs: int
     forecasted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ── Comparative multi-option forecasting ─────────────────────────────────────
+
+class ComparativeOptionForecast(BaseModel):
+    ticker: str
+    label: str
+    question: str
+    market_price: float
+    probability: float
+    rationale: str
+
+    @field_validator("market_price", "probability")
+    @classmethod
+    def clamp_option_probability(cls, v: float) -> float:
+        return max(0.001, min(0.999, v))
+
+
+class ComparativeAgentForecast(BaseModel):
+    agent_id: int
+    option_forecasts: list[ComparativeOptionForecast]
+    key_drivers: list[str] = Field(default_factory=list)
+    uncertainty_reasoning: str
+    epistemic_confidence: str  # low / medium / high
+    evidence_ledger: EvidenceLedger
+
+
+class ComparativeSupervisorReconciliation(BaseModel):
+    option_forecasts: list[ComparativeOptionForecast]
+    disagreement_level: str  # low / medium / high
+    crux_of_disagreement: Optional[str] = None
+    targeted_searches_conducted: list[str] = Field(default_factory=list)
+    reconciliation_reasoning: str
+
+
+class ComparativeForecastMemo(BaseModel):
+    event_title: str
+    event_subtitle: str = ""
+    event_category: str = ""
+    resolution_rules: str = ""
+    option_forecasts: list[ComparativeOptionForecast]
+    agent_forecasts: list[ComparativeAgentForecast]
+    supervisor_reconciliation: ComparativeSupervisorReconciliation
+    num_agents: int
+    forecasted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

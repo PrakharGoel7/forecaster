@@ -3,8 +3,17 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
-import { getMarkets, getMarket, listForecasts, streamForecast } from "@/lib/api";
-import type { KalshiMarket, ForecastMemo, OVData, IVData, StreamMessage, SavedForecast } from "@/lib/types";
+import { getMarkets, getMarket, listForecasts, streamForecast, streamComparativeForecast } from "@/lib/api";
+import type {
+  KalshiMarket,
+  ForecastMemo,
+  OVData,
+  IVData,
+  StreamMessage,
+  SavedForecast,
+  ComparativeForecastMemo,
+  ComparativeStreamMessage,
+} from "@/lib/types";
 
 function fmtVol(v: number) {
   if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
@@ -46,6 +55,10 @@ export default function MarketPage() {
   const [errorMsg, setErrorMsg]           = useState("");
   const cancelRef = useRef<(() => void) | null>(null);
   const hasAutoRunRef = useRef(false);
+  const [comparativeMemo, setComparativeMemo] = useState<ComparativeForecastMemo | null>(null);
+  const [comparativePhase, setComparativePhase] = useState<Phase>("idle");
+  const [comparativeProgress, setComparativeProgress] = useState("Initializing…");
+  const [comparativeError, setComparativeError] = useState("");
 
   const [savedEventTitle, setSavedEventTitle] = useState("");
   const [savedEvCat, setSavedEvCat]           = useState("");
@@ -87,6 +100,7 @@ export default function MarketPage() {
           const ctx = JSON.parse(row.context_json);
           setMkt(ctx.market as KalshiMarket);
           setMemo(JSON.parse(row.memo_json));
+          setComparativeMemo(null);
           setKalshiPrice(row.kalshi_price);
           setPhase("done");
           if (ctx.event) {
@@ -121,6 +135,7 @@ export default function MarketPage() {
     setMemo(null);
     setOvData(null);
     setIvData(null);
+    setErrorMsg("");
     cancelRef.current = streamForecast(
       { ticker: mkt.ticker, event_title: displayTitle, ev_sub: displaySub, ev_category: displayCat, market: mkt as unknown as Record<string, unknown> },
       (msg: StreamMessage) => {
@@ -140,6 +155,33 @@ export default function MarketPage() {
       }
     );
   }, [displayCat, displaySub, displayTitle, mkt]);
+
+  const runComparativeForecast = useCallback(() => {
+    if (markets.length <= 1) return;
+    setComparativePhase("running");
+    setComparativeProgress("Initializing…");
+    setComparativeError("");
+    setComparativeMemo(null);
+    cancelRef.current = streamComparativeForecast(
+      {
+        event_title: displayTitle || markets[0]?.question || rawTicker,
+        ev_sub: displaySub,
+        ev_category: displayCat,
+        markets: markets as unknown as Record<string, unknown>[],
+      },
+      (msg: ComparativeStreamMessage) => {
+        if (msg.type === "progress") {
+          setComparativeProgress(msg.label);
+        } else if (msg.type === "complete") {
+          setComparativeMemo(msg.memo);
+          setComparativePhase("done");
+        } else if (msg.type === "error") {
+          setComparativeError(msg.message);
+          setComparativePhase("error");
+        }
+      },
+    );
+  }, [displayCat, displaySub, displayTitle, markets, rawTicker]);
 
   useEffect(() => {
     if (!shouldAutoRun || !mkt || savedId || hasAutoRunRef.current) return;
@@ -177,26 +219,107 @@ export default function MarketPage() {
         {!savedId && markets.length > 1 && !mkt && (
           <div>
             <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#ede9e3", marginBottom: "20px" }}>
-              {eventTitle}
+              {displayTitle || rawTicker}
             </h2>
+            <div style={{ marginBottom: "18px", fontSize: "13px", color: "#7a7570", lineHeight: 1.6 }}>
+              This event has multiple options. Prism will compare them jointly and produce one probability distribution across the full set.
+            </div>
+            <button
+              onClick={runComparativeForecast}
+              disabled={comparativePhase === "running"}
+              style={{
+                width: "100%", background: comparativePhase === "running" ? "#181818" : "#e36438", color: "#fff",
+                border: "none", borderRadius: "10px", padding: "13px", fontSize: "12px",
+                fontFamily: "var(--font-mono), monospace", fontWeight: 600, letterSpacing: "0.06em",
+                opacity: comparativePhase === "running" ? 0.6 : 1, transition: "background 0.15s", marginBottom: "18px",
+              }}
+              onMouseEnter={e => { if (comparativePhase !== "running") e.currentTarget.style.background = "#c4421a"; }}
+              onMouseLeave={e => { if (comparativePhase !== "running") e.currentTarget.style.background = "#e36438"; }}
+            >
+              {comparativePhase === "running" ? "running comparative analysis…" : "run comparative analysis →"}
+            </button>
+
+            {comparativePhase === "running" && (
+              <div style={{ padding: "12px 14px", background: "#101010", border: "1px solid #1f1f1f", borderRadius: "8px", marginBottom: "16px" }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", color: "#e36438" }}>
+                  {comparativeProgress}
+                </div>
+              </div>
+            )}
+
+            {comparativeError && (
+              <div style={{ padding: "12px 14px", background: "#180a0a", border: "1px solid #3a1515", borderRadius: "8px", marginBottom: "16px" }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", color: "#f87171" }}>{comparativeError}</div>
+              </div>
+            )}
+
+            {comparativeMemo && (
+              <div style={{
+                background: "#0f0f0f", border: "1px solid #1c1c1c", borderRadius: "14px",
+                padding: "18px", marginBottom: "18px",
+              }}>
+                <div style={{
+                  fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
+                  textTransform: "uppercase", letterSpacing: "0.14em", color: "#e36438", marginBottom: "12px",
+                }}>
+                  Comparative View
+                </div>
+                <div style={{ fontSize: "13px", color: "#9b9790", lineHeight: 1.7 }}>
+                  {comparativeMemo.supervisor_reconciliation.reconciliation_reasoning}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {markets.map(m => (
-                <button key={m.ticker} onClick={() => setMkt(m)} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "14px 18px", background: "#0f0f0f", border: "1px solid #1c1c1c",
-                  borderRadius: "10px", transition: "border-color 0.15s",
-                }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(227,100,56,0.3)")}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = "#1c1c1c")}
-                >
-                  <span style={{ fontSize: "14px", color: "#ede9e3", fontWeight: 500 }}>
-                    {m.yes_sub_title || m.ticker}
-                  </span>
-                  <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "16px", fontWeight: 700, color: pColor(m.mid_price) }}>
-                    {(m.mid_price * 100).toFixed(0)}¢
-                  </span>
-                </button>
-              ))}
+              {markets.map((m, idx) => {
+                const result = comparativeMemo?.option_forecasts.find(r => r.ticker === m.ticker) ?? null;
+                const prismProb = result ? result.probability : null;
+                const prismColor = prismProb != null ? pColor(prismProb) : "#6b6865";
+                return (
+                  <button key={m.ticker} onClick={() => setMkt(m)} style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "14px 18px", background: "#0f0f0f", border: "1px solid #1c1c1c",
+                    borderRadius: "10px", transition: "border-color 0.15s", textAlign: "left",
+                  }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(227,100,56,0.3)")}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = "#1c1c1c")}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: "14px", color: "#ede9e3", fontWeight: 500, marginBottom: "4px" }}>
+                        {m.yes_sub_title || m.ticker}
+                      </div>
+                      <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#3a3835", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                        {result ? "jointly compared across all options" : comparativePhase === "running" ? `comparing option set ${idx + 1}/${markets.length}` : "click for single-option detail"}
+                      </div>
+                      {result?.rationale && (
+                        <div style={{ fontSize: "12px", color: "#6b6865", lineHeight: 1.6, marginTop: "8px" }}>
+                          {result.rationale}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
+                      {result && (
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#2a2826", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "3px" }}>
+                            Prism
+                          </div>
+                          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "16px", fontWeight: 700, color: prismColor }}>
+                            {(prismProb * 100).toFixed(0)}%
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#2a2826", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "3px" }}>
+                          Kalshi
+                        </div>
+                        <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "16px", fontWeight: 700, color: pColor(m.mid_price) }}>
+                          {(m.mid_price * 100).toFixed(0)}¢
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

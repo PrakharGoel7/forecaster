@@ -49,6 +49,7 @@ def _get_user_id(request: Request) -> str | None:
 
 from forecaster.kalshi import KalshiClient
 from forecaster.config import ForecasterConfig
+from forecaster.comparative import forecast_event_options
 from forecaster.forecaster_system import ForecasterSystem
 from forecaster import db
 
@@ -169,6 +170,13 @@ class ForecastRequest(BaseModel):
     ev_category: str = ""
     # Optional: pre-fetched market data from the frontend (avoids a second Kalshi round-trip)
     market: dict | None = None
+
+
+class ComparativeForecastRequest(BaseModel):
+    event_title: str
+    ev_sub: str = ""
+    ev_category: str = ""
+    markets: list[dict]
 
 
 @app.post("/api/forecasts/stream")
@@ -296,6 +304,86 @@ async def stream_forecast(req: ForecastRequest, request: Request):
                     break
         finally:
             # Always clean up the task — swallow any leftover exceptions
+            try:
+                await asyncio.wait_for(task, timeout=10.0)
+            except Exception:
+                pass
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/api/forecasts/compare/stream")
+async def stream_comparative_forecast(req: ComparativeForecastRequest):
+    if len(req.markets) < 2:
+        raise HTTPException(status_code=400, detail="Comparative forecast requires at least two options")
+
+    async def _generate() -> AsyncIterator[str]:
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue = asyncio.Queue()
+
+        def on_step(name: str, stage: str, data=None):
+            if "Agent" in name and stage == "done":
+                try:
+                    i, n = map(int, name.split("Agent ")[1].split("/"))
+                    label = f"Comparing options ({int(i / n * 100)}%)" if i < n else "Reconciling option probabilities..."
+                    asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": label}), loop)
+                except Exception:
+                    pass
+            elif "Supervisor" in name and stage == "done":
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "progress", "label": "Finalizing comparative view..."}), loop
+                )
+
+        async def _run():
+            try:
+                config = ForecasterConfig()
+                rules = next((m.get("rules_primary") for m in req.markets if m.get("rules_primary")), "")
+                markets = [
+                    {
+                        "ticker": m["ticker"],
+                        "label": m.get("yes_sub_title") or m["ticker"],
+                        "question": m.get("question") or m.get("yes_sub_title") or m["ticker"],
+                        "market_price": float(m.get("mid_price") or 0.0),
+                    }
+                    for m in req.markets
+                ]
+                memo = await loop.run_in_executor(
+                    None,
+                    lambda: forecast_event_options(
+                        event_title=req.event_title,
+                        event_subtitle=req.ev_sub or "",
+                        event_category=req.ev_category or "",
+                        resolution_rules=rules or "",
+                        markets=markets,
+                        on_step=on_step,
+                        config=config,
+                    ),
+                )
+                await queue.put({
+                    "type": "complete",
+                    "memo": json.loads(memo.model_dump_json()),
+                })
+            except Exception as exc:
+                await queue.put({"type": "error", "message": str(exc)})
+
+        task = asyncio.create_task(_run())
+        try:
+            await queue.put({"type": "progress", "label": "Initializing comparative analysis..."})
+            while True:
+                try:
+                    msg = await asyncio.wait_for(asyncio.shield(queue.get()), timeout=360.0)
+                except asyncio.TimeoutError:
+                    yield f"data: {json.dumps({'type': 'error', 'message': 'Comparative forecast timed out after 6 minutes'})}\n\n"
+                    task.cancel()
+                    break
+                yield f"data: {json.dumps(msg)}\n\n"
+                if msg["type"] in ("complete", "error"):
+                    break
+        finally:
             try:
                 await asyncio.wait_for(task, timeout=10.0)
             except Exception:
