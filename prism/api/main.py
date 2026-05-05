@@ -63,6 +63,8 @@ from forecaster.config import ForecasterConfig
 from forecaster.forecaster_system import ForecasterSystem
 from forecaster import db
 
+_PROMPT_LOG_DIR = (ForecasterConfig().prompt_log_dir if ForecasterConfig().prompt_log_dir.is_absolute() else (_REPO_ROOT / ForecasterConfig().prompt_log_dir)).resolve()
+
 # Oracle agents (from trading_companion) — imported lazily inside endpoints
 # so a missing trading_companion path doesn't break the rest of the API.
 _TC_AVAILABLE = _TC_PATH.exists()
@@ -193,6 +195,50 @@ def _read_kalshi_log_rows(limit: int) -> list[dict[str, str]]:
     return rows[-limit:]
 
 
+def _prompt_log_files(date: str | None = None) -> list[Path]:
+    root = _PROMPT_LOG_DIR / date if date else _PROMPT_LOG_DIR
+    if not root.exists():
+        return []
+    return sorted(root.rglob("*.jsonl"))
+
+
+def _read_prompt_log_entries(limit: int, date: str | None = None, client: str | None = None) -> list[dict[str, Any]]:
+    files = _prompt_log_files(date)
+    if client:
+        client_name = client.removesuffix(".jsonl")
+        files = [p for p in files if p.stem == client_name]
+
+    entries: list[dict[str, Any]] = []
+    for path in files:
+        try:
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                record["_file"] = str(path.relative_to(_PROMPT_LOG_DIR))
+                entries.append(record)
+        except Exception as exc:
+            entries.append({
+                "_file": str(path.relative_to(_PROMPT_LOG_DIR)),
+                "phase": "read_error",
+                "error": str(exc),
+            })
+
+    entries.sort(key=lambda item: item.get("logged_at", ""))
+    if limit > 0:
+        entries = entries[-limit:]
+    return entries
+
+
+def _resolve_prompt_log_file(rel_path: str) -> Path:
+    candidate = (_PROMPT_LOG_DIR / rel_path).resolve()
+    if _PROMPT_LOG_DIR not in candidate.parents and candidate != _PROMPT_LOG_DIR:
+        raise HTTPException(status_code=400, detail="Invalid prompt log path")
+    if not candidate.exists() or candidate.suffix != ".jsonl":
+        raise HTTPException(status_code=404, detail="Prompt log file not found")
+    return candidate
+
+
 @app.get("/api/me")
 async def me(request: Request):
     """Debug: returns the user_id extracted from the Bearer token."""
@@ -219,6 +265,35 @@ async def download_kalshi_log():
         path=_KALSHI_API_LOG_FILE,
         media_type="text/csv",
         filename=_KALSHI_API_LOG_FILE.name,
+    )
+
+
+@app.get("/api/debug/prompt-logs")
+async def get_prompt_logs(limit: int = 200, date: str | None = None, client: str | None = None):
+    files = _prompt_log_files(date)
+    if client:
+        client_name = client.removesuffix(".jsonl")
+        files = [p for p in files if p.stem == client_name]
+    entries = _read_prompt_log_entries(limit=limit, date=date, client=client)
+    return {
+        "root": str(_PROMPT_LOG_DIR),
+        "exists": _PROMPT_LOG_DIR.exists(),
+        "date": date,
+        "client": client,
+        "file_count": len(files),
+        "files": [str(p.relative_to(_PROMPT_LOG_DIR)) for p in files],
+        "entry_count": len(entries),
+        "entries": entries,
+    }
+
+
+@app.get("/api/debug/prompt-logs/download")
+async def download_prompt_log(path: str):
+    file_path = _resolve_prompt_log_file(path)
+    return FileResponse(
+        path=file_path,
+        media_type="application/x-ndjson",
+        filename=file_path.name,
     )
 
 
