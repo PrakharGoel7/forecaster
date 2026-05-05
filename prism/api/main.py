@@ -230,6 +230,101 @@ def _read_prompt_log_entries(limit: int, date: str | None = None, client: str | 
     return entries
 
 
+def _summarize_prompt_logs(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "response_calls": 0,
+        "error_calls": 0,
+        "total_prompt_duration_ms": 0.0,
+        "avg_prompt_duration_ms": None,
+        "max_prompt_duration_ms": None,
+        "tool_calls": 0,
+        "total_tool_duration_ms": 0.0,
+        "avg_tool_duration_ms": None,
+        "max_tool_duration_ms": None,
+        "by_client": {},
+        "by_tool": {},
+    }
+
+    prompt_durations: list[float] = []
+    tool_durations: list[float] = []
+
+    for entry in entries:
+        client_name = entry.get("client_name", "unknown")
+        client_summary = summary["by_client"].setdefault(client_name, {
+            "response_calls": 0,
+            "error_calls": 0,
+            "total_prompt_duration_ms": 0.0,
+            "tool_calls": 0,
+            "total_tool_duration_ms": 0.0,
+        })
+
+        if entry.get("phase") == "response" and isinstance(entry.get("duration_ms"), (int, float)):
+            duration = float(entry["duration_ms"])
+            prompt_durations.append(duration)
+            summary["response_calls"] += 1
+            summary["total_prompt_duration_ms"] += duration
+            client_summary["response_calls"] += 1
+            client_summary["total_prompt_duration_ms"] += duration
+        elif entry.get("phase") == "error":
+            summary["error_calls"] += 1
+            client_summary["error_calls"] += 1
+
+        if entry.get("phase") == "tool_results":
+            for tool_result in entry.get("tool_results", []):
+                if not isinstance(tool_result, dict):
+                    continue
+                duration = tool_result.get("duration_ms")
+                if not isinstance(duration, (int, float)):
+                    continue
+                tool_name = tool_result.get("tool_name", "unknown")
+                duration = float(duration)
+                tool_durations.append(duration)
+                summary["tool_calls"] += 1
+                summary["total_tool_duration_ms"] += duration
+                client_summary["tool_calls"] += 1
+                client_summary["total_tool_duration_ms"] += duration
+                tool_summary = summary["by_tool"].setdefault(tool_name, {
+                    "count": 0,
+                    "total_duration_ms": 0.0,
+                    "max_duration_ms": 0.0,
+                })
+                tool_summary["count"] += 1
+                tool_summary["total_duration_ms"] += duration
+                tool_summary["max_duration_ms"] = max(tool_summary["max_duration_ms"], duration)
+
+    if prompt_durations:
+        summary["avg_prompt_duration_ms"] = round(summary["total_prompt_duration_ms"] / len(prompt_durations), 2)
+        summary["max_prompt_duration_ms"] = round(max(prompt_durations), 2)
+        summary["total_prompt_duration_ms"] = round(summary["total_prompt_duration_ms"], 2)
+    if tool_durations:
+        summary["avg_tool_duration_ms"] = round(summary["total_tool_duration_ms"] / len(tool_durations), 2)
+        summary["max_tool_duration_ms"] = round(max(tool_durations), 2)
+        summary["total_tool_duration_ms"] = round(summary["total_tool_duration_ms"], 2)
+
+    for client_summary in summary["by_client"].values():
+        if client_summary["response_calls"]:
+            client_summary["avg_prompt_duration_ms"] = round(
+                client_summary["total_prompt_duration_ms"] / client_summary["response_calls"], 2
+            )
+        else:
+            client_summary["avg_prompt_duration_ms"] = None
+        if client_summary["tool_calls"]:
+            client_summary["avg_tool_duration_ms"] = round(
+                client_summary["total_tool_duration_ms"] / client_summary["tool_calls"], 2
+            )
+        else:
+            client_summary["avg_tool_duration_ms"] = None
+        client_summary["total_prompt_duration_ms"] = round(client_summary["total_prompt_duration_ms"], 2)
+        client_summary["total_tool_duration_ms"] = round(client_summary["total_tool_duration_ms"], 2)
+
+    for tool_summary in summary["by_tool"].values():
+        tool_summary["avg_duration_ms"] = round(tool_summary["total_duration_ms"] / tool_summary["count"], 2)
+        tool_summary["total_duration_ms"] = round(tool_summary["total_duration_ms"], 2)
+        tool_summary["max_duration_ms"] = round(tool_summary["max_duration_ms"], 2)
+
+    return summary
+
+
 def _resolve_prompt_log_file(rel_path: str) -> Path:
     candidate = (_PROMPT_LOG_DIR / rel_path).resolve()
     if _PROMPT_LOG_DIR not in candidate.parents and candidate != _PROMPT_LOG_DIR:
@@ -283,6 +378,7 @@ async def get_prompt_logs(limit: int = 200, date: str | None = None, client: str
         "file_count": len(files),
         "files": [str(p.relative_to(_PROMPT_LOG_DIR)) for p in files],
         "entry_count": len(entries),
+        "summary": _summarize_prompt_logs(entries),
         "entries": entries,
     }
 

@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
@@ -70,6 +71,8 @@ class LLMClient:
     ) -> NormalizedResponse:
         self._call_index += 1
         call_id = f"{self.client_name}-{self._call_index:03d}-{uuid4().hex[:8]}"
+        started_at = datetime.now(timezone.utc)
+        started_perf = perf_counter()
         kwargs: dict = dict(
             model=self.config.model,
             max_tokens=self.config.max_tokens_per_agent,
@@ -85,6 +88,7 @@ class LLMClient:
             "client_name": self.client_name,
             "model": self.config.model,
             "force_tool": force_tool,
+            "started_at": started_at.isoformat(),
             "system": system,
             "messages": messages,
             "tools": tools,
@@ -93,15 +97,19 @@ class LLMClient:
         try:
             raw = self._client.chat.completions.create(**kwargs)
         except Exception as exc:
+            duration_ms = round((perf_counter() - started_perf) * 1000, 2)
             self._append_log({
                 "phase": "error",
                 "call_id": call_id,
                 "client_name": self.client_name,
+                "started_at": started_at.isoformat(),
+                "duration_ms": duration_ms,
                 "error_type": type(exc).__name__,
                 "error": str(exc),
             })
             raise
         choice = raw.choices[0]
+        duration_ms = round((perf_counter() - started_perf) * 1000, 2)
 
         tool_blocks = [
             ToolBlock(
@@ -119,6 +127,8 @@ class LLMClient:
             "phase": "response",
             "call_id": call_id,
             "client_name": self.client_name,
+            "started_at": started_at.isoformat(),
+            "duration_ms": duration_ms,
             "assistant_text": choice.message.content,
             "tool_blocks": [{"id": tb.id, "name": tb.name, "input": tb.input} for tb in tool_blocks],
             "raw_response": raw.model_dump(mode="json"),

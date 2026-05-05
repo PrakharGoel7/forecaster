@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+from time import perf_counter
 
 from forecaster.models import (
     AgentForecast, ReconciledOutsideView, EvidenceItem, EvidenceLedger,
@@ -399,8 +400,15 @@ def run_forecasting_agent(
 
         for tb in response.tool_blocks:
             tb_input = _require_mapping(tb.input, f"Inside View Agent {agent_id} tool input for {tb.name}")
+            tool_started = perf_counter()
             result = _execute_tool(tb.name, tb_input, ledger, config)
-            tool_results.append({"tool_use_id": tb.id, "content": json.dumps(result)})
+            duration_ms = round((perf_counter() - tool_started) * 1000, 2)
+            tool_results.append({
+                "tool_use_id": tb.id,
+                "content": json.dumps(result),
+                "tool_name": tb.name,
+                "duration_ms": duration_ms,
+            })
             if tb.name == "submit_forecast":
                 forecast_input = tb_input
                 submitted = True

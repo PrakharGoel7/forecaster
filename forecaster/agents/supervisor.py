@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+from time import perf_counter
 
 from forecaster.models import (
     AgentForecast, ReconciledOutsideView, EvidenceItem, EvidenceDirection, SourceType,
@@ -8,7 +9,6 @@ from forecaster.models import (
 from forecaster.config import ForecasterConfig
 from forecaster.agents.base import LLMClient
 from forecaster.calibration import logit
-from forecaster.tools.search import web_search, web_fetch
 
 SYSTEM_PROMPT = """You are the Supervisor in a multi-agent forecasting system. You receive independent probability estimates from inside-view agents and a pre-established outside-view base rate.
 
@@ -35,7 +35,7 @@ STEP 2 — ASSESS INSIDE-VIEW DISAGREEMENT:
    - Different timeline assumptions
    - Different resolution-rule interpretation
    - Different causal models
-3. Run targeted searches to resolve the crux — NOT general research, only the specific disputed fact.
+3. Resolve the crux using only the arguments and evidence already provided by the agents.
 
 STEP 3 — RECONCILE:
 RECONCILIATION PRINCIPLES:
@@ -43,41 +43,20 @@ RECONCILIATION PRINCIPLES:
 - Give explicit weighting boost to evidence from: official sources, primary data, reputable news.
 - Give explicit weighting penalty to evidence from: blogs, unsourced claims, low-reliability sources.
 - If one agent found a key primary-source fact others missed, weight toward that agent.
-- If searches resolve the crux, update accordingly.
-- If searches cannot resolve the crux, widen uncertainty and move toward the geometric mean.
+- If the provided evidence resolves the crux, update accordingly.
+- If the provided evidence cannot resolve the crux, widen uncertainty and move toward the geometric mean.
 - Your reconciled estimate must be defensible: state exactly what drove it.
 
 BAD RECONCILIATION TO AVOID:
 - Averaging without thinking about evidence quality.
 - Ignoring a flawed outside view and anchoring estimates to it anyway.
-- Running general research instead of crux-targeted searches.
+- Introducing new outside evidence instead of reconciling the existing record.
 - Giving a precise number without explaining what drove it.
 
 Call submit_reconciliation when done.
 """
 
 _TOOLS = [
-    {
-        "name": "web_search",
-        "description": "Run a targeted search to resolve a specific disagreement between agents.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "max_results": {"type": "integer", "default": 5},
-            },
-            "required": ["query"],
-        },
-    },
-    {
-        "name": "web_fetch",
-        "description": "Fetch a URL to verify a specific claim.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"url": {"type": "string"}},
-            "required": ["url"],
-        },
-    },
     {
         "name": "submit_reconciliation",
         "description": "Submit the reconciled forecast with outside-view audit.",
@@ -111,6 +90,7 @@ _TOOLS = [
                 "targeted_searches_conducted": {
                     "type": "array",
                     "items": {"type": "string"},
+                    "description": "Leave empty; supervisor does not perform external searches.",
                 },
                 "reconciled_probability": {
                     "type": "number",
@@ -197,14 +177,14 @@ def run_supervisor(
         f"{_fmt_agent_forecasts(agent_forecasts)}\n\n"
         f"BEGIN WITH THE OUTSIDE VIEW AUDIT (Step 1), then assess disagreement (Step 2), "
         f"then reconcile (Step 3). "
-        f"{'Spread is wide — identify the crux and run targeted searches.' if spread >= config.supervisor_search_threshold else 'Spread is tight — aggregate with brief reasoning.'}"
+        f"{'Spread is wide — identify the crux and resolve it from the provided evidence.' if spread >= config.supervisor_search_threshold else 'Spread is tight — aggregate with brief reasoning.'}"
         " Call submit_reconciliation when done."
     )
 
     messages = [{"role": "user", "content": user_message}]
     reconciliation_input: dict | None = None
 
-    for _ in range(5):
+    for _ in range(3):
         response = llm.complete(SYSTEM_PROMPT, messages, _TOOLS)
 
         if not response.tool_blocks:
@@ -215,18 +195,21 @@ def run_supervisor(
 
         for tb in response.tool_blocks:
             tb_input = tb.input if isinstance(tb.input, dict) else {}
-            if tb.name == "web_search":
-                content = json.dumps({"results": web_search(tb_input["query"], tb_input.get("max_results", 5))})
-            elif tb.name == "web_fetch":
-                content = json.dumps(web_fetch(tb_input["url"], config.fetch_max_chars))
-            elif tb.name == "submit_reconciliation":
+            tool_started = perf_counter()
+            if tb.name == "submit_reconciliation":
                 reconciliation_input = tb_input
                 submitted = True
                 content = json.dumps({"status": "received"})
             else:
                 content = json.dumps({"error": f"unknown tool {tb.name}"})
+            duration_ms = round((perf_counter() - tool_started) * 1000, 2)
 
-            tool_results.append({"tool_use_id": tb.id, "content": content})
+            tool_results.append({
+                "tool_use_id": tb.id,
+                "content": content,
+                "tool_name": tb.name,
+                "duration_ms": duration_ms,
+            })
 
         llm.extend_messages(messages, response, tool_results)
 
