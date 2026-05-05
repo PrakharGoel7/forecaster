@@ -274,7 +274,7 @@ export default function MarketPage() {
               Pick an outcome to analyze
             </div>
             <div style={{ fontSize: "15px", color: "#8c8680", lineHeight: 1.6, marginBottom: "20px" }}>
-              Choose the outcome you might trade. Market thinks each outcome has the odds shown below. Click one to run Prism’s analysis and see whether that price looks attractive.
+              Find where the market might be mispriced. Select an outcome and run Prism’s analysis.
             </div>
 
             <div style={{ display: "grid", gap: "14px" }}>
@@ -317,25 +317,24 @@ export default function MarketPage() {
                         {market.yes_sub_title || market.ticker}
                       </div>
                       <div style={{ fontSize: "14px", color: "#98918b" }}>
-                        {fmtPct(market.mid_price)} chance
-                      </div>
-                      <div style={{ fontSize: "13px", color: "#6f6963", lineHeight: 1.6, marginTop: "8px" }}>
-                        Market thinks this outcome has a {fmtPct(market.mid_price)} chance. Run Prism’s analysis to see whether that price looks attractive.
+                        {fmtPct(market.mid_price)} market odds
                       </div>
                     </div>
 
-                    <div style={{
-                      flexShrink: 0,
-                      padding: "7px 11px",
-                      borderRadius: "999px",
-                      border: `1px solid ${isSelected ? "#e36438" : "#2a2a2a"}`,
-                      color: isSelected ? "#ff8b5f" : "#6f6963",
-                      background: isSelected ? "rgba(227,100,56,0.12)" : "transparent",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                    }}>
-                      {isSelected ? "Selected" : "Analyze"}
-                    </div>
+                    {isSelected && (
+                      <div style={{
+                        flexShrink: 0,
+                        padding: "7px 11px",
+                        borderRadius: "999px",
+                        border: "1px solid #e36438",
+                        color: "#ff8b5f",
+                        background: "rgba(227,100,56,0.12)",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                      }}>
+                        Selected
+                      </div>
+                    )}
                   </button>
                 );
               })}
