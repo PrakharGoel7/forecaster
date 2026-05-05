@@ -164,7 +164,7 @@ _TOOLS = [
                 },
                 "magnitude": {
                     "type": "string",
-                    "enum": ["strong", "moderate", "weak", "slight"],
+                    "enum": ["strong", "moderate", "modest", "weak", "slight"],
                     "description": "How large is the update this evidence justifies",
                 },
                 "date_published": {
@@ -458,7 +458,10 @@ def _execute_tool(name: str, args: dict, ledger: EvidenceLedger, config: Forecas
         auto_reliability = score_source_reliability(url, args.get("source_title", ""))
         date_pub = args.get("date_published") or None
         raw_magnitude = args.get("magnitude")
-        normalized_magnitude = "weak" if raw_magnitude == "slight" else raw_magnitude
+        normalized_magnitude = {
+            "slight": "weak",
+            "modest": "moderate",
+        }.get(raw_magnitude, raw_magnitude)
         item = EvidenceItem(
             claim=args["claim"],
             source_url=url,

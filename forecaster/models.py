@@ -64,6 +64,14 @@ class EvidenceMagnitude(str, Enum):
     MODERATE = "moderate"
     WEAK     = "weak"
 
+    @classmethod
+    def _missing_(cls, value):
+        _legacy = {
+            "modest": cls.MODERATE,
+            "slight": cls.WEAK,
+        }
+        return _legacy.get(value)
+
 
 class UpdateMagnitude(str, Enum):
     STRONG_RAISE  = "strong_raise"

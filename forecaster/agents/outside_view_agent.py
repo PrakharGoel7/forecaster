@@ -206,7 +206,7 @@ SEARCH_TOOLS = [
                 },
                 "magnitude": {
                     "type": "string",
-                    "enum": ["strong", "moderate", "weak"],
+                    "enum": ["strong", "moderate", "modest", "weak", "slight"],
                 },
                 "date_published": {"type": "string"},
                 "why_it_matters": {"type": "string"},
