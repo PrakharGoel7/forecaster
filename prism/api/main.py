@@ -294,9 +294,9 @@ async def stream_forecast(req: ForecastRequest, request: Request):
             if name == "OV Phase" and stage == "complete" and data is not None:
                 asyncio.run_coroutine_threadsafe(queue.put({
                     "type": "ov_complete",
-                    "base_rate": data.base_rate,
-                    "reference_class": data.reference_class,
-                    "reasoning": data.reasoning,
+                    "base_rate": data.final_prior,
+                    "reference_class": data.reference_class_summary,
+                    "reasoning": data.rationale,
                 }), loop)
             elif name == "IV Phase" and stage == "complete" and data is not None:
                 asyncio.run_coroutine_threadsafe(queue.put({
@@ -307,13 +307,9 @@ async def stream_forecast(req: ForecastRequest, request: Request):
                     ],
                 }), loop)
             elif "OV Agent" in name and stage == "done":
-                try:
-                    i, n = map(int, name.split("OV Agent ")[1].split("/"))
-                    asyncio.run_coroutine_threadsafe(
-                        queue.put({"type": "progress", "label": f"Researching base rate ({int(i / n * 100)}%)"}), loop
-                    )
-                except Exception:
-                    pass
+                asyncio.run_coroutine_threadsafe(
+                    queue.put({"type": "progress", "label": "Researching base rate..."}), loop
+                )
             elif "Agent" in name and stage == "done":
                 try:
                     i, n = map(int, name.split("Agent ")[1].split("/"))
