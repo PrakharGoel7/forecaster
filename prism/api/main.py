@@ -115,6 +115,19 @@ def _market_dict(m) -> dict:
     }
 
 
+def _get_live_markets_for_events(client: KalshiClient, event_tickers: list[str]) -> list:
+    all_markets: dict[str, Any] = {}
+    for event_ticker in event_tickers:
+        try:
+            markets, _ = client.get_markets(limit=50, status="open", event_ticker=event_ticker)
+        except Exception:
+            continue
+        for market in markets:
+            if market.ticker not in all_markets:
+                all_markets[market.ticker] = market
+    return list(all_markets.values())
+
+
 def _seconds_until_next_cache_refresh(now: datetime | None = None) -> float:
     now = now or datetime.now(_PACIFIC_TZ)
     target = now.replace(hour=15, minute=5, second=0, microsecond=0)
@@ -661,35 +674,47 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
 
                 from event_cache_db import get_event_lookup
                 from market_cache_db import get_markets_for_events
-                from forecaster.kalshi import KalshiMarket
 
                 asyncio.run_coroutine_threadsafe(
                     queue.put({"type": "progress", "label": f"Loading cached markets for {len(event_tickers)} events…"}), loop
                 )
 
-                # Load cached markets for shortlisted events
                 candidate_by_event: dict = {c["event_ticker"]: c for c in filtered_candidates}
-                markets = [
-                    KalshiMarket(**{
-                        "ticker": row["ticker"],
-                        "event_ticker": row["event_ticker"],
-                        "yes_sub_title": row["yes_sub_title"],
-                        "no_sub_title": row["no_sub_title"],
-                        "yes_bid": row["yes_bid"],
-                        "yes_ask": row["yes_ask"],
-                        "last_price": row["last_price"],
-                        "volume": row["volume"],
-                        "rules_primary": row["rules_primary"],
-                        "rules_secondary": row["rules_secondary"],
-                        "close_time": row["close_time"],
-                        "status": row["status"],
-                    })
-                    for row in get_markets_for_events(event_tickers)
-                ]
+                try:
+                    cached_rows = get_markets_for_events(event_tickers)
+                except Exception:
+                    cached_rows = []
+
+                if cached_rows:
+                    from forecaster.kalshi import KalshiMarket
+
+                    markets = [
+                        KalshiMarket(**{
+                            "ticker": row["ticker"],
+                            "event_ticker": row["event_ticker"],
+                            "yes_sub_title": row["yes_sub_title"],
+                            "no_sub_title": row["no_sub_title"],
+                            "yes_bid": row["yes_bid"],
+                            "yes_ask": row["yes_ask"],
+                            "last_price": row["last_price"],
+                            "volume": row["volume"],
+                            "rules_primary": row["rules_primary"],
+                            "rules_secondary": row["rules_secondary"],
+                            "close_time": row["close_time"],
+                            "status": row["status"],
+                        })
+                        for row in cached_rows
+                    ]
+                else:
+                    asyncio.run_coroutine_threadsafe(
+                        queue.put({"type": "progress", "label": "Cached market DB is empty; fetching open markets live…"}), loop
+                    )
+                    kalshi_client = _get_client()
+                    markets = _get_live_markets_for_events(kalshi_client, event_tickers)
 
                 if not markets:
                     asyncio.run_coroutine_threadsafe(
-                        queue.put({"type": "error", "message": "No cached markets found for the shortlisted events."}), loop
+                        queue.put({"type": "error", "message": "No open markets found for the shortlisted events."}), loop
                     )
                     return
 
