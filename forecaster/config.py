@@ -9,12 +9,12 @@ class ForecasterConfig:
     api_key: str = field(default_factory=lambda: os.environ.get("OPENROUTER_API_KEY", ""))
 
     # Outside view agents (base rate research only)
-    num_ov_agents: int = 2
+    num_ov_agents: int = 3
     max_ov_iterations: int = 3
 
     # Inside view agents (current evidence, updates from base rate)
     num_iv_agents: int = 3
-    max_iv_iterations: int = 5
+    max_iv_iterations: int = 4
 
     # K ensemble runs (final probability = geometric mean over K runs)
     num_ensemble_runs: int = 1

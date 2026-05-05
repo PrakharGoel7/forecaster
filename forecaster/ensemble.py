@@ -1,35 +1,27 @@
 """
 Two-phase ensemble:
-  Phase 1 — N outside-view agents establish the base rate (max_ov_iterations each)
-  Phase 2 — M inside-view agents update from the consensus (max_iv_iterations each)
-  Supervisor reconciles IV agents with OV consensus as context.
+  Phase 1 — three independent outside-view agents establish candidate base rates
+            and an outside-view reconciler blends them into one prior
+  Phase 2 — M inside-view agents update from the reconciled prior
+  Supervisor reconciles IV agents with the reconciled outside view as context.
 Runs K independent passes; final probability = geometric mean of reconciled probabilities.
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Optional
 from forecaster.models import (
-    AgentForecast, OutsideViewForecast, OutsideViewConsensus,
+    AgentForecast, OutsideViewEstimate, ReconciledOutsideView,
     SupervisorReconciliation, ParsedQuestion,
 )
 from forecaster.config import ForecasterConfig
-from forecaster.agents.outside_view_agent import run_outside_view_agent
+from forecaster.agents.outside_view_agent import (
+    run_outside_view_agent_a,
+    run_outside_view_agent_b,
+    run_outside_view_agent_c,
+    reconcile_outside_view,
+)
 from forecaster.agents.forecaster_agent import run_forecasting_agent
 from forecaster.agents.supervisor import run_supervisor
-from forecaster.calibration import ensemble_average, probability_spread
-
-
-def _aggregate_outside_views(ov_forecasts: list[OutsideViewForecast]) -> OutsideViewConsensus:
-    base_rate = ensemble_average([f.base_rate for f in ov_forecasts])
-    best = max(ov_forecasts, key=lambda f: {"high": 2, "medium": 1, "low": 0}.get(f.confidence, 0))
-    return OutsideViewConsensus(
-        base_rate=base_rate,
-        reference_class=best.reference_class,
-        statistical_object=best.statistical_object,
-        denominator_or_basis=best.denominator_or_basis,
-        reference_class_limitations=best.reference_class_limitations,
-        reasoning=best.reasoning,
-        agent_forecasts=ov_forecasts,
-    )
+from forecaster.calibration import ensemble_average
 
 
 def _run_parallel_agents(
@@ -65,16 +57,26 @@ def run_single_pass(
     run_id: int,
     related_markets: list[dict] | None = None,
     on_step: Optional[Callable] = None,
-) -> tuple[list[OutsideViewForecast], OutsideViewConsensus, list[AgentForecast], SupervisorReconciliation]:
+) -> tuple[list[OutsideViewEstimate], ReconciledOutsideView, list[AgentForecast], SupervisorReconciliation]:
     # Phase 1: outside view
+    ov_workers = [
+        ("Agent A", lambda: run_outside_view_agent_a(parsed_question, related_markets=related_markets or [], config=config)),
+        ("Agent B", lambda: run_outside_view_agent_b(parsed_question, related_markets=related_markets or [], config=config)),
+        ("Agent C", lambda: run_outside_view_agent_c(parsed_question, related_markets=related_markets or [], config=config)),
+    ]
     ov_forecasts = _run_parallel_agents(
-        config.num_ov_agents,
-        lambda i: f"Run {run_id+1} · OV Agent {i+1}/{config.num_ov_agents}",
-        lambda i: run_outside_view_agent(parsed_question, agent_id=i, config=config),
+        len(ov_workers),
+        lambda i: f"Run {run_id+1} · OV {ov_workers[i][0]}",
+        lambda i: ov_workers[i][1](),
         on_step=on_step,
     )
 
-    ov_consensus = _aggregate_outside_views(ov_forecasts)
+    if on_step:
+        on_step(f"Run {run_id+1} · OV Reconciler", "running")
+    ov_consensus = reconcile_outside_view(parsed_question, ov_forecasts, config=config)
+    if on_step:
+        on_step(f"Run {run_id+1} · OV Reconciler", "done")
+
     if on_step:
         on_step("OV Phase", "complete", ov_consensus)
 
@@ -85,7 +87,7 @@ def run_single_pass(
         lambda i: run_forecasting_agent(
             parsed_question,
             agent_id=i,
-            ov_consensus=ov_consensus,
+            ov_reconciliation=ov_consensus,
             related_markets=related_markets or [],
             config=config,
         ),
@@ -97,7 +99,13 @@ def run_single_pass(
 
     if on_step:
         on_step(f"Run {run_id+1} · Supervisor", "running")
-    reconciliation = run_supervisor(parsed_question, iv_forecasts, ov_consensus, related_markets=related_markets or [], config=config)
+    reconciliation = run_supervisor(
+        parsed_question,
+        iv_forecasts,
+        ov_consensus,
+        related_markets=related_markets or [],
+        config=config,
+    )
     if on_step:
         on_step(f"Run {run_id+1} · Supervisor", "done")
 
@@ -109,19 +117,19 @@ def run_ensemble(
     config: ForecasterConfig,
     related_markets: list[dict] | None = None,
     on_step: Optional[Callable] = None,
-) -> tuple[float, list[float], list[OutsideViewForecast], OutsideViewConsensus, list[AgentForecast], SupervisorReconciliation]:
+) -> tuple[float, list[float], list[OutsideViewEstimate], ReconciledOutsideView, list[AgentForecast], SupervisorReconciliation]:
     """
     Returns:
         raw_probability: geometric mean across K runs (before Platt scaling)
         run_probabilities: reconciled probability from each run
-        final_ov_forecasts: OV agent forecasts from last run
-        final_ov_consensus: aggregated outside view from last run
+        final_ov_forecasts: OV agent estimates from last run
+        final_ov_consensus: reconciled outside view from last run
         final_iv_forecasts: IV agent forecasts from last run
         final_reconciliation: supervisor output from last run
     """
     run_probabilities: list[float] = []
-    final_ov_forecasts: list[OutsideViewForecast] = []
-    final_ov_consensus: OutsideViewConsensus | None = None
+    final_ov_forecasts: list[OutsideViewEstimate] = []
+    final_ov_consensus: ReconciledOutsideView | None = None
     final_iv_forecasts: list[AgentForecast] = []
     final_reconciliation: SupervisorReconciliation | None = None
 

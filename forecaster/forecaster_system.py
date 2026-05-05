@@ -45,7 +45,7 @@ class ForecasterSystem:
                                    ev_category=ev_category),
         )
 
-        raw_prob, run_probs, ov_forecasts, ov_consensus, agent_forecasts, reconciliation = run_ensemble(
+        raw_prob, run_probs, ov_forecasts, ov_reconciliation, agent_forecasts, reconciliation = run_ensemble(
             parsed, cfg, on_step=on_step, related_markets=related_markets or []
         )
 
@@ -60,18 +60,16 @@ class ForecasterSystem:
             question=question,
             final_probability=calibration.calibrated_probability,
             raw_probability=raw_prob,
-            exclusivity_assessment=reconciliation.exclusivity_assessment,
-            exclusivity_reasoning=reconciliation.exclusivity_reasoning,
-            related_option_probabilities=reconciliation.related_option_probabilities,
             ensemble_run_probabilities=run_probs,
             probability_spread=spread,
             calibration=calibration,
             parsed_question=parsed,
             ov_forecasts=ov_forecasts,
+            ov_reconciliation=ov_reconciliation,
             agent_forecasts=agent_forecasts,
             supervisor_reconciliation=reconciliation,
             inside_view_summary=reconciliation.reconciliation_reasoning,
-            outside_view_summary=ov_consensus.reasoning,
+            outside_view_summary=ov_reconciliation.rationale,
             key_evidence_summary=f"Factors for YES: {'; '.join(all_for[:5])}. "
                                   f"Factors against YES: {'; '.join(all_against[:5])}.",
             open_questions=parsed.key_unknowns,

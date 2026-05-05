@@ -143,23 +143,25 @@ class ParsedQuestion(BaseModel):
     resolution_deadline: Optional[str] = None
     relevant_timezone: Optional[str] = None
     outside_view_target: str = ""           # statistical object to estimate
-    candidate_reference_classes: list[dict] = Field(default_factory=list)
-    selected_reference_class: str = ""
-    selected_reference_class_rationale: str = ""
+    time_horizon: str = ""
+    threshold_or_comparison_structure: str = ""
+    base_rate_search_hints: list[str] = Field(default_factory=list)
     base_rate_queries: list[str] = Field(default_factory=list)
     key_unknowns: list[str] = Field(default_factory=list)
     inside_view_factors: list[str] = Field(default_factory=list)
     foreknowledge_risk: ForeknowledgeRisk = ForeknowledgeRisk.LOW
     ambiguity_notes: list[str] = Field(default_factory=list)
 
-    # Legacy alias — kept so old serialised data still loads
+    # Legacy aliases — kept so old serialised data still loads
+    candidate_reference_classes: list[dict] = Field(default_factory=list)
+    selected_reference_class: str = ""
+    selected_reference_class_rationale: str = ""
     outside_view_reference_class: str = ""
 
     def format_for_prompt(self) -> str:
         def fmt(items: list, fallback: str = "none") -> str:
             return "; ".join(str(i) for i in items) if items else fallback
 
-        ref_class = self.selected_reference_class or self.outside_view_reference_class or "not specified"
         lines = [
             f"QUESTION: {self.question}",
             f"EVENT TYPE: {self.event_type.value} — {self.event_type_explanation or 'see resolution criteria'}",
@@ -167,16 +169,11 @@ class ParsedQuestion(BaseModel):
             f"DEADLINE: {self.resolution_deadline or 'not specified'}",
             f"TIMEZONE: {self.relevant_timezone or 'not specified'}",
             f"STATISTICAL OBJECT (outside-view target): {self.outside_view_target or 'not specified'}",
-            f"SELECTED REFERENCE CLASS: {ref_class}",
+            f"TIME HORIZON: {self.time_horizon or 'not specified'}",
+            f"THRESHOLD / COMPARISON STRUCTURE: {self.threshold_or_comparison_structure or 'not specified'}",
         ]
-        if self.selected_reference_class_rationale:
-            lines.append(f"REFERENCE CLASS RATIONALE: {self.selected_reference_class_rationale}")
-        if self.candidate_reference_classes:
-            lines.append("CANDIDATE REFERENCE CLASSES:")
-            for rc in self.candidate_reference_classes:
-                lines.append(f"  • {rc.get('class_name','?')} — pros: {rc.get('pros','?')} | cons: {rc.get('cons','?')}")
         lines += [
-            f"BASE RATE QUERIES: {fmt(self.base_rate_queries)}",
+            f"BASE-RATE SEARCH HINTS: {fmt(self.base_rate_search_hints or self.base_rate_queries)}",
             f"KEY UNKNOWNS: {fmt(self.key_unknowns)}",
             f"INSIDE VIEW FACTORS: {fmt(self.inside_view_factors)}",
             f"FOREKNOWLEDGE RISK: {self.foreknowledge_risk.value}",
@@ -187,34 +184,45 @@ class ParsedQuestion(BaseModel):
 
 # ── Outside view ──────────────────────────────────────────────────────────────
 
-class OutsideViewForecast(BaseModel):
-    agent_id: int
-    base_rate: float
+class OutsideViewEstimate(BaseModel):
+    agent_name: str
+    method_type: str
     statistical_object: str = ""
     reference_class: str
-    denominator_or_basis: str = ""
-    analog_cases_or_data: str = ""
-    reference_class_limitations: str = ""
+    denominator: str = ""
+    successes: str = ""
+    rate: Optional[float] = None
+    plausible_range: str = ""
+    time_horizon_match: str = ""
+    sources: list[str] = Field(default_factory=list)
+    weaknesses: list[str] = Field(default_factory=list)
+    validity_flags: list[str] = Field(default_factory=list)
     reasoning: str
     confidence: str  # low / medium / high
+    final_estimate: Optional[float] = None
     evidence_ledger: EvidenceLedger
 
-    @field_validator("base_rate")
+    @field_validator("rate", "final_estimate")
     @classmethod
-    def clamp_base_rate(cls, v: float) -> float:
+    def clamp_estimate(cls, v: float | None) -> float | None:
+        if v is None:
+            return None
         return max(0.001, min(0.999, v))
 
 
-class OutsideViewConsensus(BaseModel):
-    base_rate: float
-    reference_class: str
+class ReconciledOutsideView(BaseModel):
+    final_prior: float
+    plausible_range: str = ""
+    confidence: str
+    valid_estimates: list[OutsideViewEstimate] = Field(default_factory=list)
+    rejected_estimates: list[dict] = Field(default_factory=list)
+    rationale: str
+    notes_for_inside_view: str = ""
     statistical_object: str = ""
-    denominator_or_basis: str = ""
-    reference_class_limitations: str = ""
-    reasoning: str
-    agent_forecasts: list[OutsideViewForecast]
+    reference_class_summary: str = ""
+    denominator_summary: str = ""
 
-    @field_validator("base_rate")
+    @field_validator("final_prior")
     @classmethod
     def clamp(cls, v: float) -> float:
         return max(0.001, min(0.999, v))
@@ -222,22 +230,30 @@ class OutsideViewConsensus(BaseModel):
 
 # ── Agent forecast ────────────────────────────────────────────────────────────
 
+class UpdateLedgerItem(BaseModel):
+    evidence: str
+    source_quality: str
+    independence: str
+    direction: str
+    probability_point_adjustment: float
+    rationale: str
+
 class AgentForecast(BaseModel):
     agent_id: int
     probability: float
     outside_view_base_rate: float
     outside_view_reasoning: str
     inside_view_reasoning: str
-    exclusivity_assessment: str = "multiple_possible"  # single_winner / multiple_possible
-    exclusivity_reasoning: str = ""
     key_factors_for: list[str]
     key_factors_against: list[str]
-    related_option_probabilities: list[dict] = Field(default_factory=list)
     uncertainty_reasoning: str
     epistemic_confidence: str  # low / medium / high
     evidence_ledger: EvidenceLedger
-    # New fields
     starting_base_rate: float = 0.0
+    current_state_summary: str = ""
+    resolved_or_partially_resolved: bool = False
+    update_ledger: list[UpdateLedgerItem] = Field(default_factory=list)
+    large_deviation_justification: str | None = None
     key_updates_from_base: list[str] = Field(default_factory=list)
     unresolved_cruxes: list[str] = Field(default_factory=list)
 
@@ -255,9 +271,6 @@ class SupervisorReconciliation(BaseModel):
     crux_of_disagreement: Optional[str] = None
     targeted_searches_conducted: list[str] = Field(default_factory=list)
     reconciled_probability: float
-    exclusivity_assessment: str = "multiple_possible"
-    exclusivity_reasoning: str = ""
-    related_option_probabilities: list[dict] = Field(default_factory=list)
     reconciliation_reasoning: str
     additional_evidence: list[EvidenceItem] = Field(default_factory=list)
     outside_view_audit: str = ""   # supervisor's assessment of OV quality
@@ -282,14 +295,12 @@ class ForecastMemo(BaseModel):
     question: str
     final_probability: float
     raw_probability: float
-    exclusivity_assessment: str = "multiple_possible"
-    exclusivity_reasoning: str = ""
-    related_option_probabilities: list[dict] = Field(default_factory=list)
     ensemble_run_probabilities: list[float]
     probability_spread: tuple[float, float]
     calibration: CalibrationResult
     parsed_question: ParsedQuestion
-    ov_forecasts: list[OutsideViewForecast] = Field(default_factory=list)
+    ov_forecasts: list[OutsideViewEstimate] = Field(default_factory=list)
+    ov_reconciliation: ReconciledOutsideView
     agent_forecasts: list[AgentForecast]
     supervisor_reconciliation: SupervisorReconciliation
     inside_view_summary: str

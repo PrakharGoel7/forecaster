@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timezone
 
 from forecaster.models import (
-    OutsideViewForecast, EvidenceItem, EvidenceLedger,
+    OutsideViewEstimate, ReconciledOutsideView, EvidenceItem, EvidenceLedger,
     SourceType, EvidenceDirection, EvidenceMagnitude, Reliability, EvidenceAge,
     ParsedQuestion, EventType,
 )
@@ -13,62 +13,160 @@ from forecaster.utils.temporal import (
     score_source_reliability, estimate_evidence_age, detect_stale_year_in_query, current_year,
 )
 
-SYSTEM_PROMPT = """You are an Outside View forecasting agent. Your sole job is to estimate the historical base rate for the statistical object defined by the parser.
+SHARED_USER_PROMPT = """Establish an outside-view base rate for the following parsed forecasting question.
 
-DO NOT research the current specific situation.
-DO NOT use recent news about the target entities as evidence.
-DO NOT produce a probability unless you can explain the denominator.
+{parsed_question}
 
-Your job:
-1. Identify the correct statistical object from the parsed question.
-2. Find empirical base-rate data or construct an analog set.
-3. Estimate how often comparable cases resolved YES.
-4. Report uncertainty from reference-class fit and sample size.
+Current year: {current_year}{event_type_warning}
 
-CRITICAL RULES:
-- relative_ordering questions: do NOT research generic event frequency. You need pairwise ordering among comparable cases.
-- threshold questions: do NOT research generic growth. You need historical threshold-crossing frequency.
-- election/selection questions: do NOT research generic popularity. You need comparable candidates under comparable rules.
-- Generic statistics are context only — not the base rate — unless they directly match the statistical object.
-- Every base rate MUST have a denominator: "X successes out of N comparable cases" or a clearly described empirical frequency.
-- If no good empirical base rate exists, say so and use an explicit fallback prior with LOW confidence.
+SIBLING OPTIONS FROM SAME EVENT, CONTEXT ONLY:
+{related_markets}
 
-SEARCH STRATEGY:
-- Search for direct base-rate studies and statistics first.
-- If unavailable, search for analog cases to hand-construct a rough success rate.
-- Prefer: official data, academic papers, government data, exchanges, reputable financial/news sources.
-- Avoid: SEO blogs, generic explainers, speculative articles.
-- Cross-check with at least two credible sources.
+EVENT TYPE:
+{event_type}
 
-FALLBACK HIERARCHY (use the strongest available):
-A. Direct empirical base rate: same event type, same domain, comparable deadline.
-B. Analog case set: 5-30 comparable historical cases, compute rough success rate.
-C. Decomposed base rate: break into components with independent estimates.
-D. Market-implied outside view: broad market prices for comparable (not target) questions.
-E. Weak prior: conservative estimate, mark confidence LOW.
+STATISTICAL OBJECT:
+{outside_view_target}
 
-SELF-CHECK before submitting:
-1. Does my reference class answer the exact statistical object?
-2. Am I accidentally using category frequency instead of event probability?
-3. Is my denominator explicit?
-4. Is the time horizon comparable?
-5. Are my sources credible?
+TIME HORIZON:
+{time_horizon}
 
-BAD REASONING TO AVOID:
-- Using generic category frequency when the question is about relative ordering.
-- Treating "many X events happen" as evidence this specific X happens.
-- Confusing possibility with probability.
-- Moving toward 50% because evidence is uncertain.
-- Giving a precise number without a clear basis.
-- Treating unsourced speculation as fact.
-- Ignoring deadline length.
-- Searching stale years when current data is needed.
+THRESHOLD / COMPARISON STRUCTURE:
+{structure}
+
+BASE-RATE SEARCH HINTS, NON-BINDING:
+{search_hints}
+
+Important:
+- Do not look up the current state of the specific situation.
+- Do not use sibling options as evidence.
+- Use sibling options only to understand the event structure.
+- Every valid base rate requires an explicit denominator.
+- If no valid estimate exists, say so.
+
+Call your relevant submit function when complete.
 """
 
-_TOOLS = [
+AGENT_A_SYSTEM_PROMPT = """You are Outside View Agent A: Direct Empirical Base Rates.
+
+Your job is to find the most direct historical base rate for the statistical object defined by the parser.
+
+You must answer:
+"How often has this exact type of event occurred in comparable historical cases over a comparable time horizon?"
+
+DO NOT research the current specific situation as evidence.
+DO NOT use recent news about the target entity as evidence.
+DO NOT use vague category frequency.
+DO NOT produce a probability without a denominator.
+
+Prioritize:
+- official datasets
+- academic papers
+- government data
+- exchange data
+- structured historical records
+- reputable financial/statistical sources
+
+Your process:
+1. Restate the statistical object.
+2. Search for direct empirical frequency data.
+3. Ensure time horizon matches.
+4. Extract denominator N and successes X.
+5. Estimate base rate = X/N.
+6. Report uncertainty from sample size, fit, time horizon, and source quality.
+
+If no direct base rate exists, say so. Do not force one.
+"""
+
+AGENT_B_SYSTEM_PROMPT = """You are Outside View Agent B: Conditional and Narrow Reference Classes.
+
+Your job is to construct a better-fitting conditional base rate by filtering historical cases.
+
+You must answer:
+"Among cases that share the most important structural features with this question, how often did YES occur?"
+
+DO NOT research the current specific situation as evidence.
+DO NOT use target-specific news.
+DO NOT overfit to a tiny reference class without warning.
+
+Your process:
+1. Identify 2-4 structural filters that matter.
+2. Construct one or more conditional reference classes.
+3. For each, estimate X successes out of N cases.
+4. Prefer the class with the best balance of fit and sample size.
+5. Report where the class may be too narrow or biased.
+"""
+
+AGENT_C_SYSTEM_PROMPT = """You are Outside View Agent C: Analog and Decomposed Base Rates.
+
+Your job is to estimate a base rate when direct empirical data is weak, sparse, or mismatched.
+
+You may use:
+1. Analog case sets
+2. Decomposition into sub-events
+3. Historical distributions
+4. Broad comparable market-implied priors, but not the target market
+
+DO NOT research the current specific situation as evidence.
+DO NOT use vibes or narrative plausibility.
+DO NOT cherry-pick analogs.
+
+Your process:
+1. Decide whether analogs, decomposition, or distributional reasoning is most appropriate.
+2. If using analogs:
+   - build 5-30 comparable cases where possible
+   - state inclusion criteria
+   - compute X/N
+3. If decomposing:
+   - break event into components
+   - estimate each component’s base rate
+   - combine transparently
+4. If using distributions:
+   - estimate how often comparable outcomes crossed the relevant threshold/window.
+5. Clearly mark uncertainty.
+"""
+
+RECONCILER_SYSTEM_PROMPT = """You are the Outside View Reconciler.
+
+Your job is to compare independent outside-view estimates and produce one final outside-view prior.
+
+DO NOT introduce current target-specific evidence.
+DO NOT perform inside-view updating.
+DO NOT average blindly.
+
+Evaluate each estimate on:
+1. Reference-class fit
+2. Denominator clarity
+3. Sample size
+4. Time-horizon match
+5. Source quality
+6. Selection bias risk
+7. Regime-change risk
+8. Whether it answers the exact statistical object
+
+Reject estimates that:
+- lack a denominator
+- mismatch the event type
+- use generic category frequency
+- mismatch the time horizon
+- rely on anecdotes
+- use target-specific current evidence
+- are structurally irrelevant
+
+Then blend valid estimates.
+
+Blending guidance:
+- Prefer direct empirical estimates when fit and denominator are strong.
+- Prefer conditional estimates when direct estimates are too broad.
+- Use analog/decomposed estimates when direct data is weak.
+- If estimates disagree, give a range and explain why.
+- If all estimates are weak, use a LOW-confidence fallback prior.
+"""
+
+SEARCH_TOOLS = [
     {
         "name": "web_search",
-        "description": "Search for historical base-rate data and reference-class statistics.",
+        "description": "Search for historical base-rate evidence.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -80,7 +178,7 @@ _TOOLS = [
     },
     {
         "name": "web_fetch",
-        "description": "Fetch a URL to retrieve base-rate data or historical statistics.",
+        "description": "Fetch a URL to inspect historical statistics or records.",
         "input_schema": {
             "type": "object",
             "properties": {"url": {"type": "string"}},
@@ -89,7 +187,7 @@ _TOOLS = [
     },
     {
         "name": "add_evidence",
-        "description": "Record a base-rate or contextual data point in the ledger.",
+        "description": "Record a base-rate or contextual datapoint in the ledger.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -105,17 +203,12 @@ _TOOLS = [
                 "direction": {
                     "type": "string",
                     "enum": ["base_rate", "context"],
-                    "description": "base_rate for empirical frequency data; context for background only",
                 },
                 "magnitude": {
                     "type": "string",
                     "enum": ["strong", "moderate", "weak"],
-                    "description": "How strong is this piece of evidence",
                 },
-                "date_published": {
-                    "type": "string",
-                    "description": "Publication date YYYY-MM-DD or YYYY-MM (leave blank if unknown)",
-                },
+                "date_published": {"type": "string"},
                 "why_it_matters": {"type": "string"},
                 "limitations": {"type": "string"},
                 "notes": {"type": "string"},
@@ -125,219 +218,200 @@ _TOOLS = [
                          "why_it_matters", "limitations"],
         },
     },
+]
+
+SUBMIT_A_TOOL = {
+    "name": "submit_direct_empirical_estimate",
+    "description": "Submit the direct empirical outside-view estimate, or explicitly say none exists.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "statistical_object": {"type": "string"},
+            "searched_reference_class": {"type": "string"},
+            "denominator": {"type": "string"},
+            "successes": {"type": "string"},
+            "empirical_rate": {"type": ["number", "null"]},
+            "time_horizon_match": {"type": "string"},
+            "sources": {"type": "array", "items": {"type": "string"}},
+            "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            "key_weaknesses": {"type": "array", "items": {"type": "string"}},
+            "final_direct_empirical_estimate": {"type": ["number", "null"]},
+            "no_valid_direct_estimate": {"type": "boolean"},
+            "reasoning": {"type": "string"},
+        },
+        "required": [
+            "statistical_object", "searched_reference_class", "denominator", "successes",
+            "empirical_rate", "time_horizon_match", "sources", "confidence",
+            "key_weaknesses", "final_direct_empirical_estimate", "no_valid_direct_estimate", "reasoning",
+        ],
+    },
+}
+
+SUBMIT_B_TOOL = {
+    "name": "submit_conditional_estimate",
+    "description": "Submit the strongest conditional outside-view estimate.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "candidate_conditional_reference_classes": {"type": "array", "items": {"type": "string"}},
+            "inclusion_exclusion_criteria": {"type": "array", "items": {"type": "string"}},
+            "denominator": {"type": "string"},
+            "successes": {"type": "string"},
+            "empirical_rate": {"type": ["number", "null"]},
+            "sources": {"type": "array", "items": {"type": "string"}},
+            "strongest_conditional_estimate": {"type": ["number", "null"]},
+            "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            "key_weaknesses": {"type": "array", "items": {"type": "string"}},
+            "strongest_reference_class": {"type": "string"},
+            "reasoning": {"type": "string"},
+        },
+        "required": [
+            "candidate_conditional_reference_classes", "inclusion_exclusion_criteria", "denominator",
+            "successes", "empirical_rate", "sources", "strongest_conditional_estimate",
+            "confidence", "key_weaknesses", "strongest_reference_class", "reasoning",
+        ],
+    },
+}
+
+SUBMIT_C_TOOL = {
+    "name": "submit_analog_decomposed_estimate",
+    "description": "Submit the analog, decomposed, or distributional outside-view estimate.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "method_used": {"type": "string", "enum": ["analog", "decomposed", "distributional"]},
+            "reference_cases_or_components": {"type": "array", "items": {"type": "string"}},
+            "denominator_or_component_estimates": {"type": "string"},
+            "empirical_or_computed_rate": {"type": ["number", "null"]},
+            "assumptions": {"type": "array", "items": {"type": "string"}},
+            "sources": {"type": "array", "items": {"type": "string"}},
+            "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            "key_weaknesses": {"type": "array", "items": {"type": "string"}},
+            "final_analog_decomposed_estimate": {"type": ["number", "null"]},
+            "reasoning": {"type": "string"},
+        },
+        "required": [
+            "method_used", "reference_cases_or_components", "denominator_or_component_estimates",
+            "empirical_or_computed_rate", "assumptions", "sources", "confidence",
+            "key_weaknesses", "final_analog_decomposed_estimate", "reasoning",
+        ],
+    },
+}
+
+RECONCILER_TOOLS = [
     {
-        "name": "submit_outside_view",
-        "description": "Submit your base-rate estimate. Will be validated — missing denominator or statistical object will be rejected.",
+        "name": "submit_reconciled_outside_view",
+        "description": "Submit the reconciled outside-view prior.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "base_rate": {
-                    "type": "number",
-                    "description": "Historical base rate P(YES) as decimal 0.001-0.999",
+                "valid_estimates_considered": {"type": "array", "items": {"type": "string"}},
+                "rejected_estimates": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"agent_name": {"type": "string"}, "reason": {"type": "string"}},
+                        "required": ["agent_name", "reason"],
+                    },
                 },
-                "statistical_object": {
-                    "type": "string",
-                    "description": "The exact statistical quantity being estimated, e.g. 'probability that tech unicorn A IPOs before unicorn B among comparable pairs'",
+                "comparison_table": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "agent_name": {"type": "string"},
+                            "estimate": {"type": "string"},
+                            "reference_class_fit": {"type": "string"},
+                            "denominator_clarity": {"type": "string"},
+                            "time_horizon_match": {"type": "string"},
+                            "source_quality": {"type": "string"},
+                            "bias_risks": {"type": "string"},
+                        },
+                        "required": [
+                            "agent_name", "estimate", "reference_class_fit", "denominator_clarity",
+                            "time_horizon_match", "source_quality", "bias_risks",
+                        ],
+                    },
                 },
-                "reference_class": {
-                    "type": "string",
-                    "description": "The reference class used",
-                },
-                "denominator_or_basis": {
-                    "type": "string",
-                    "description": "REQUIRED: explicit denominator or empirical basis, e.g. '8 out of 23 comparable cases' or 'Fed has cut rates in 4 of 7 comparable pauses'",
-                },
-                "analog_cases_or_data": {
-                    "type": "string",
-                    "description": "Specific historical cases or datasets used. If none, document which fallback (A/B/C/D/E) and why no better data exists.",
-                },
-                "reference_class_limitations": {
-                    "type": "string",
-                    "description": "Key limitations: sample size, comparability of cases, time-period differences",
-                },
-                "reasoning": {
-                    "type": "string",
-                    "description": "Full reasoning connecting evidence to base rate",
-                },
-                "confidence": {
-                    "type": "string",
-                    "enum": ["low", "medium", "high"],
-                    "description": "How well-supported is this base rate. HIGH requires strong empirical backing.",
-                },
+                "final_prior": {"type": "number"},
+                "plausible_range": {"type": "string"},
+                "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+                "rationale": {"type": "string"},
+                "notes_for_inside_view": {"type": "string"},
+                "reference_class_summary": {"type": "string"},
+                "denominator_summary": {"type": "string"},
             },
             "required": [
-                "base_rate", "statistical_object", "reference_class",
-                "denominator_or_basis", "analog_cases_or_data",
-                "reference_class_limitations", "reasoning", "confidence",
+                "valid_estimates_considered", "rejected_estimates", "comparison_table",
+                "final_prior", "plausible_range", "confidence", "rationale",
+                "notes_for_inside_view", "reference_class_summary", "denominator_summary",
             ],
         },
-    },
+    }
 ]
 
 
-def _validate_outside_view(args: dict) -> list[str]:
-    errors = []
-    if not args.get("denominator_or_basis", "").strip():
-        errors.append(
-            "VALIDATION ERROR: denominator_or_basis is required. "
-            "You must state the empirical basis explicitly: e.g. '8 out of 23 comparable cases' "
-            "or 'historical rate of ~35% from Fed data 1990-2024'. Do not submit without this."
+def _format_related_markets(related_markets: list[dict]) -> str:
+    if not related_markets:
+        return "No sibling options provided."
+    lines = []
+    for market in related_markets:
+        lines.append(
+            f"- {market.get('ticker', '?')}: "
+            f"{market.get('label') or market.get('question') or market.get('ticker', '?')} "
+            f"| market price {float(market.get('market_price') or 0.0):.3f}"
         )
-    if not args.get("statistical_object", "").strip():
-        errors.append(
-            "VALIDATION ERROR: statistical_object is required. "
-            "Define the exact quantity you are estimating."
-        )
-    analog = args.get("analog_cases_or_data", "").strip()
-    if not analog:
-        errors.append(
-            "VALIDATION ERROR: analog_cases_or_data is required. "
-            "Either provide specific historical cases/datasets, or document which fallback method "
-            "(A=direct, B=analog set, C=decomposed, D=market-implied, E=weak prior) you used and why."
-        )
-    confidence = args.get("confidence", "medium")
-    reasoning = args.get("reasoning", "")
-    if confidence == "high" and len(reasoning) < 120:
-        errors.append(
-            "VALIDATION ERROR: Confidence is HIGH but reasoning is too brief. "
-            "HIGH confidence requires substantial empirical backing — expand your reasoning."
-        )
-    return errors
+    return "\n".join(lines)
 
 
-def run_outside_view_agent(
-    parsed_question: ParsedQuestion,
-    agent_id: int,
-    config: ForecasterConfig | None = None,
-) -> OutsideViewForecast:
-    if config is None:
-        config = ForecasterConfig()
-
-    llm = LLMClient(config)
-    ledger = EvidenceLedger()
-
-    event_type = parsed_question.event_type
-    event_type_warning = ""
+def _event_type_warning(event_type: EventType) -> str:
     if event_type == EventType.RELATIVE_ORDERING:
-        event_type_warning = (
-            "\n⚠ RELATIVE ORDERING QUESTION: You need PAIRWISE ORDERING data — "
-            "how often does one entity in a comparable pair happen before the other. "
-            "Do NOT use generic event frequency, total counts, or category statistics. "
-            "Search for historical examples of comparable rival pairs and which went first.\n"
+        return (
+            "\n⚠ RELATIVE ORDERING QUESTION: Use pairwise ordering data among comparable pairs. "
+            "Do NOT use generic event frequency.\n"
         )
-    elif event_type == EventType.THRESHOLD:
-        event_type_warning = (
-            "\n⚠ THRESHOLD QUESTION: You need THRESHOLD CROSSING FREQUENCY data — "
-            "how often does a comparable metric exceed/fall below a comparable value "
-            "within a comparable timeframe. Do not use generic growth statistics.\n"
+    if event_type == EventType.THRESHOLD:
+        return (
+            "\n⚠ THRESHOLD QUESTION: Use threshold-crossing frequency over comparable windows. "
+            "Do NOT use generic growth statistics.\n"
         )
-    elif event_type == EventType.ELECTION_SELECTION:
-        event_type_warning = (
-            "\n⚠ ELECTION/SELECTION QUESTION: You need COMPARABLE CANDIDATE base rates — "
-            "how often do candidates/entities in comparable positions win under comparable rules. "
-            "Do not use generic popularity or name-recognition statistics.\n"
+    if event_type == EventType.ELECTION_SELECTION:
+        return (
+            "\n⚠ ELECTION/SELECTION QUESTION: Use comparable candidate/entity win rates under similar rules.\n"
         )
+    if event_type == EventType.MARKET_PRICE:
+        return (
+            "\n⚠ MARKET PRICE QUESTION: Use historical distributions of comparable price moves over comparable windows.\n"
+        )
+    if event_type == EventType.COUNT_FREQUENCY:
+        return (
+            "\n⚠ COUNT FREQUENCY QUESTION: Use historical count distributions, not a generic event-occurrence rate.\n"
+        )
+    return ""
 
-    user_message = (
-        f"Establish the historical base rate for the following question.\n\n"
-        f"{parsed_question.format_for_prompt()}\n\n"
-        f"Current year: {current_year()}{event_type_warning}\n"
-        f"YOUR TASK:\n"
-        f"  EVENT TYPE: {event_type.value}\n"
-        f"  STATISTICAL OBJECT TO ESTIMATE: {parsed_question.outside_view_target or 'see reference class'}\n"
-        f"  SELECTED REFERENCE CLASS: {parsed_question.selected_reference_class or 'see above'}\n"
-        f"  SUGGESTED BASE RATE QUERIES: {'; '.join(parsed_question.base_rate_queries) or 'derive from reference class'}\n\n"
-        "Search ONLY for historical base-rate data matching the statistical object above. "
-        "Do not look up the current state of the specific situation. "
-        "Add base-rate data points to the ledger as you go. "
-        "Call submit_outside_view when you have a grounded estimate. "
-        "Remember: every base rate needs an explicit denominator."
-    )
 
-    messages = [{"role": "user", "content": user_message}]
-    submit_input: dict | None = None
-
-    _SUBMIT_ONLY = [_TOOLS[-1]]
-
-    for iteration in range(config.max_ov_iterations):
-        if iteration == config.max_ov_iterations - 2:
-            messages.append({
-                "role": "user",
-                "content": (
-                    "One more search available. Then call submit_outside_view. "
-                    "Ensure you have an explicit denominator and statistical object."
-                ),
-            })
-
-        response = llm.complete(SYSTEM_PROMPT, messages, _TOOLS)
-
-        if not response.tool_blocks:
-            break
-
-        tool_results = []
-        submitted = False
-
-        for tb in response.tool_blocks:
-            result = _execute_tool(tb.name, tb.input, ledger, config)
-
-            if tb.name == "submit_outside_view":
-                validation_errors = _validate_outside_view(tb.input)
-                if validation_errors and iteration < config.max_ov_iterations - 1:
-                    # Feed errors back — agent gets another chance
-                    result = {
-                        "status": "rejected",
-                        "errors": validation_errors,
-                        "message": "Fix the issues above and resubmit.",
-                    }
-                else:
-                    submit_input = tb.input
-                    submitted = True
-
-            tool_results.append({"tool_use_id": tb.id, "content": json.dumps(result)})
-
-        llm.extend_messages(messages, response, tool_results)
-
-        if submitted:
-            break
-
-    if submit_input is None:
-        ledger.incomplete = True
-        messages.append({
-            "role": "user",
-            "content": (
-                "Research complete. You must now call submit_outside_view. "
-                "Provide your best estimate with whatever denominator you can establish."
-            ),
-        })
-        final = llm.complete(SYSTEM_PROMPT, messages, _SUBMIT_ONLY, force_tool=True)
-        if final.tool_blocks:
-            submit_input = final.tool_blocks[0].input
-        else:
-            raise ValueError(f"Outside View Agent {agent_id} failed to submit")
-
-    return OutsideViewForecast(
-        agent_id=agent_id,
-        base_rate=float(submit_input["base_rate"]),
-        statistical_object=submit_input.get("statistical_object", ""),
-        reference_class=submit_input["reference_class"],
-        denominator_or_basis=submit_input.get("denominator_or_basis", ""),
-        analog_cases_or_data=submit_input.get("analog_cases_or_data", ""),
-        reference_class_limitations=submit_input.get("reference_class_limitations", ""),
-        reasoning=submit_input["reasoning"],
-        confidence=submit_input["confidence"],
-        evidence_ledger=ledger,
+def _shared_user_prompt(parsed_question: ParsedQuestion, related_markets: list[dict]) -> str:
+    return SHARED_USER_PROMPT.format(
+        parsed_question=parsed_question.format_for_prompt(),
+        current_year=current_year(),
+        event_type_warning=_event_type_warning(parsed_question.event_type),
+        related_markets=_format_related_markets(related_markets),
+        event_type=parsed_question.event_type.value,
+        outside_view_target=parsed_question.outside_view_target,
+        time_horizon=parsed_question.time_horizon or "not specified",
+        structure=parsed_question.threshold_or_comparison_structure or "not specified",
+        search_hints="; ".join(parsed_question.base_rate_search_hints or parsed_question.base_rate_queries) or "derive independently",
     )
 
 
-def _execute_tool(name: str, args: dict, ledger: EvidenceLedger, config: ForecasterConfig) -> dict:
+def _execute_search_tool(name: str, args: dict, ledger: EvidenceLedger, config: ForecasterConfig) -> dict:
     if name == "web_search":
         query = args["query"]
         result = {"results": web_search(query, args.get("max_results", config.search_max_results))}
         stale_yr = detect_stale_year_in_query(query)
         if stale_yr:
             result["temporal_warning"] = (
-                f"Query references {stale_yr} which may be stale. "
-                f"Current year is {current_year()}. Consider updating query to use recent years."
+                f"Query references {stale_yr} which may be stale. Current year is {current_year()}."
             )
         return result
 
@@ -365,13 +439,200 @@ def _execute_tool(name: str, args: dict, ledger: EvidenceLedger, config: Forecas
             notes=args.get("notes", ""),
         )
         ledger.items.append(item)
-        return {
-            "status": "added",
-            "index": len(ledger.items) - 1,
-            "auto_reliability": auto_reliability,
-        }
+        return {"status": "added", "index": len(ledger.items) - 1, "auto_reliability": auto_reliability}
 
-    if name == "submit_outside_view":
-        return {"status": "received"}
+    return {"status": "received"}
 
-    return {"error": f"Unknown tool: {name}"}
+
+def _run_ov_agent(
+    *,
+    agent_name: str,
+    method_type: str,
+    system_prompt: str,
+    submit_tool: dict,
+    parsed_question: ParsedQuestion,
+    related_markets: list[dict],
+    config: ForecasterConfig,
+) -> OutsideViewEstimate:
+    llm = LLMClient(config)
+    ledger = EvidenceLedger()
+    messages = [{"role": "user", "content": _shared_user_prompt(parsed_question, related_markets)}]
+    tools = SEARCH_TOOLS + [submit_tool]
+    submit_input: dict | None = None
+
+    for iteration in range(config.max_ov_iterations):
+        if iteration == config.max_ov_iterations - 2:
+            messages.append({
+                "role": "user",
+                "content": "One more search available. Then submit your best outside-view estimate with an explicit denominator or say no valid estimate exists.",
+            })
+
+        response = llm.complete(system_prompt, messages, tools)
+        if not response.tool_blocks:
+            break
+
+        tool_results = []
+        submitted = False
+        for tb in response.tool_blocks:
+            result = _execute_search_tool(tb.name, tb.input, ledger, config)
+            tool_results.append({"tool_use_id": tb.id, "content": json.dumps(result)})
+            if tb.name == submit_tool["name"]:
+                submit_input = tb.input
+                submitted = True
+        llm.extend_messages(messages, response, tool_results)
+        if submitted:
+            break
+
+    if submit_input is None:
+        ledger.incomplete = True
+        messages.append({"role": "user", "content": "Research complete. You must now submit your best outside-view estimate."})
+        final = llm.complete(system_prompt, messages, [submit_tool], force_tool=True)
+        if not final.tool_blocks:
+            raise ValueError(f"{agent_name} failed to submit")
+        submit_input = final.tool_blocks[0].input
+
+    reference_class = (
+        submit_input.get("searched_reference_class")
+        or submit_input.get("strongest_reference_class")
+        or submit_input.get("method_used")
+        or "not specified"
+    )
+    denominator = submit_input.get("denominator") or submit_input.get("denominator_or_component_estimates") or ""
+    successes = submit_input.get("successes") or ""
+    rate = (
+        submit_input.get("empirical_rate")
+        if "empirical_rate" in submit_input else submit_input.get("empirical_or_computed_rate")
+    )
+    final_estimate = (
+        submit_input.get("final_direct_empirical_estimate")
+        if "final_direct_empirical_estimate" in submit_input else
+        submit_input.get("strongest_conditional_estimate")
+        if "strongest_conditional_estimate" in submit_input else
+        submit_input.get("final_analog_decomposed_estimate")
+    )
+    if final_estimate is None:
+        final_estimate = rate
+
+    weaknesses = submit_input.get("key_weaknesses", [])
+    validity_flags = []
+    if not denominator:
+        validity_flags.append("missing_denominator")
+    if final_estimate is None:
+        validity_flags.append("no_valid_estimate")
+    if submit_input.get("no_valid_direct_estimate"):
+        validity_flags.append("no_valid_estimate")
+
+    return OutsideViewEstimate(
+        agent_name=agent_name,
+        method_type=method_type,
+        statistical_object=submit_input.get("statistical_object", parsed_question.outside_view_target),
+        reference_class=reference_class,
+        denominator=denominator,
+        successes=successes,
+        rate=float(rate) if rate is not None else None,
+        plausible_range="",
+        time_horizon_match=submit_input.get("time_horizon_match", parsed_question.time_horizon),
+        sources=submit_input.get("sources", []),
+        weaknesses=weaknesses,
+        validity_flags=validity_flags,
+        reasoning=submit_input.get("reasoning", ""),
+        confidence=submit_input.get("confidence", "low"),
+        final_estimate=float(final_estimate) if final_estimate is not None else None,
+        evidence_ledger=ledger,
+    )
+
+
+def run_outside_view_agent_a(parsed_question: ParsedQuestion, related_markets: list[dict] | None = None, config: ForecasterConfig | None = None) -> OutsideViewEstimate:
+    config = config or ForecasterConfig()
+    return _run_ov_agent(
+        agent_name="Agent A",
+        method_type="direct_empirical",
+        system_prompt=AGENT_A_SYSTEM_PROMPT,
+        submit_tool=SUBMIT_A_TOOL,
+        parsed_question=parsed_question,
+        related_markets=related_markets or [],
+        config=config,
+    )
+
+
+def run_outside_view_agent_b(parsed_question: ParsedQuestion, related_markets: list[dict] | None = None, config: ForecasterConfig | None = None) -> OutsideViewEstimate:
+    config = config or ForecasterConfig()
+    return _run_ov_agent(
+        agent_name="Agent B",
+        method_type="conditional_narrow",
+        system_prompt=AGENT_B_SYSTEM_PROMPT,
+        submit_tool=SUBMIT_B_TOOL,
+        parsed_question=parsed_question,
+        related_markets=related_markets or [],
+        config=config,
+    )
+
+
+def run_outside_view_agent_c(parsed_question: ParsedQuestion, related_markets: list[dict] | None = None, config: ForecasterConfig | None = None) -> OutsideViewEstimate:
+    config = config or ForecasterConfig()
+    return _run_ov_agent(
+        agent_name="Agent C",
+        method_type="analog_decomposed",
+        system_prompt=AGENT_C_SYSTEM_PROMPT,
+        submit_tool=SUBMIT_C_TOOL,
+        parsed_question=parsed_question,
+        related_markets=related_markets or [],
+        config=config,
+    )
+
+
+def _fmt_ov_estimates(estimates: list[OutsideViewEstimate]) -> str:
+    lines = []
+    for est in estimates:
+        lines += [
+            f"\n{est.agent_name} ({est.method_type})",
+            f"Statistical object: {est.statistical_object}",
+            f"Reference class: {est.reference_class}",
+            f"Denominator: {est.denominator or 'missing'}",
+            f"Successes: {est.successes or 'missing'}",
+            f"Rate: {est.rate if est.rate is not None else 'none'}",
+            f"Final estimate: {est.final_estimate if est.final_estimate is not None else 'none'}",
+            f"Time horizon match: {est.time_horizon_match or 'not specified'}",
+            f"Sources: {'; '.join(est.sources) or 'none listed'}",
+            f"Weaknesses: {'; '.join(est.weaknesses) or 'none listed'}",
+            f"Validity flags: {'; '.join(est.validity_flags) or 'none'}",
+            f"Reasoning: {est.reasoning}",
+        ]
+    return "\n".join(lines)
+
+
+def reconcile_outside_view(
+    parsed_question: ParsedQuestion,
+    estimates: list[OutsideViewEstimate],
+    config: ForecasterConfig | None = None,
+) -> ReconciledOutsideView:
+    config = config or ForecasterConfig()
+    llm = LLMClient(config)
+    messages = [{
+        "role": "user",
+        "content": (
+            f"Reconcile outside-view estimates for the following parsed question.\n\n"
+            f"{parsed_question.format_for_prompt()}\n\n"
+            f"OUTSIDE-VIEW ESTIMATES:\n{_fmt_ov_estimates(estimates)}\n"
+        ),
+    }]
+
+    response = llm.complete(RECONCILER_SYSTEM_PROMPT, messages, RECONCILER_TOOLS, force_tool=True)
+    if not response.tool_blocks:
+        raise ValueError("Outside View Reconciler failed to submit")
+    inp = response.tool_blocks[0].input
+
+    valid_names = set(inp.get("valid_estimates_considered", []))
+    valid_estimates = [est for est in estimates if est.agent_name in valid_names]
+    return ReconciledOutsideView(
+        final_prior=float(inp["final_prior"]),
+        plausible_range=inp.get("plausible_range", ""),
+        confidence=inp["confidence"],
+        valid_estimates=valid_estimates,
+        rejected_estimates=inp.get("rejected_estimates", []),
+        rationale=inp["rationale"],
+        notes_for_inside_view=inp.get("notes_for_inside_view", ""),
+        statistical_object=parsed_question.outside_view_target,
+        reference_class_summary=inp.get("reference_class_summary", ""),
+        denominator_summary=inp.get("denominator_summary", ""),
+    )

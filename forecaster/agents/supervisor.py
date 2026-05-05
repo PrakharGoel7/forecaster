@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timezone
 
 from forecaster.models import (
-    AgentForecast, OutsideViewConsensus, EvidenceItem, EvidenceDirection, SourceType,
+    AgentForecast, ReconciledOutsideView, EvidenceItem, EvidenceDirection, SourceType,
     SupervisorReconciliation, ParsedQuestion,
 )
 from forecaster.config import ForecasterConfig
@@ -52,11 +52,6 @@ BAD RECONCILIATION TO AVOID:
 - Ignoring a flawed outside view and anchoring estimates to it anyway.
 - Running general research instead of crux-targeted searches.
 - Giving a precise number without explaining what drove it.
-
-SIBLING OPTION RULES:
-- If the event is single_winner, reconcile one normalized distribution across the sibling options that sums to 1.0.
-- In that case, `reconciled_probability` must equal the selected option's probability from that distribution.
-- If the event is multiple_possible, do not force a normalized distribution; focus on the selected option's P(YES).
 
 Call submit_reconciliation when done.
 """
@@ -121,30 +116,6 @@ _TOOLS = [
                     "type": "number",
                     "description": "Reconciled P(YES) as decimal 0.001-0.999",
                 },
-                "exclusivity_assessment": {
-                    "type": "string",
-                    "enum": ["single_winner", "multiple_possible"],
-                },
-                "exclusivity_reasoning": {
-                    "type": "string",
-                    "description": "Why the sibling options should be treated as mutually exclusive or not",
-                },
-                "related_option_probabilities": {
-                    "type": "array",
-                    "description": "Required if single_winner; normalized sibling-option distribution including the selected option.",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "ticker": {"type": "string"},
-                            "label": {"type": "string"},
-                            "question": {"type": "string"},
-                            "market_price": {"type": "number"},
-                            "probability": {"type": "number"},
-                            "rationale": {"type": "string"},
-                        },
-                        "required": ["ticker", "label", "question", "market_price", "probability", "rationale"],
-                    },
-                },
                 "reconciliation_reasoning": {
                     "type": "string",
                     "description": "Explain exactly what drove the reconciled estimate, including source quality weighting",
@@ -153,7 +124,6 @@ _TOOLS = [
             "required": [
                 "outside_view_audit", "outside_view_authority",
                 "disagreement_level", "reconciled_probability",
-                "exclusivity_assessment", "exclusivity_reasoning",
                 "reconciliation_reasoning", "targeted_searches_conducted",
             ],
         },
@@ -198,7 +168,7 @@ def _fmt_agent_forecasts(forecasts: list[AgentForecast]) -> str:
 def run_supervisor(
     parsed_question: ParsedQuestion,
     agent_forecasts: list[AgentForecast],
-    ov_consensus: OutsideViewConsensus,
+    ov_reconciliation: ReconciledOutsideView,
     related_markets: list[dict] | None = None,
     config: ForecasterConfig | None = None,
 ) -> SupervisorReconciliation:
@@ -214,13 +184,14 @@ def run_supervisor(
 
     user_message = (
         f"QUESTION:\n{parsed_question.format_for_prompt()}\n\n"
-        f"OUTSIDE VIEW CONSENSUS:\n"
-        f"  Base rate: {ov_consensus.base_rate:.3f} ({ov_consensus.base_rate * 100:.0f}%)\n"
-        f"  Statistical object: {ov_consensus.statistical_object or 'not specified'}\n"
-        f"  Reference class: {ov_consensus.reference_class}\n"
-        f"  Denominator / basis: {ov_consensus.denominator_or_basis or 'not provided'}\n"
-        f"  Limitations: {ov_consensus.reference_class_limitations or 'none noted'}\n"
-        f"  Reasoning: {ov_consensus.reasoning}\n\n"
+        f"RECONCILED OUTSIDE VIEW PRIOR:\n"
+        f"  Base rate: {ov_reconciliation.final_prior:.3f} ({ov_reconciliation.final_prior * 100:.0f}%)\n"
+        f"  Statistical object: {ov_reconciliation.statistical_object or parsed_question.outside_view_target or 'not specified'}\n"
+        f"  Reference class summary: {ov_reconciliation.reference_class_summary or 'not provided'}\n"
+        f"  Denominator summary: {ov_reconciliation.denominator_summary or 'not provided'}\n"
+        f"  Confidence: {ov_reconciliation.confidence}\n"
+        f"  Rationale: {ov_reconciliation.rationale}\n"
+        f"  Notes for inside view: {ov_reconciliation.notes_for_inside_view or 'none'}\n\n"
         f"SIBLING OPTIONS FROM THE SAME EVENT:\n{_fmt_related_markets(related_markets)}\n\n"
         f"INSIDE VIEW AGENT FORECASTS (log-odds spread = {spread:.3f}):\n"
         f"{_fmt_agent_forecasts(agent_forecasts)}\n\n"
@@ -268,9 +239,6 @@ def run_supervisor(
             raw_probabilities=raw_probs,
             disagreement_level="low",
             reconciled_probability=fallback_prob,
-            exclusivity_assessment="multiple_possible",
-            exclusivity_reasoning="Supervisor did not complete exclusivity assessment.",
-            related_option_probabilities=[],
             reconciliation_reasoning="Supervisor did not complete; defaulting to geometric mean.",
             targeted_searches_conducted=[],
             outside_view_audit="Supervisor did not complete audit.",
@@ -282,9 +250,6 @@ def run_supervisor(
         crux_of_disagreement=reconciliation_input.get("crux_of_disagreement"),
         targeted_searches_conducted=reconciliation_input.get("targeted_searches_conducted", []),
         reconciled_probability=float(reconciliation_input["reconciled_probability"]),
-        exclusivity_assessment=reconciliation_input.get("exclusivity_assessment", "multiple_possible"),
-        exclusivity_reasoning=reconciliation_input.get("exclusivity_reasoning", ""),
-        related_option_probabilities=reconciliation_input.get("related_option_probabilities", []),
         reconciliation_reasoning=reconciliation_input["reconciliation_reasoning"],
         outside_view_audit=reconciliation_input.get("outside_view_audit", ""),
     )

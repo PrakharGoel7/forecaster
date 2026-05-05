@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timezone
 
 from forecaster.models import (
-    AgentForecast, OutsideViewConsensus, EvidenceItem, EvidenceLedger,
+    AgentForecast, ReconciledOutsideView, EvidenceItem, EvidenceLedger,
     SourceType, EvidenceDirection, EvidenceMagnitude, Reliability, EvidenceAge,
     ParsedQuestion,
 )
@@ -14,51 +14,110 @@ from forecaster.utils.temporal import (
     current_date_str, current_year,
 )
 
-SYSTEM_PROMPT = """You are an Inside View forecasting agent. The historical base rate has already been established and will be given to you. Your job is to find specific, current evidence about THIS situation that updates from that base rate.
+SYSTEM_PROMPT = """You are an Inside View forecasting agent.
 
-DO NOT re-research historical base rates — that work is done.
-DO NOT use stale evidence unless it is structurally important.
+The historical outside-view base rate has already been established. Your job is to find current, situation-specific evidence about THIS case and update from that base rate.
+
+DO NOT re-research historical base rates.
+DO NOT use current evidence to redefine the reference class.
+DO NOT use stale evidence unless structurally important.
 DO NOT treat speculation as fact.
 DO NOT drift toward 50% because evidence is mixed.
 
 Your job:
 1. Determine the current state of the specific situation.
 2. Find recent, high-quality evidence relevant to the key unknowns.
-3. Identify which evidence updates the base rate upward or downward, and by how much.
-4. Produce a calibrated probability.
+3. Identify which evidence updates the base rate upward or downward.
+4. Quantify each update.
+5. Produce a calibrated final probability.
 
 TEMPORAL RULES:
 - Prefer evidence from the last 12 months unless older evidence is structurally important.
 - Include the current year or recent phrasing in search queries.
-- If using older evidence, explicitly explain why it still applies.
+- If using older evidence, explain why it still applies.
 - Check whether the event may already be resolved.
+- Explicitly account for time remaining until resolution.
 
 SOURCE QUALITY RULES:
-- Prefer: official statements, filings, regulators, exchanges, reputable news outlets, primary data.
-- Low reliability: blogs, SEO finance sites, prediction-market commentary, unsourced claims.
-- Low-reliability evidence should not drive large updates.
+Prefer:
+- official statements
+- filings
+- regulators
+- exchanges
+- primary data
+- reputable news outlets
+
+Use caution with:
+- blogs
+- SEO finance sites
+- prediction-market commentary
+- anonymous claims
+- unsourced speculation
+
+Low-reliability evidence should not drive large updates.
+
+UPDATE RULES:
+Start from the given outside-view base rate.
+
+For each distinct piece of evidence, report:
+- evidence
+- source quality
+- whether it is independent or repeats other evidence
+- direction
+- magnitude
+- probability-point adjustment
+- reason for adjustment
+
+Use this scale:
+- strong_raise: +15pp or more
+- modest_raise: +5 to +15pp
+- slight_raise: +1 to +5pp
+- neutral: -1 to +1pp
+- slight_lower: -1 to -5pp
+- modest_lower: -5 to -15pp
+- strong_lower: -15pp or more
+
+Do not double-count repeated evidence.
+If multiple sources report the same fact, treat it as one update with higher confidence, not multiple updates.
 
 CALIBRATION RULES:
-- Start from the given base rate. Each update must include direction AND rough magnitude:
-  - strong_raise / modest_raise / neutral / modest_lower / strong_lower
-- If evidence is weak or mixed, stay near the base rate.
-- "Uncertain" does not mean 50%.
-- State a single probability.
+- Weak or mixed evidence should leave the forecast near the base rate.
+- Uncertainty does not imply 50%.
+- Large updates require strong, direct, high-quality evidence.
+- If final probability differs from base rate by more than 20pp, explicitly justify why.
+- If the event is close to resolution, direct current-state evidence may deserve larger weight.
+- If the deadline is far away, avoid over-updating on transient signals.
+- Final probability must be between 1% and 99% unless the event is already effectively resolved.
 
 BAD REASONING TO AVOID:
-- Overweighting speculative rumors or low-reliability sources.
-- Confusing valuation/size/activity with event probability.
-- Treating "possible" as "likely."
-- Ignoring the time horizon to resolution.
-- Large updates from weak evidence.
-- Drifting to 50% because both sides have some evidence.
+- Overweighting rumors.
+- Treating “possible” as “likely.”
+- Confusing activity, popularity, valuation, or media attention with event probability.
+- Ignoring the deadline.
+- Double-counting repeated news.
+- Moving to 50% just because evidence exists on both sides.
+- Making large updates from weak evidence.
 
-MULTI-OPTION RULES:
-- You may be given sibling options from the same event.
-- First decide whether the event is single_winner (at most one option can resolve YES) or multiple_possible (more than one option can resolve YES).
-- If single_winner, reason across the full option set jointly and produce a probability distribution across all listed options that sums to 1.0.
-- If multiple_possible, focus on the selected option only and do not force sibling probabilities to sum to 1.0.
-- In both cases, the main `probability` field must be the probability that the SELECTED option resolves YES.
+MULTI-OPTION CONTEXT:
+You may be given sibling options from the same event.
+Use them only to understand competition, overlap, and market structure.
+Return only the selected option forecast.
+
+MULTI-LOOP RESEARCH DISCIPLINE:
+You may have multiple search/tool loops.
+
+Across loops:
+1. Keep a running ledger of situation-specific evidence.
+2. After each search, classify evidence as:
+   - direct update
+   - weak/contextual update
+   - rejected/duplicative
+3. Do not repeat equivalent searches unless refining a failed query.
+4. Search around key unknowns, not just the question wording.
+5. Submit only when:
+   - current state is established, and
+   - major key unknowns have been checked, and
+   - update ledger explains the move from base rate to final probability.
 """
 
 _TOOLS = [
@@ -133,35 +192,62 @@ _TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "probability": {
-                    "type": "number",
-                    "description": "P(YES) as decimal 0.001-0.999",
-                },
                 "starting_base_rate": {
                     "type": "number",
-                    "description": "The base rate you started from (should match the OV consensus given to you)",
+                    "description": "The outside-view base rate you started from.",
                 },
-                "adjustment_from_base": {
+                "final_probability": {
                     "type": "number",
-                    "description": "Net adjustment: positive = raised from base rate, negative = lowered",
+                    "description": "Final P(YES) as decimal 0.01-0.99 unless already effectively resolved.",
+                },
+                "current_state_summary": {
+                    "type": "string",
+                    "description": "Concise summary of the current state of the situation and what remains unresolved.",
+                },
+                "resolved_or_partially_resolved": {
+                    "type": "boolean",
+                    "description": "Whether the event is already resolved or materially partially resolved.",
+                },
+                "update_ledger": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "evidence": {"type": "string"},
+                            "source_quality": {"type": "string"},
+                            "independence": {
+                                "type": "string",
+                                "enum": ["independent", "duplicative", "context_only", "rejected"],
+                            },
+                            "direction": {
+                                "type": "string",
+                                "enum": [
+                                    "strong_raise", "modest_raise", "slight_raise",
+                                    "neutral",
+                                    "slight_lower", "modest_lower", "strong_lower",
+                                ],
+                            },
+                            "probability_point_adjustment": {"type": "number"},
+                            "rationale": {"type": "string"},
+                        },
+                        "required": [
+                            "evidence", "source_quality", "independence", "direction",
+                            "probability_point_adjustment", "rationale",
+                        ],
+                    },
                 },
                 "key_updates_from_base": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List each update with magnitude, e.g. 'strong_raise: CEO confirmed IPO target by Q3 2025'",
+                    "description": "Concise text summary of the main updates from the base rate.",
                 },
                 "inside_view_reasoning": {
                     "type": "string",
-                    "description": "What specific factors about this situation updated you from the base rate and in which direction",
+                    "description": "Explain how current evidence moved you from the outside-view base rate to the final estimate.",
                 },
-                "exclusivity_assessment": {
-                    "type": "string",
-                    "enum": ["single_winner", "multiple_possible"],
-                    "description": "Whether only one sibling option can resolve YES or multiple can resolve YES",
-                },
-                "exclusivity_reasoning": {
-                    "type": "string",
-                    "description": "Why you classified the event as single_winner or multiple_possible from the rules and option structure",
+                "large_deviation_justification": {
+                    "type": ["string", "null"],
+                    "description": "Required if final probability differs from the base rate by more than 20 percentage points.",
                 },
                 "key_factors_for": {
                     "type": "array",
@@ -182,34 +268,18 @@ _TOOLS = [
                     "type": "string",
                     "description": "Main sources of uncertainty in your estimate",
                 },
-                "related_option_probabilities": {
-                    "type": "array",
-                    "description": "Optional sibling-option probabilities. Required for single_winner, optional otherwise.",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "ticker": {"type": "string"},
-                            "label": {"type": "string"},
-                            "question": {"type": "string"},
-                            "market_price": {"type": "number"},
-                            "probability": {"type": "number"},
-                            "rationale": {"type": "string"},
-                        },
-                        "required": ["ticker", "label", "question", "market_price", "probability", "rationale"],
-                    },
-                },
-                "epistemic_confidence": {
+                "confidence": {
                     "type": "string",
-                    "enum": ["low", "medium", "high"],
+                    "enum": ["LOW", "MEDIUM", "HIGH"],
                     "description": "Your confidence in this probability estimate",
                 },
             },
             "required": [
-                "probability", "starting_base_rate", "adjustment_from_base",
+                "starting_base_rate", "final_probability", "current_state_summary",
+                "resolved_or_partially_resolved", "update_ledger",
                 "key_updates_from_base", "inside_view_reasoning",
-                "exclusivity_assessment", "exclusivity_reasoning",
                 "key_factors_for", "key_factors_against",
-                "unresolved_cruxes", "uncertainty_reasoning", "epistemic_confidence",
+                "unresolved_cruxes", "uncertainty_reasoning", "confidence",
             ],
         },
     },
@@ -232,7 +302,7 @@ def _format_related_markets(related_markets: list[dict]) -> str:
 def run_forecasting_agent(
     parsed_question: ParsedQuestion,
     agent_id: int,
-    ov_consensus: OutsideViewConsensus,
+    ov_reconciliation: ReconciledOutsideView,
     related_markets: list[dict] | None = None,
     config: ForecasterConfig | None = None,
 ) -> AgentForecast:
@@ -249,22 +319,40 @@ def run_forecasting_agent(
         f"Current date: {today}\n\n"
         f"{parsed_question.format_for_prompt()}\n\n"
         f"ESTABLISHED OUTSIDE VIEW:\n"
-        f"  Base rate: {ov_consensus.base_rate:.3f} ({ov_consensus.base_rate * 100:.0f}%)\n"
-        f"  Statistical object: {ov_consensus.statistical_object or 'see reference class'}\n"
-        f"  Reference class: {ov_consensus.reference_class}\n"
-        f"  Basis: {ov_consensus.denominator_or_basis or 'see reasoning'}\n"
-        f"  Limitations: {ov_consensus.reference_class_limitations or 'none noted'}\n"
-        f"  Reasoning: {ov_consensus.reasoning}\n\n"
+        f"  Base rate: {ov_reconciliation.final_prior:.3f} ({ov_reconciliation.final_prior * 100:.0f}%)\n"
+        f"  Statistical object: {ov_reconciliation.statistical_object or parsed_question.outside_view_target or 'see reference class'}\n"
+        f"  Reference class / basis: {ov_reconciliation.reference_class_summary or 'see rationale'}\n"
+        f"  Denominator / basis: {ov_reconciliation.denominator_summary or 'see reasoning'}\n"
+        f"  Plausible range: {ov_reconciliation.plausible_range or 'not provided'}\n"
+        f"  Confidence: {ov_reconciliation.confidence or 'not provided'}\n"
+        f"  Limitations: none noted\n"
+        f"  Reasoning: {ov_reconciliation.rationale}\n"
+        f"  Notes for inside view: {ov_reconciliation.notes_for_inside_view or 'none'}\n\n"
         f"SELECTED OPTION:\n"
         f"  Question: {parsed_question.question}\n\n"
         f"SIBLING OPTIONS FROM THE SAME EVENT:\n{_format_related_markets(related_markets)}\n\n"
-        "Start from this base rate. Search for CURRENT, SITUATION-SPECIFIC evidence. "
-        "Include the current year in search queries. "
-        "Use the sibling options and rules to decide whether this event is single_winner or multiple_possible. "
-        "If single_winner, return probabilities across the full option set that sum to 1.0 and ensure the selected option's probability matches `probability`. "
-        "If multiple_possible, focus on the selected option and only include sibling probabilities if genuinely helpful. "
-        "Add items to the ledger as you go. "
-        "Call submit_forecast when you have a well-reasoned estimate."
+        "YOUR TASK:\n"
+        "1. Check whether the event is already resolved or partially resolved.\n"
+        "2. Determine the current state of the specific situation.\n"
+        "3. Search for recent, situation-specific evidence relevant to the key unknowns.\n"
+        "4. Build an update ledger from the outside-view base rate.\n"
+        "5. Produce a final probability for the selected option only.\n\n"
+        "For each update, include:\n"
+        "- evidence\n"
+        "- source quality\n"
+        "- direction\n"
+        "- magnitude\n"
+        "- probability-point adjustment\n"
+        "- whether the evidence is independent or duplicative\n"
+        "- short rationale\n\n"
+        "Important:\n"
+        "- Start from the outside-view base rate.\n"
+        "- Do not re-research historical base rates.\n"
+        "- Do not use sibling options as evidence except to understand competition/overlap.\n"
+        "- Do not double-count repeated facts from multiple sources.\n"
+        "- Include the current year or recent phrasing in searches.\n"
+        "- If final probability differs from the base rate by more than 20pp, explicitly justify why.\n"
+        "- Call submit_forecast when you have a well-reasoned estimate."
     )
 
     messages = [{"role": "user", "content": user_message}]
@@ -277,8 +365,14 @@ def run_forecasting_agent(
             messages.append({
                 "role": "user",
                 "content": (
-                    "One more search available. Then call submit_forecast. "
-                    "List each update from base rate with its direction and magnitude."
+                    "One more search available. Then call submit_forecast.\n\n"
+                    "Before submitting, make sure you have:\n"
+                    "- checked whether the event is already resolved\n"
+                    "- established the current state\n"
+                    "- listed each update from the outside-view base rate\n"
+                    "- assigned direction and probability-point magnitude to each update\n"
+                    "- avoided double-counting duplicated evidence\n"
+                    "- justified any move greater than 20pp from the base rate"
                 ),
             })
 
@@ -306,7 +400,16 @@ def run_forecasting_agent(
         ledger.incomplete = True
         messages.append({
             "role": "user",
-            "content": "Research complete. You must now call submit_forecast with your best estimate.",
+            "content": (
+                "Research complete. You must now call submit_forecast with your best estimate.\n\n"
+                "Your final forecast must include:\n"
+                "- starting outside-view base rate\n"
+                "- current-state summary\n"
+                "- update ledger\n"
+                "- final probability\n"
+                "- confidence\n"
+                "- explanation for any large deviation from the base rate"
+            ),
         })
         final = llm.complete(SYSTEM_PROMPT, messages, _SUBMIT_ONLY, force_tool=True)
         if final.tool_blocks:
@@ -316,19 +419,20 @@ def run_forecasting_agent(
 
     return AgentForecast(
         agent_id=agent_id,
-        probability=float(forecast_input["probability"]),
-        outside_view_base_rate=ov_consensus.base_rate,
-        outside_view_reasoning=ov_consensus.reasoning,
+        probability=float(forecast_input["final_probability"]),
+        outside_view_base_rate=ov_reconciliation.final_prior,
+        outside_view_reasoning=ov_reconciliation.rationale,
         inside_view_reasoning=forecast_input["inside_view_reasoning"],
-        exclusivity_assessment=forecast_input.get("exclusivity_assessment", "multiple_possible"),
-        exclusivity_reasoning=forecast_input.get("exclusivity_reasoning", ""),
         key_factors_for=forecast_input.get("key_factors_for", []),
         key_factors_against=forecast_input.get("key_factors_against", []),
-        related_option_probabilities=forecast_input.get("related_option_probabilities", []),
         uncertainty_reasoning=forecast_input["uncertainty_reasoning"],
-        epistemic_confidence=forecast_input["epistemic_confidence"],
+        epistemic_confidence=forecast_input["confidence"].lower(),
         evidence_ledger=ledger,
-        starting_base_rate=float(forecast_input.get("starting_base_rate", ov_consensus.base_rate)),
+        starting_base_rate=float(forecast_input.get("starting_base_rate", ov_reconciliation.final_prior)),
+        current_state_summary=forecast_input.get("current_state_summary", ""),
+        resolved_or_partially_resolved=bool(forecast_input.get("resolved_or_partially_resolved", False)),
+        update_ledger=forecast_input.get("update_ledger", []),
+        large_deviation_justification=forecast_input.get("large_deviation_justification"),
         key_updates_from_base=forecast_input.get("key_updates_from_base", []),
         unresolved_cruxes=forecast_input.get("unresolved_cruxes", []),
     )
