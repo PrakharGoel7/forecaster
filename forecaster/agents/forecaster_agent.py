@@ -164,7 +164,7 @@ _TOOLS = [
                 },
                 "magnitude": {
                     "type": "string",
-                    "enum": ["strong", "moderate", "modest", "weak", "slight"],
+                    "enum": ["strong", "moderate", "modest", "weak", "slight", "neutral"],
                     "description": "How large is the update this evidence justifies",
                 },
                 "date_published": {
@@ -461,6 +461,7 @@ def _execute_tool(name: str, args: dict, ledger: EvidenceLedger, config: Forecas
         normalized_magnitude = {
             "slight": "weak",
             "modest": "moderate",
+            "neutral": "weak",
         }.get(raw_magnitude, raw_magnitude)
         item = EvidenceItem(
             claim=args["claim"],

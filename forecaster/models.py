@@ -69,6 +69,7 @@ class EvidenceMagnitude(str, Enum):
         _legacy = {
             "modest": cls.MODERATE,
             "slight": cls.WEAK,
+            "neutral": cls.WEAK,
         }
         return _legacy.get(value)
 
