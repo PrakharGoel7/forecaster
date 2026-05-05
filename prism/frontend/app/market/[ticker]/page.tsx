@@ -21,6 +21,10 @@ function fmtPct(p: number) {
   return `${Math.round(p * 100)}%`;
 }
 
+function getOddsBarWidth(p: number) {
+  return Math.max(4, Math.round(p * 100));
+}
+
 type Phase = "idle" | "running" | "done" | "error";
 
 const DIR_COLORS: Record<string, string> = {
@@ -312,12 +316,36 @@ export default function MarketPage() {
                       if (!isSelected) e.currentTarget.style.borderColor = "#242424";
                     }}
                   >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: "18px", fontWeight: 600, color: "#f2ede7", marginBottom: "6px" }}>
+                    <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: "14px", flex: 1 }}>
+                      <div style={{
+                        fontSize: "18px",
+                        fontWeight: 600,
+                        color: "#f2ede7",
+                        minWidth: "84px",
+                        fontFamily: "var(--font-mono), monospace",
+                      }}>
                         {market.yes_sub_title || market.ticker}
                       </div>
-                      <div style={{ fontSize: "14px", color: "#98918b" }}>
-                        {fmtPct(market.mid_price)} market odds
+                      <div style={{
+                        fontSize: "16px",
+                        color: isSelected ? "#f7c4b2" : "#d2cbc3",
+                        minWidth: "42px",
+                        fontFamily: "var(--font-mono), monospace",
+                      }}>
+                        {fmtPct(market.mid_price)}
+                      </div>
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", minWidth: 0 }}>
+                        <div style={{
+                          width: `${getOddsBarWidth(market.mid_price)}%`,
+                          minWidth: market.mid_price <= 0.015 ? "8px" : "0",
+                          height: "10px",
+                          borderRadius: "999px",
+                          background: market.mid_price <= 0.015
+                            ? (isSelected ? "#ff9b77" : "#7e7872")
+                            : (isSelected
+                              ? "linear-gradient(90deg, #ff9b77, #e36438)"
+                              : "linear-gradient(90deg, #89827b, #c5bfb7)"),
+                        }} />
                       </div>
                     </div>
 
