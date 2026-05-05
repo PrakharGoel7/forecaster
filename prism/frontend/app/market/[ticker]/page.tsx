@@ -197,6 +197,7 @@ export default function MarketPage() {
   const keyReasons = summarizeReasons(memo, ivData);
   const evidence = memo ? memo.agent_forecasts.flatMap((agent) => agent.evidence_ledger.items) : [];
   const relatedOptions = memo?.related_option_probabilities ?? [];
+  const hasMultipleOptions = markets.length > 1;
 
   return (
     <div style={{ minHeight: "100vh", background: "#080808" }}>
@@ -261,80 +262,82 @@ export default function MarketPage() {
           </section>
         )}
 
-        <section style={{
-          background: "#101010",
-          border: "1px solid #1d1d1d",
-          borderRadius: "20px",
-          padding: "26px",
-          marginBottom: "24px",
-        }}>
-          <div style={{ fontSize: "25px", fontWeight: 700, color: "#f2ede7", marginBottom: "8px" }}>
-            Pick an outcome to analyze
-          </div>
-          <div style={{ fontSize: "15px", color: "#8c8680", lineHeight: 1.6, marginBottom: "20px" }}>
-            Choose the outcome you might trade. Prism will compare the market’s implied odds with its own estimate.
-          </div>
+        {hasMultipleOptions && (
+          <section style={{
+            background: "#101010",
+            border: "1px solid #1d1d1d",
+            borderRadius: "20px",
+            padding: "26px",
+            marginBottom: "24px",
+          }}>
+            <div style={{ fontSize: "25px", fontWeight: 700, color: "#f2ede7", marginBottom: "8px" }}>
+              Pick an outcome to analyze
+            </div>
+            <div style={{ fontSize: "15px", color: "#8c8680", lineHeight: 1.6, marginBottom: "20px" }}>
+              Choose the outcome you might trade. Prism will compare the market’s implied odds with its own estimate.
+            </div>
 
-          <div style={{ display: "grid", gap: "14px" }}>
-            {markets.map((market) => {
-              const isSelected = mkt?.ticker === market.ticker;
-              return (
-                <button
-                  key={market.ticker}
-                  onClick={() => {
-                    setMkt(market);
-                    setMemo(null);
-                    setIvData(null);
-                    setPhase("idle");
-                    setErrorMsg("");
-                  }}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    background: isSelected ? "rgba(227,100,56,0.08)" : "#131313",
-                    border: `1px solid ${isSelected ? "#e36438" : "#242424"}`,
-                    borderRadius: "16px",
-                    padding: "18px 20px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: "16px",
-                    boxShadow: isSelected ? "0 0 0 1px rgba(227,100,56,0.22), 0 14px 34px rgba(227,100,56,0.10)" : "none",
-                    transition: "all 0.18s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) e.currentTarget.style.borderColor = "#353535";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.borderColor = "#242424";
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: "18px", fontWeight: 600, color: "#f2ede7", marginBottom: "6px" }}>
-                      {market.yes_sub_title || market.ticker}
+            <div style={{ display: "grid", gap: "14px" }}>
+              {markets.map((market) => {
+                const isSelected = mkt?.ticker === market.ticker;
+                return (
+                  <button
+                    key={market.ticker}
+                    onClick={() => {
+                      setMkt(market);
+                      setMemo(null);
+                      setIvData(null);
+                      setPhase("idle");
+                      setErrorMsg("");
+                    }}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      background: isSelected ? "rgba(227,100,56,0.08)" : "#131313",
+                      border: `1px solid ${isSelected ? "#e36438" : "#242424"}`,
+                      borderRadius: "16px",
+                      padding: "18px 20px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "16px",
+                      boxShadow: isSelected ? "0 0 0 1px rgba(227,100,56,0.22), 0 14px 34px rgba(227,100,56,0.10)" : "none",
+                      transition: "all 0.18s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) e.currentTarget.style.borderColor = "#353535";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) e.currentTarget.style.borderColor = "#242424";
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: "18px", fontWeight: 600, color: "#f2ede7", marginBottom: "6px" }}>
+                        {market.yes_sub_title || market.ticker}
+                      </div>
+                      <div style={{ fontSize: "14px", color: "#98918b" }}>
+                        {fmtPct(market.mid_price)} chance
+                      </div>
                     </div>
-                    <div style={{ fontSize: "14px", color: "#98918b" }}>
-                      {fmtPct(market.mid_price)} chance
-                    </div>
-                  </div>
 
-                  <div style={{
-                    flexShrink: 0,
-                    padding: "7px 11px",
-                    borderRadius: "999px",
-                    border: `1px solid ${isSelected ? "#e36438" : "#2a2a2a"}`,
-                    color: isSelected ? "#ff8b5f" : "#6f6963",
-                    background: isSelected ? "rgba(227,100,56,0.12)" : "transparent",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                  }}>
-                    {isSelected ? "Selected" : "Analyze"}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+                    <div style={{
+                      flexShrink: 0,
+                      padding: "7px 11px",
+                      borderRadius: "999px",
+                      border: `1px solid ${isSelected ? "#e36438" : "#2a2a2a"}`,
+                      color: isSelected ? "#ff8b5f" : "#6f6963",
+                      background: isSelected ? "rgba(227,100,56,0.12)" : "transparent",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                    }}>
+                      {isSelected ? "Selected" : "Analyze"}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {mkt && (
           <section style={{
@@ -346,7 +349,7 @@ export default function MarketPage() {
             <div style={{ display: "flex", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "20px" }}>
               <div>
                 <div style={{ fontSize: "24px", fontWeight: 700, color: "#f2ede7", marginBottom: "8px" }}>
-                  {mkt.yes_sub_title || mkt.question || mkt.ticker}
+                  {hasMultipleOptions ? (mkt.yes_sub_title || mkt.question || mkt.ticker) : "Yes"}
                 </div>
                 <div style={{ fontSize: "15px", color: "#8c8680" }}>
                   Market thinks {fmtPct(selectedImpliedProbability)}
@@ -404,7 +407,7 @@ export default function MarketPage() {
             )}
 
             {phase === "idle" && (
-              <EmptyAnalysisState optionName={mkt.yes_sub_title || mkt.ticker} impliedProbability={selectedImpliedProbability} />
+              <EmptyAnalysisState optionName={hasMultipleOptions ? (mkt.yes_sub_title || mkt.ticker) : "Yes"} impliedProbability={selectedImpliedProbability} />
             )}
 
             {phase === "running" && (
