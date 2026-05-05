@@ -3,6 +3,8 @@
 @tailwind utilities;
 
 :root {
+  --font-jakarta: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "SFMono-Regular", "Menlo", "Monaco", "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", monospace;
   --bg: #080808;
   --surface: #0f0f0f;
   --border: #1c1c1c;

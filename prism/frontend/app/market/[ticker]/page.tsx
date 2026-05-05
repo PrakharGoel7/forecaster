@@ -280,7 +280,7 @@ export default function MarketPage() {
                       )}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
-                      {result && (
+                      {prismProb != null && (
                         <div style={{ textAlign: "right" }}>
                           <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#2a2826", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "3px" }}>
                             Prism
