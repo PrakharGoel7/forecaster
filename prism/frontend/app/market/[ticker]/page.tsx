@@ -363,7 +363,7 @@ export default function MarketPage() {
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 {!hasMultipleOptions && phase !== "running" && (
                   <button
-                    onClick={runForecast}
+                    onClick={() => runForecast()}
                     style={{
                       background: "#e36438",
                       color: "#fff",
