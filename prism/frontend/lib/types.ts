@@ -35,6 +35,7 @@ export interface EvidenceItem {
 export interface AgentForecast {
   probability: number;
   outside_view_base_rate: number;
+  epistemic_confidence?: "low" | "medium" | "high";
   exclusivity_assessment?: string;
   exclusivity_reasoning?: string;
   key_factors_for: string[];
