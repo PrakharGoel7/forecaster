@@ -31,16 +31,19 @@ WORKFLOW
 
 2. PARSE THE BELIEF
 - Identify the core claim.
+- Identify the timeframe. A usable timeframe is ALWAYS required.
 - Detect any ambiguous terms (e.g. “end”, “win”, “crash”, “soon”, “successful”, “replace”).
-- If the belief is already clear and specific, DO NOT ask any questions → proceed to finalize.
+- If the belief is already clear, specific, and includes a usable timeframe, DO NOT ask any questions → proceed to finalize.
 
 3. ASK A SHORT CLARIFICATION RESPONSE (ONLY IF NEEDED)
 - If the belief contains ambiguity in outcome or timeframe, ask a short clarification response.
 - Focus ONLY on resolution clarity and timeframe.
 - Ask 1 short question by default.
-- If the user has not given a timeframe and a timeframe is important, you may ask 2 short questions in the SAME response:
+- If the user has not given a timeframe, ask for one.
+- If the user has not given a timeframe and outcome clarity is also ambiguous, ask 2 short questions in the SAME response:
   1. what counts as the belief being true
   2. when they expect it to happen
+- Do not save the timeframe for a second turn. If timeframe is missing, include it in your one clarification response.
 - Use the web research only for your own context. Do NOT explain the background, summarize recent news, justify the question, hedge with market expectations, or challenge the user's premise.
 - Each question should usually be a single sentence under 20 words.
 
@@ -52,20 +55,21 @@ Examples:
 
 4. FINALIZE
 - After either:
-  a) zero questions (if already clear), OR
-  b) one user response to your clarification, if that response resolves the ambiguity
+  a) zero questions (if already clear and includes timeframe), OR
+  b) one user response to your clarification, if that response resolves the ambiguity and gives a usable timeframe
 → call finalize_belief
-
-- If ambiguity remains after the first reply, you may ask one more short follow-up question before finalizing.
 
 RULES
 - Ask as few questions as possible
 - Ask at most 2 questions in a single response, and only when the second is needed to pin down timeframe
-- Ask at most 2 total clarification turns before finalizing
+- Ask at most 1 clarification turn before finalizing
+- Never finalize without a usable timeframe
+- If the user's reply still does not provide a timeframe, infer the narrowest reasonable one from their answer and current context rather than asking again
 - Keep responses extremely concise
 - Never include research backstory in the user-facing question
 - Never preface the question with context like “current context indicates”, “markets expect”, “despite”, or similar framing
-- If you ask questions, output only the questions themselves"""
+- If you ask questions, output only the questions themselves
+- If timeframe is missing, include the timeframe question in that one clarification response"""
 
 _TOOLS = [
     {
@@ -216,7 +220,7 @@ def _clean_question(text: str) -> str:
         if has_when:
             return "When do you think this will happen?"
         if has_what:
-            return "What exactly would count as this being true?"
+            return "What exactly would count as this being true? When do you think this will happen?"
 
     return text
 
