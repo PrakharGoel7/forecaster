@@ -454,7 +454,7 @@ def _run_ov_agent(
     related_markets: list[dict],
     config: ForecasterConfig,
 ) -> OutsideViewEstimate:
-    llm = LLMClient(config)
+    llm = LLMClient(config, client_name=agent_name.lower().replace(" ", "_"))
     ledger = EvidenceLedger()
     messages = [{"role": "user", "content": _shared_user_prompt(parsed_question, related_markets)}]
     tools = SEARCH_TOOLS + [submit_tool]
@@ -607,7 +607,7 @@ def reconcile_outside_view(
     config: ForecasterConfig | None = None,
 ) -> ReconciledOutsideView:
     config = config or ForecasterConfig()
-    llm = LLMClient(config)
+    llm = LLMClient(config, client_name="outside_view_reconciler")
     messages = [{
         "role": "user",
         "content": (

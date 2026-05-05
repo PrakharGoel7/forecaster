@@ -309,7 +309,7 @@ def run_forecasting_agent(
     if config is None:
         config = ForecasterConfig()
 
-    llm = LLMClient(config)
+    llm = LLMClient(config, client_name=f"inside_view_agent_{agent_id}")
     ledger = EvidenceLedger()
     today = current_date_str()
     related_markets = related_markets or []

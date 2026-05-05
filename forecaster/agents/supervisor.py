@@ -175,7 +175,7 @@ def run_supervisor(
     if config is None:
         config = ForecasterConfig()
 
-    llm = LLMClient(config)
+    llm = LLMClient(config, client_name="supervisor")
     raw_probs = [f.probability for f in agent_forecasts]
     related_markets = related_markets or []
 

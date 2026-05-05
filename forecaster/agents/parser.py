@@ -208,7 +208,7 @@ def parse_question(
     if config is None:
         config = ForecasterConfig()
 
-    llm = LLMClient(config)
+    llm = LLMClient(config, client_name="parser")
 
     blocks = []
     if series_ticker:
