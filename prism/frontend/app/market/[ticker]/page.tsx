@@ -150,8 +150,9 @@ export default function MarketPage() {
     market_price: market.mid_price,
   }));
 
-  const runForecast = useCallback(() => {
-    if (!mkt) return;
+  const runForecast = useCallback((targetMarket?: KalshiMarket) => {
+    const marketToRun = targetMarket ?? mkt;
+    if (!marketToRun) return;
     setPhase("running");
     setProgressLabel(PROGRESS_STEPS[0].label);
     setMemo(null);
@@ -159,11 +160,11 @@ export default function MarketPage() {
     setErrorMsg("");
     cancelRef.current = streamForecast(
       {
-        ticker: mkt.ticker,
+        ticker: marketToRun.ticker,
         event_title: displayTitle,
         ev_sub: displaySub,
         ev_category: displayCat,
-        market: mkt as unknown as Record<string, unknown>,
+        market: marketToRun as unknown as Record<string, unknown>,
         related_markets: relatedMarkets,
       },
       (msg: StreamMessage) => {
@@ -273,7 +274,7 @@ export default function MarketPage() {
               Pick an outcome to analyze
             </div>
             <div style={{ fontSize: "15px", color: "#8c8680", lineHeight: 1.6, marginBottom: "20px" }}>
-              Choose the outcome you might trade. Prism will compare the market’s implied odds with its own estimate.
+              Choose the outcome you might trade. Market thinks each outcome has the odds shown below. Click one to run Prism’s analysis and see whether that price looks attractive.
             </div>
 
             <div style={{ display: "grid", gap: "14px" }}>
@@ -286,8 +287,9 @@ export default function MarketPage() {
                       setMkt(market);
                       setMemo(null);
                       setIvData(null);
-                      setPhase("idle");
+                      setPhase("running");
                       setErrorMsg("");
+                      runForecast(market);
                     }}
                     style={{
                       width: "100%",
@@ -316,6 +318,9 @@ export default function MarketPage() {
                       </div>
                       <div style={{ fontSize: "14px", color: "#98918b" }}>
                         {fmtPct(market.mid_price)} chance
+                      </div>
+                      <div style={{ fontSize: "13px", color: "#6f6963", lineHeight: 1.6, marginTop: "8px" }}>
+                        Market thinks this outcome has a {fmtPct(market.mid_price)} chance. Run Prism’s analysis to see whether that price looks attractive.
                       </div>
                     </div>
 
@@ -356,7 +361,7 @@ export default function MarketPage() {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                {phase !== "running" && (
+                {!hasMultipleOptions && phase !== "running" && (
                   <button
                     onClick={runForecast}
                     style={{
@@ -406,7 +411,9 @@ export default function MarketPage() {
             )}
 
             {phase === "idle" && (
-              <EmptyAnalysisState optionName={hasMultipleOptions ? (mkt.yes_sub_title || mkt.ticker) : "Yes"} impliedProbability={selectedImpliedProbability} />
+              hasMultipleOptions ? null : (
+                <EmptyAnalysisState optionName="Yes" impliedProbability={selectedImpliedProbability} />
+              )
             )}
 
             {phase === "running" && (
