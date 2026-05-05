@@ -35,14 +35,29 @@ export interface EvidenceItem {
 export interface AgentForecast {
   probability: number;
   outside_view_base_rate: number;
+  exclusivity_assessment?: string;
+  exclusivity_reasoning?: string;
   key_factors_for: string[];
   key_factors_against: string[];
+  related_option_probabilities?: RelatedOptionProbability[];
   evidence_ledger: { items: EvidenceItem[] };
+}
+
+export interface RelatedOptionProbability {
+  ticker: string;
+  label: string;
+  question: string;
+  market_price: number;
+  probability: number;
+  rationale: string;
 }
 
 export interface ForecastMemo {
   final_probability: number;
   num_agents: number;
+  exclusivity_assessment?: string;
+  exclusivity_reasoning?: string;
+  related_option_probabilities?: RelatedOptionProbability[];
   outside_view_summary: string;
   supervisor_reconciliation: { reconciliation_reasoning: string };
   agent_forecasts: AgentForecast[];
@@ -79,43 +94,6 @@ export type StreamMessage =
   | { type: "ov_complete"; base_rate: number; reference_class: string; reasoning: string }
   | { type: "iv_complete"; agent_forecasts: { key_factors_for: string[]; key_factors_against: string[] }[] }
   | { type: "complete"; memo: ForecastMemo; kalshi_price: number; close_date: string }
-  | { type: "error"; message: string };
-
-export interface ComparativeOptionForecast {
-  ticker: string;
-  label: string;
-  question: string;
-  market_price: number;
-  probability: number;
-  rationale: string;
-}
-
-export interface ComparativeAgentForecast {
-  option_forecasts: ComparativeOptionForecast[];
-  key_drivers: string[];
-  uncertainty_reasoning: string;
-  epistemic_confidence: string;
-}
-
-export interface ComparativeForecastMemo {
-  event_title: string;
-  event_subtitle: string;
-  event_category: string;
-  resolution_rules: string;
-  option_forecasts: ComparativeOptionForecast[];
-  agent_forecasts: ComparativeAgentForecast[];
-  supervisor_reconciliation: {
-    option_forecasts: ComparativeOptionForecast[];
-    reconciliation_reasoning: string;
-    disagreement_level: string;
-    crux_of_disagreement?: string | null;
-  };
-  num_agents: number;
-}
-
-export type ComparativeStreamMessage =
-  | { type: "progress"; label: string }
-  | { type: "complete"; memo: ComparativeForecastMemo }
   | { type: "error"; message: string };
 
 // ── Trading Companion ─────────────────────────────────────────────────────────

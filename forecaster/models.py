@@ -228,8 +228,11 @@ class AgentForecast(BaseModel):
     outside_view_base_rate: float
     outside_view_reasoning: str
     inside_view_reasoning: str
+    exclusivity_assessment: str = "multiple_possible"  # single_winner / multiple_possible
+    exclusivity_reasoning: str = ""
     key_factors_for: list[str]
     key_factors_against: list[str]
+    related_option_probabilities: list[dict] = Field(default_factory=list)
     uncertainty_reasoning: str
     epistemic_confidence: str  # low / medium / high
     evidence_ledger: EvidenceLedger
@@ -252,6 +255,9 @@ class SupervisorReconciliation(BaseModel):
     crux_of_disagreement: Optional[str] = None
     targeted_searches_conducted: list[str] = Field(default_factory=list)
     reconciled_probability: float
+    exclusivity_assessment: str = "multiple_possible"
+    exclusivity_reasoning: str = ""
+    related_option_probabilities: list[dict] = Field(default_factory=list)
     reconciliation_reasoning: str
     additional_evidence: list[EvidenceItem] = Field(default_factory=list)
     outside_view_audit: str = ""   # supervisor's assessment of OV quality
@@ -276,6 +282,9 @@ class ForecastMemo(BaseModel):
     question: str
     final_probability: float
     raw_probability: float
+    exclusivity_assessment: str = "multiple_possible"
+    exclusivity_reasoning: str = ""
+    related_option_probabilities: list[dict] = Field(default_factory=list)
     ensemble_run_probabilities: list[float]
     probability_spread: tuple[float, float]
     calibration: CalibrationResult
@@ -290,49 +299,4 @@ class ForecastMemo(BaseModel):
     foreknowledge_flags: list[str]
     num_agents: int
     num_ensemble_runs: int
-    forecasted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-
-# ── Comparative multi-option forecasting ─────────────────────────────────────
-
-class ComparativeOptionForecast(BaseModel):
-    ticker: str
-    label: str
-    question: str
-    market_price: float
-    probability: float
-    rationale: str
-
-    @field_validator("market_price", "probability")
-    @classmethod
-    def clamp_option_probability(cls, v: float) -> float:
-        return max(0.001, min(0.999, v))
-
-
-class ComparativeAgentForecast(BaseModel):
-    agent_id: int
-    option_forecasts: list[ComparativeOptionForecast]
-    key_drivers: list[str] = Field(default_factory=list)
-    uncertainty_reasoning: str
-    epistemic_confidence: str  # low / medium / high
-    evidence_ledger: EvidenceLedger
-
-
-class ComparativeSupervisorReconciliation(BaseModel):
-    option_forecasts: list[ComparativeOptionForecast]
-    disagreement_level: str  # low / medium / high
-    crux_of_disagreement: Optional[str] = None
-    targeted_searches_conducted: list[str] = Field(default_factory=list)
-    reconciliation_reasoning: str
-
-
-class ComparativeForecastMemo(BaseModel):
-    event_title: str
-    event_subtitle: str = ""
-    event_category: str = ""
-    resolution_rules: str = ""
-    option_forecasts: list[ComparativeOptionForecast]
-    agent_forecasts: list[ComparativeAgentForecast]
-    supervisor_reconciliation: ComparativeSupervisorReconciliation
-    num_agents: int
     forecasted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

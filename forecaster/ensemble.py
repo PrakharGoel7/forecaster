@@ -63,6 +63,7 @@ def run_single_pass(
     parsed_question: ParsedQuestion,
     config: ForecasterConfig,
     run_id: int,
+    related_markets: list[dict] | None = None,
     on_step: Optional[Callable] = None,
 ) -> tuple[list[OutsideViewForecast], OutsideViewConsensus, list[AgentForecast], SupervisorReconciliation]:
     # Phase 1: outside view
@@ -81,7 +82,13 @@ def run_single_pass(
     iv_forecasts = _run_parallel_agents(
         config.num_iv_agents,
         lambda i: f"Run {run_id+1} · Agent {i+1}/{config.num_iv_agents}",
-        lambda i: run_forecasting_agent(parsed_question, agent_id=i, ov_consensus=ov_consensus, config=config),
+        lambda i: run_forecasting_agent(
+            parsed_question,
+            agent_id=i,
+            ov_consensus=ov_consensus,
+            related_markets=related_markets or [],
+            config=config,
+        ),
         on_step=on_step,
     )
 
@@ -90,7 +97,7 @@ def run_single_pass(
 
     if on_step:
         on_step(f"Run {run_id+1} · Supervisor", "running")
-    reconciliation = run_supervisor(parsed_question, iv_forecasts, ov_consensus, config)
+    reconciliation = run_supervisor(parsed_question, iv_forecasts, ov_consensus, related_markets=related_markets or [], config=config)
     if on_step:
         on_step(f"Run {run_id+1} · Supervisor", "done")
 
@@ -100,6 +107,7 @@ def run_single_pass(
 def run_ensemble(
     parsed_question: ParsedQuestion,
     config: ForecasterConfig,
+    related_markets: list[dict] | None = None,
     on_step: Optional[Callable] = None,
 ) -> tuple[float, list[float], list[OutsideViewForecast], OutsideViewConsensus, list[AgentForecast], SupervisorReconciliation]:
     """
@@ -118,7 +126,13 @@ def run_ensemble(
     final_reconciliation: SupervisorReconciliation | None = None
 
     for k in range(config.num_ensemble_runs):
-        ov_f, ov_c, iv_f, reconciliation = run_single_pass(parsed_question, config, run_id=k, on_step=on_step)
+        ov_f, ov_c, iv_f, reconciliation = run_single_pass(
+            parsed_question,
+            config,
+            run_id=k,
+            related_markets=related_markets or [],
+            on_step=on_step,
+        )
         run_probabilities.append(reconciliation.reconciled_probability)
         final_ov_forecasts = ov_f
         final_ov_consensus = ov_c

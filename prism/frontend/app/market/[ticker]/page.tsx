@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
-import { getMarkets, getMarket, listForecasts, streamForecast, streamComparativeForecast } from "@/lib/api";
+import { getMarkets, getMarket, listForecasts, streamForecast } from "@/lib/api";
 import type {
   KalshiMarket,
   ForecastMemo,
@@ -11,8 +11,6 @@ import type {
   IVData,
   StreamMessage,
   SavedForecast,
-  ComparativeForecastMemo,
-  ComparativeStreamMessage,
 } from "@/lib/types";
 
 function fmtVol(v: number) {
@@ -55,10 +53,6 @@ export default function MarketPage() {
   const [errorMsg, setErrorMsg]           = useState("");
   const cancelRef = useRef<(() => void) | null>(null);
   const hasAutoRunRef = useRef(false);
-  const [comparativeMemo, setComparativeMemo] = useState<ComparativeForecastMemo | null>(null);
-  const [comparativePhase, setComparativePhase] = useState<Phase>("idle");
-  const [comparativeProgress, setComparativeProgress] = useState("Initializing…");
-  const [comparativeError, setComparativeError] = useState("");
 
   const [savedEventTitle, setSavedEventTitle] = useState("");
   const [savedEvCat, setSavedEvCat]           = useState("");
@@ -100,7 +94,6 @@ export default function MarketPage() {
           const ctx = JSON.parse(row.context_json);
           setMkt(ctx.market as KalshiMarket);
           setMemo(JSON.parse(row.memo_json));
-          setComparativeMemo(null);
           setKalshiPrice(row.kalshi_price);
           setPhase("done");
           if (ctx.event) {
@@ -114,7 +107,7 @@ export default function MarketPage() {
       getMarkets(rawTicker)
         .then((mkts: KalshiMarket[]) => {
           setMarkets(mkts);
-          if (mkts.length === 1) setMkt(mkts[0]);
+          if (mkts.length > 0) setMkt(curr => curr ?? mkts[0]);
         })
         .catch(() => {
           getMarket(rawTicker)
@@ -132,6 +125,12 @@ export default function MarketPage() {
   const multiEventCloseDate = primaryMarket?.close_date ?? "";
   const multiEventRules = primaryMarket?.rules_primary ?? "";
   const multiEventVolume = markets.reduce((sum, market) => sum + market.volume, 0);
+  const relatedMarkets = markets.map((market) => ({
+    ticker: market.ticker,
+    label: market.yes_sub_title || market.ticker,
+    question: market.question,
+    market_price: market.mid_price,
+  }));
 
   const runForecast = useCallback(() => {
     if (!mkt) return;
@@ -142,7 +141,14 @@ export default function MarketPage() {
     setIvData(null);
     setErrorMsg("");
     cancelRef.current = streamForecast(
-      { ticker: mkt.ticker, event_title: displayTitle, ev_sub: displaySub, ev_category: displayCat, market: mkt as unknown as Record<string, unknown> },
+      {
+        ticker: mkt.ticker,
+        event_title: displayTitle,
+        ev_sub: displaySub,
+        ev_category: displayCat,
+        market: mkt as unknown as Record<string, unknown>,
+        related_markets: relatedMarkets,
+      },
       (msg: StreamMessage) => {
         if (msg.type === "progress") {
           setProgressLabel(msg.label);
@@ -159,40 +165,13 @@ export default function MarketPage() {
         }
       }
     );
-  }, [displayCat, displaySub, displayTitle, mkt]);
-
-  const runComparativeForecast = useCallback(() => {
-    if (markets.length <= 1) return;
-    setComparativePhase("running");
-    setComparativeProgress("Initializing…");
-    setComparativeError("");
-    setComparativeMemo(null);
-    cancelRef.current = streamComparativeForecast(
-      {
-        event_title: displayTitle || markets[0]?.question || rawTicker,
-        ev_sub: displaySub,
-        ev_category: displayCat,
-        markets: markets as unknown as Record<string, unknown>[],
-      },
-      (msg: ComparativeStreamMessage) => {
-        if (msg.type === "progress") {
-          setComparativeProgress(msg.label);
-        } else if (msg.type === "complete") {
-          setComparativeMemo(msg.memo);
-          setComparativePhase("done");
-        } else if (msg.type === "error") {
-          setComparativeError(msg.message);
-          setComparativePhase("error");
-        }
-      },
-    );
-  }, [displayCat, displaySub, displayTitle, markets, rawTicker]);
+  }, [displayCat, displaySub, displayTitle, mkt, relatedMarkets]);
 
   useEffect(() => {
-    if (!shouldAutoRun || !mkt || savedId || isMultiEvent || hasAutoRunRef.current) return;
+    if (!shouldAutoRun || !mkt || savedId || hasAutoRunRef.current) return;
     hasAutoRunRef.current = true;
     runForecast();
-  }, [isMultiEvent, mkt, runForecast, savedId, shouldAutoRun]);
+  }, [mkt, runForecast, savedId, shouldAutoRun]);
 
   const pColor = (p: number) => p >= 0.6 ? "#4ade80" : p >= 0.35 ? "#fbbf24" : "#f87171";
 
@@ -220,7 +199,6 @@ export default function MarketPage() {
           )}
         </button>
 
-        {/* Multi-market picker */}
         {isMultiEvent && (
           <div>
             <div style={{ marginBottom: "20px" }}>
@@ -262,72 +240,38 @@ export default function MarketPage() {
               Market options
             </h2>
             <div style={{ marginBottom: "18px", fontSize: "13px", color: "#7a7570", lineHeight: 1.6 }}>
-              This event has multiple options. Prism will compare them jointly and produce one probability distribution across the full set.
+              This event has multiple options. Prism now forecasts one selected option at a time, while still showing how the other options affect that view.
             </div>
-            <button
-              onClick={runComparativeForecast}
-              disabled={comparativePhase === "running"}
-              style={{
-                width: "100%", background: comparativePhase === "running" ? "#181818" : "#e36438", color: "#fff",
-                border: "none", borderRadius: "10px", padding: "13px", fontSize: "12px",
-                fontFamily: "var(--font-mono), monospace", fontWeight: 600, letterSpacing: "0.06em",
-                opacity: comparativePhase === "running" ? 0.6 : 1, transition: "background 0.15s", marginBottom: "18px",
-              }}
-              onMouseEnter={e => { if (comparativePhase !== "running") e.currentTarget.style.background = "#c4421a"; }}
-              onMouseLeave={e => { if (comparativePhase !== "running") e.currentTarget.style.background = "#e36438"; }}
-            >
-              {comparativePhase === "running" ? "running comparative analysis…" : "run comparative analysis →"}
-            </button>
 
-            {comparativePhase === "running" && (
-              <div style={{ padding: "12px 14px", background: "#101010", border: "1px solid #1f1f1f", borderRadius: "8px", marginBottom: "16px" }}>
-                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", color: "#e36438" }}>
-                  {comparativeProgress}
-                </div>
-              </div>
-            )}
-
-            {comparativeError && (
-              <div style={{ padding: "12px 14px", background: "#180a0a", border: "1px solid #3a1515", borderRadius: "8px", marginBottom: "16px" }}>
-                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", color: "#f87171" }}>{comparativeError}</div>
-              </div>
-            )}
-
-            {comparativeMemo && (
-              <div style={{
-                background: "#0f0f0f", border: "1px solid #1c1c1c", borderRadius: "14px",
-                padding: "18px", marginBottom: "18px",
-              }}>
-                <div style={{
-                  fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
-                  textTransform: "uppercase", letterSpacing: "0.14em", color: "#e36438", marginBottom: "12px",
-                }}>
-                  Comparative View
-                </div>
-                <div style={{ fontSize: "13px", color: "#9b9790", lineHeight: 1.7 }}>
-                  {comparativeMemo.supervisor_reconciliation.reconciliation_reasoning}
-                </div>
-              </div>
-            )}
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {markets.map((m, idx) => {
-                const result = comparativeMemo?.option_forecasts.find(r => r.ticker === m.ticker) ?? null;
-                const prismProb = result ? result.probability : null;
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "28px" }}>
+              {markets.map((m) => {
+                const result = memo?.related_option_probabilities?.find(r => r.ticker === m.ticker) ?? null;
+                const isSelected = mkt?.ticker === m.ticker;
+                const prismProb = result?.probability ?? (memo && isSelected ? memo.final_probability : null);
                 const prismColor = prismProb != null ? pColor(prismProb) : "#6b6865";
                 return (
-                  <div key={m.ticker} style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "14px 18px", background: "#0f0f0f", border: "1px solid #1c1c1c",
-                    borderRadius: "10px", transition: "border-color 0.15s", textAlign: "left",
-                  }}
+                  <button
+                    key={m.ticker}
+                    onClick={() => {
+                      setMkt(m);
+                      setMemo(null);
+                      setOvData(null);
+                      setIvData(null);
+                      setPhase("idle");
+                      setErrorMsg("");
+                    }}
+                    style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "14px 18px", background: "#0f0f0f", border: `1px solid ${isSelected ? "#e36438" : "#1c1c1c"}`,
+                      borderRadius: "10px", transition: "border-color 0.15s", textAlign: "left", cursor: "pointer",
+                    }}
                   >
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: "14px", color: "#ede9e3", fontWeight: 500, marginBottom: "4px" }}>
                         {m.yes_sub_title || m.ticker}
                       </div>
                       <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#3a3835", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                        {result ? "jointly compared across all options" : comparativePhase === "running" ? `comparing option set ${idx + 1}/${markets.length}` : "waiting for comparative analysis"}
+                        {isSelected ? "selected option" : "use as forecast target"}
                       </div>
                       {result?.rationale && (
                         <div style={{ fontSize: "12px", color: "#6b6865", lineHeight: 1.6, marginTop: "8px" }}>
@@ -342,7 +286,7 @@ export default function MarketPage() {
                             Prism
                           </div>
                           <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "16px", fontWeight: 700, color: prismColor }}>
-                            {(result.probability * 100).toFixed(0)}%
+                            {(prismProb * 100).toFixed(0)}%
                           </div>
                         </div>
                       )}
@@ -355,7 +299,7 @@ export default function MarketPage() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -363,7 +307,7 @@ export default function MarketPage() {
         )}
 
         {/* ── Main single-column layout ── */}
-        {!isMultiEvent && mkt && (
+        {mkt && (
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -454,6 +398,7 @@ export default function MarketPage() {
                   const allFor     = ivData?.key_factors_for ?? [];
                   const allAgainst = ivData?.key_factors_against ?? [];
                   const evidence   = memo ? memo.agent_forecasts.flatMap(a => a.evidence_ledger.items) : [];
+                  const relatedOptions = memo?.related_option_probabilities ?? [];
                   const prismPct   = memo ? Math.round(memo.final_probability * 100) : 0;
                   const kalshiPct  = Math.round(kalshiPrice * 100);
                   const probColor  = memo ? pColor(memo.final_probability) : "#6b6865";
@@ -541,6 +486,35 @@ export default function MarketPage() {
                           )}
                         </div>
                       </div>
+
+                      {!isIdle && !isRunning && memo && markets.length > 1 && (
+                        <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: "10px", alignItems: "stretch" }}>
+                          <GridCell label="Option Structure">
+                            <div style={{ fontSize: "13px", color: "#9b9790", lineHeight: 1.75, marginTop: "8px" }}>
+                              <span style={{ color: "#ede9e3" }}>
+                                {memo.exclusivity_assessment === "single_winner" ? "Single-winner event." : "Multiple options can resolve YES."}
+                              </span>{" "}
+                              {memo.exclusivity_reasoning}
+                            </div>
+                          </GridCell>
+                          <GridCell label="Sibling Probabilities">
+                            {memo.exclusivity_assessment === "single_winner" && relatedOptions.length > 0 ? (
+                              relatedOptions.map((option) => (
+                                <div key={option.ticker} style={{ display: "flex", justifyContent: "space-between", gap: "12px", padding: "6px 0", borderBottom: "1px solid #141414" }}>
+                                  <div style={{ fontSize: "12px", color: option.ticker === mkt.ticker ? "#ede9e3" : "#9b9790" }}>{option.label}</div>
+                                  <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "12px", color: pColor(option.probability) }}>
+                                    {(option.probability * 100).toFixed(0)}%
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div style={{ fontSize: "12px", color: "#6b6865", lineHeight: 1.6 }}>
+                                Forecast stayed focused on the selected option because the options do not behave like one normalized winner-take-all set.
+                              </div>
+                            )}
+                          </GridCell>
+                        </div>
+                      )}
 
                       {/* Row 4: Sources — collapsed */}
                       {!isIdle && !isRunning && evidence.length > 0 && (

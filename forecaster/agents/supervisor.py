@@ -53,6 +53,11 @@ BAD RECONCILIATION TO AVOID:
 - Running general research instead of crux-targeted searches.
 - Giving a precise number without explaining what drove it.
 
+SIBLING OPTION RULES:
+- If the event is single_winner, reconcile one normalized distribution across the sibling options that sums to 1.0.
+- In that case, `reconciled_probability` must equal the selected option's probability from that distribution.
+- If the event is multiple_possible, do not force a normalized distribution; focus on the selected option's P(YES).
+
 Call submit_reconciliation when done.
 """
 
@@ -116,6 +121,30 @@ _TOOLS = [
                     "type": "number",
                     "description": "Reconciled P(YES) as decimal 0.001-0.999",
                 },
+                "exclusivity_assessment": {
+                    "type": "string",
+                    "enum": ["single_winner", "multiple_possible"],
+                },
+                "exclusivity_reasoning": {
+                    "type": "string",
+                    "description": "Why the sibling options should be treated as mutually exclusive or not",
+                },
+                "related_option_probabilities": {
+                    "type": "array",
+                    "description": "Required if single_winner; normalized sibling-option distribution including the selected option.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "ticker": {"type": "string"},
+                            "label": {"type": "string"},
+                            "question": {"type": "string"},
+                            "market_price": {"type": "number"},
+                            "probability": {"type": "number"},
+                            "rationale": {"type": "string"},
+                        },
+                        "required": ["ticker", "label", "question", "market_price", "probability", "rationale"],
+                    },
+                },
                 "reconciliation_reasoning": {
                     "type": "string",
                     "description": "Explain exactly what drove the reconciled estimate, including source quality weighting",
@@ -124,11 +153,25 @@ _TOOLS = [
             "required": [
                 "outside_view_audit", "outside_view_authority",
                 "disagreement_level", "reconciled_probability",
+                "exclusivity_assessment", "exclusivity_reasoning",
                 "reconciliation_reasoning", "targeted_searches_conducted",
             ],
         },
     },
 ]
+
+
+def _fmt_related_markets(related_markets: list[dict]) -> str:
+    if not related_markets:
+        return "No sibling options provided."
+    lines = []
+    for market in related_markets:
+        lines.append(
+            f"- {market.get('ticker', '?')}: "
+            f"{market.get('label') or market.get('question') or market.get('ticker', '?')} "
+            f"| market price {float(market.get('market_price') or 0.0):.3f}"
+        )
+    return "\n".join(lines)
 
 
 def _fmt_agent_forecasts(forecasts: list[AgentForecast]) -> str:
@@ -156,6 +199,7 @@ def run_supervisor(
     parsed_question: ParsedQuestion,
     agent_forecasts: list[AgentForecast],
     ov_consensus: OutsideViewConsensus,
+    related_markets: list[dict] | None = None,
     config: ForecasterConfig | None = None,
 ) -> SupervisorReconciliation:
     if config is None:
@@ -163,6 +207,7 @@ def run_supervisor(
 
     llm = LLMClient(config)
     raw_probs = [f.probability for f in agent_forecasts]
+    related_markets = related_markets or []
 
     log_odds = [logit(p) for p in raw_probs]
     spread = max(log_odds) - min(log_odds)
@@ -176,6 +221,7 @@ def run_supervisor(
         f"  Denominator / basis: {ov_consensus.denominator_or_basis or 'not provided'}\n"
         f"  Limitations: {ov_consensus.reference_class_limitations or 'none noted'}\n"
         f"  Reasoning: {ov_consensus.reasoning}\n\n"
+        f"SIBLING OPTIONS FROM THE SAME EVENT:\n{_fmt_related_markets(related_markets)}\n\n"
         f"INSIDE VIEW AGENT FORECASTS (log-odds spread = {spread:.3f}):\n"
         f"{_fmt_agent_forecasts(agent_forecasts)}\n\n"
         f"BEGIN WITH THE OUTSIDE VIEW AUDIT (Step 1), then assess disagreement (Step 2), "
@@ -222,6 +268,9 @@ def run_supervisor(
             raw_probabilities=raw_probs,
             disagreement_level="low",
             reconciled_probability=fallback_prob,
+            exclusivity_assessment="multiple_possible",
+            exclusivity_reasoning="Supervisor did not complete exclusivity assessment.",
+            related_option_probabilities=[],
             reconciliation_reasoning="Supervisor did not complete; defaulting to geometric mean.",
             targeted_searches_conducted=[],
             outside_view_audit="Supervisor did not complete audit.",
@@ -233,6 +282,9 @@ def run_supervisor(
         crux_of_disagreement=reconciliation_input.get("crux_of_disagreement"),
         targeted_searches_conducted=reconciliation_input.get("targeted_searches_conducted", []),
         reconciled_probability=float(reconciliation_input["reconciled_probability"]),
+        exclusivity_assessment=reconciliation_input.get("exclusivity_assessment", "multiple_possible"),
+        exclusivity_reasoning=reconciliation_input.get("exclusivity_reasoning", ""),
+        related_option_probabilities=reconciliation_input.get("related_option_probabilities", []),
         reconciliation_reasoning=reconciliation_input["reconciliation_reasoning"],
         outside_view_audit=reconciliation_input.get("outside_view_audit", ""),
     )

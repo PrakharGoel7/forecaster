@@ -19,6 +19,7 @@ class ForecasterSystem:
         self,
         question: str,
         context: str | None = None,
+        related_markets: list[dict] | None = None,
         on_step: ProgressCallback | None = None,
         series_ticker: str | None = None,
         event_title: str | None = None,
@@ -45,7 +46,7 @@ class ForecasterSystem:
         )
 
         raw_prob, run_probs, ov_forecasts, ov_consensus, agent_forecasts, reconciliation = run_ensemble(
-            parsed, cfg, on_step=on_step
+            parsed, cfg, on_step=on_step, related_markets=related_markets or []
         )
 
         calibration = platt_scale(raw_prob, cfg.platt_coefficient)
@@ -59,6 +60,9 @@ class ForecasterSystem:
             question=question,
             final_probability=calibration.calibrated_probability,
             raw_probability=raw_prob,
+            exclusivity_assessment=reconciliation.exclusivity_assessment,
+            exclusivity_reasoning=reconciliation.exclusivity_reasoning,
+            related_option_probabilities=reconciliation.related_option_probabilities,
             ensemble_run_probabilities=run_probs,
             probability_spread=spread,
             calibration=calibration,

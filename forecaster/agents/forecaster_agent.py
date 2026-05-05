@@ -52,6 +52,13 @@ BAD REASONING TO AVOID:
 - Ignoring the time horizon to resolution.
 - Large updates from weak evidence.
 - Drifting to 50% because both sides have some evidence.
+
+MULTI-OPTION RULES:
+- You may be given sibling options from the same event.
+- First decide whether the event is single_winner (at most one option can resolve YES) or multiple_possible (more than one option can resolve YES).
+- If single_winner, reason across the full option set jointly and produce a probability distribution across all listed options that sums to 1.0.
+- If multiple_possible, focus on the selected option only and do not force sibling probabilities to sum to 1.0.
+- In both cases, the main `probability` field must be the probability that the SELECTED option resolves YES.
 """
 
 _TOOLS = [
@@ -147,6 +154,15 @@ _TOOLS = [
                     "type": "string",
                     "description": "What specific factors about this situation updated you from the base rate and in which direction",
                 },
+                "exclusivity_assessment": {
+                    "type": "string",
+                    "enum": ["single_winner", "multiple_possible"],
+                    "description": "Whether only one sibling option can resolve YES or multiple can resolve YES",
+                },
+                "exclusivity_reasoning": {
+                    "type": "string",
+                    "description": "Why you classified the event as single_winner or multiple_possible from the rules and option structure",
+                },
                 "key_factors_for": {
                     "type": "array",
                     "items": {"type": "string"},
@@ -166,6 +182,22 @@ _TOOLS = [
                     "type": "string",
                     "description": "Main sources of uncertainty in your estimate",
                 },
+                "related_option_probabilities": {
+                    "type": "array",
+                    "description": "Optional sibling-option probabilities. Required for single_winner, optional otherwise.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "ticker": {"type": "string"},
+                            "label": {"type": "string"},
+                            "question": {"type": "string"},
+                            "market_price": {"type": "number"},
+                            "probability": {"type": "number"},
+                            "rationale": {"type": "string"},
+                        },
+                        "required": ["ticker", "label", "question", "market_price", "probability", "rationale"],
+                    },
+                },
                 "epistemic_confidence": {
                     "type": "string",
                     "enum": ["low", "medium", "high"],
@@ -175,6 +207,7 @@ _TOOLS = [
             "required": [
                 "probability", "starting_base_rate", "adjustment_from_base",
                 "key_updates_from_base", "inside_view_reasoning",
+                "exclusivity_assessment", "exclusivity_reasoning",
                 "key_factors_for", "key_factors_against",
                 "unresolved_cruxes", "uncertainty_reasoning", "epistemic_confidence",
             ],
@@ -183,10 +216,24 @@ _TOOLS = [
 ]
 
 
+def _format_related_markets(related_markets: list[dict]) -> str:
+    if not related_markets:
+        return "No sibling options provided."
+    lines = []
+    for market in related_markets:
+        lines.append(
+            f"- {market.get('ticker', '?')}: "
+            f"{market.get('label') or market.get('question') or market.get('ticker', '?')} "
+            f"| market price {float(market.get('market_price') or 0.0):.3f}"
+        )
+    return "\n".join(lines)
+
+
 def run_forecasting_agent(
     parsed_question: ParsedQuestion,
     agent_id: int,
     ov_consensus: OutsideViewConsensus,
+    related_markets: list[dict] | None = None,
     config: ForecasterConfig | None = None,
 ) -> AgentForecast:
     if config is None:
@@ -195,6 +242,7 @@ def run_forecasting_agent(
     llm = LLMClient(config)
     ledger = EvidenceLedger()
     today = current_date_str()
+    related_markets = related_markets or []
 
     user_message = (
         f"Forecast the following question.\n\n"
@@ -207,8 +255,14 @@ def run_forecasting_agent(
         f"  Basis: {ov_consensus.denominator_or_basis or 'see reasoning'}\n"
         f"  Limitations: {ov_consensus.reference_class_limitations or 'none noted'}\n"
         f"  Reasoning: {ov_consensus.reasoning}\n\n"
+        f"SELECTED OPTION:\n"
+        f"  Question: {parsed_question.question}\n\n"
+        f"SIBLING OPTIONS FROM THE SAME EVENT:\n{_format_related_markets(related_markets)}\n\n"
         "Start from this base rate. Search for CURRENT, SITUATION-SPECIFIC evidence. "
         "Include the current year in search queries. "
+        "Use the sibling options and rules to decide whether this event is single_winner or multiple_possible. "
+        "If single_winner, return probabilities across the full option set that sum to 1.0 and ensure the selected option's probability matches `probability`. "
+        "If multiple_possible, focus on the selected option and only include sibling probabilities if genuinely helpful. "
         "Add items to the ledger as you go. "
         "Call submit_forecast when you have a well-reasoned estimate."
     )
@@ -266,8 +320,11 @@ def run_forecasting_agent(
         outside_view_base_rate=ov_consensus.base_rate,
         outside_view_reasoning=ov_consensus.reasoning,
         inside_view_reasoning=forecast_input["inside_view_reasoning"],
+        exclusivity_assessment=forecast_input.get("exclusivity_assessment", "multiple_possible"),
+        exclusivity_reasoning=forecast_input.get("exclusivity_reasoning", ""),
         key_factors_for=forecast_input.get("key_factors_for", []),
         key_factors_against=forecast_input.get("key_factors_against", []),
+        related_option_probabilities=forecast_input.get("related_option_probabilities", []),
         uncertainty_reasoning=forecast_input["uncertainty_reasoning"],
         epistemic_confidence=forecast_input["epistemic_confidence"],
         evidence_ledger=ledger,
