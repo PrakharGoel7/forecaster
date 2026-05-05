@@ -14,6 +14,13 @@ from forecaster.utils.temporal import (
     current_date_str, current_year,
 )
 
+
+def _normalize_confidence(value: str | None, default: str = "medium") -> str:
+    if not value:
+        return default
+    normalized = value.lower()
+    return normalized if normalized in {"low", "medium", "high"} else default
+
 SYSTEM_PROMPT = """You are an Inside View forecasting agent.
 
 The historical outside-view base rate has already been established. Your job is to find current, situation-specific evidence about THIS case and update from that base rate.
@@ -270,7 +277,7 @@ _TOOLS = [
                 },
                 "confidence": {
                     "type": "string",
-                    "enum": ["LOW", "MEDIUM", "HIGH"],
+                    "enum": ["LOW", "MEDIUM", "HIGH", "low", "medium", "high"],
                     "description": "Your confidence in this probability estimate",
                 },
             },
@@ -426,7 +433,7 @@ def run_forecasting_agent(
         key_factors_for=forecast_input.get("key_factors_for", []),
         key_factors_against=forecast_input.get("key_factors_against", []),
         uncertainty_reasoning=forecast_input["uncertainty_reasoning"],
-        epistemic_confidence=forecast_input["confidence"].lower(),
+        epistemic_confidence=_normalize_confidence(forecast_input.get("confidence")),
         evidence_ledger=ledger,
         starting_base_rate=float(forecast_input.get("starting_base_rate", ov_reconciliation.final_prior)),
         current_state_summary=forecast_input.get("current_state_summary", ""),

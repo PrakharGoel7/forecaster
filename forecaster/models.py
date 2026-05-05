@@ -17,6 +17,12 @@ class EventType(str, Enum):
     CONDITIONAL        = "conditional"         # Depends on definitions/external criteria
     OTHER              = "other"
 
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            return cls.__members__.get(value.upper()) or next((item for item in cls if item.value == value.lower()), None)
+        return None
+
 
 class SourceType(str, Enum):
     OFFICIAL       = "official"        # .gov, company IR, exchanges, regulators
@@ -44,11 +50,23 @@ class Reliability(str, Enum):
     MEDIUM = "medium"
     LOW    = "low"
 
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            return next((item for item in cls if item.value == value.lower()), None)
+        return None
+
 
 class EvidenceAge(str, Enum):
     CURRENT = "current"   # < 3 months
     RECENT  = "recent"    # 3–12 months
     STALE   = "stale"     # > 12 months
+
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            return next((item for item in cls if item.value == value.lower()), None)
+        return None
 
 
 class EvidenceDirection(str, Enum):
@@ -57,6 +75,12 @@ class EvidenceDirection(str, Enum):
     NEUTRAL   = "neutral"
     BASE_RATE = "base_rate"
     CONTEXT   = "context"
+
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            return next((item for item in cls if item.value == value.lower()), None)
+        return None
 
 
 class EvidenceMagnitude(str, Enum):
@@ -77,15 +101,34 @@ class EvidenceMagnitude(str, Enum):
 class UpdateMagnitude(str, Enum):
     STRONG_RAISE  = "strong_raise"
     MODEST_RAISE  = "modest_raise"
+    SLIGHT_RAISE  = "slight_raise"
     NEUTRAL       = "neutral"
+    SLIGHT_LOWER  = "slight_lower"
     MODEST_LOWER  = "modest_lower"
     STRONG_LOWER  = "strong_lower"
+
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            aliases = {
+                "stronger_raise": cls.STRONG_RAISE,
+                "moderate_raise": cls.MODEST_RAISE,
+                "moderate_lower": cls.MODEST_LOWER,
+            }
+            return aliases.get(value.lower()) or next((item for item in cls if item.value == value.lower()), None)
+        return None
 
 
 class ForeknowledgeRisk(str, Enum):
     LOW    = "low"
     MEDIUM = "medium"
     HIGH   = "high"
+
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            return next((item for item in cls if item.value == value.lower()), None)
+        return None
 
 
 # ── Evidence ──────────────────────────────────────────────────────────────────

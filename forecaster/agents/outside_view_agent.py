@@ -13,6 +13,13 @@ from forecaster.utils.temporal import (
     score_source_reliability, estimate_evidence_age, detect_stale_year_in_query, current_year,
 )
 
+
+def _normalize_confidence(value: str | None, default: str = "low") -> str:
+    if not value:
+        return default
+    normalized = value.lower()
+    return normalized if normalized in {"low", "medium", "high"} else default
+
 SHARED_USER_PROMPT = """Establish an outside-view base rate for the following parsed forecasting question.
 
 {parsed_question}
@@ -233,7 +240,7 @@ SUBMIT_A_TOOL = {
             "empirical_rate": {"type": ["number", "null"]},
             "time_horizon_match": {"type": "string"},
             "sources": {"type": "array", "items": {"type": "string"}},
-            "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            "confidence": {"type": "string", "enum": ["low", "medium", "high", "LOW", "MEDIUM", "HIGH"]},
             "key_weaknesses": {"type": "array", "items": {"type": "string"}},
             "final_direct_empirical_estimate": {"type": ["number", "null"]},
             "no_valid_direct_estimate": {"type": "boolean"},
@@ -260,7 +267,7 @@ SUBMIT_B_TOOL = {
             "empirical_rate": {"type": ["number", "null"]},
             "sources": {"type": "array", "items": {"type": "string"}},
             "strongest_conditional_estimate": {"type": ["number", "null"]},
-            "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            "confidence": {"type": "string", "enum": ["low", "medium", "high", "LOW", "MEDIUM", "HIGH"]},
             "key_weaknesses": {"type": "array", "items": {"type": "string"}},
             "strongest_reference_class": {"type": "string"},
             "reasoning": {"type": "string"},
@@ -285,7 +292,7 @@ SUBMIT_C_TOOL = {
             "empirical_or_computed_rate": {"type": ["number", "null"]},
             "assumptions": {"type": "array", "items": {"type": "string"}},
             "sources": {"type": "array", "items": {"type": "string"}},
-            "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            "confidence": {"type": "string", "enum": ["low", "medium", "high", "LOW", "MEDIUM", "HIGH"]},
             "key_weaknesses": {"type": "array", "items": {"type": "string"}},
             "final_analog_decomposed_estimate": {"type": ["number", "null"]},
             "reasoning": {"type": "string"},
@@ -335,7 +342,7 @@ RECONCILER_TOOLS = [
                 },
                 "final_prior": {"type": "number"},
                 "plausible_range": {"type": "string"},
-                "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+                "confidence": {"type": "string", "enum": ["low", "medium", "high", "LOW", "MEDIUM", "HIGH"]},
                 "rationale": {"type": "string"},
                 "notes_for_inside_view": {"type": "string"},
                 "reference_class_summary": {"type": "string"},
@@ -422,6 +429,12 @@ def _execute_search_tool(name: str, args: dict, ledger: EvidenceLedger, config: 
         url = args["source_url"]
         auto_reliability = score_source_reliability(url, args.get("source_title", ""))
         date_pub = args.get("date_published") or None
+        raw_magnitude = args.get("magnitude")
+        normalized_magnitude = {
+            "slight": "weak",
+            "modest": "moderate",
+            "neutral": "weak",
+        }.get(raw_magnitude, raw_magnitude)
         item = EvidenceItem(
             claim=args["claim"],
             source_url=url,
@@ -433,7 +446,7 @@ def _execute_search_tool(name: str, args: dict, ledger: EvidenceLedger, config: 
             evidence_age=EvidenceAge(estimate_evidence_age(date_pub)),
             relevant_quote_or_snippet=args["relevant_quote_or_snippet"],
             direction=EvidenceDirection(args["direction"]),
-            magnitude=EvidenceMagnitude(args["magnitude"]) if args.get("magnitude") else None,
+            magnitude=EvidenceMagnitude(normalized_magnitude) if normalized_magnitude else None,
             why_it_matters=args.get("why_it_matters", ""),
             limitations=args.get("limitations", ""),
             notes=args.get("notes", ""),
@@ -536,7 +549,7 @@ def _run_ov_agent(
         weaknesses=weaknesses,
         validity_flags=validity_flags,
         reasoning=submit_input.get("reasoning", ""),
-        confidence=submit_input.get("confidence", "low"),
+        confidence=_normalize_confidence(submit_input.get("confidence"), default="low"),
         final_estimate=float(final_estimate) if final_estimate is not None else None,
         evidence_ledger=ledger,
     )
@@ -627,7 +640,7 @@ def reconcile_outside_view(
     return ReconciledOutsideView(
         final_prior=float(inp["final_prior"]),
         plausible_range=inp.get("plausible_range", ""),
-        confidence=inp["confidence"],
+        confidence=_normalize_confidence(inp.get("confidence"), default="low"),
         valid_estimates=valid_estimates,
         rejected_estimates=inp.get("rejected_estimates", []),
         rationale=inp["rationale"],
