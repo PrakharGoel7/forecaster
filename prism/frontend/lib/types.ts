@@ -36,29 +36,14 @@ export interface AgentForecast {
   probability: number;
   outside_view_base_rate: number;
   epistemic_confidence?: "low" | "medium" | "high";
-  exclusivity_assessment?: string;
-  exclusivity_reasoning?: string;
   key_factors_for: string[];
   key_factors_against: string[];
-  related_option_probabilities?: RelatedOptionProbability[];
   evidence_ledger: { items: EvidenceItem[] };
-}
-
-export interface RelatedOptionProbability {
-  ticker: string;
-  label: string;
-  question: string;
-  market_price: number;
-  probability: number;
-  rationale: string;
 }
 
 export interface ForecastMemo {
   final_probability: number;
   num_agents: number;
-  exclusivity_assessment?: string;
-  exclusivity_reasoning?: string;
-  related_option_probabilities?: RelatedOptionProbability[];
   outside_view_summary: string;
   supervisor_reconciliation: { reconciliation_reasoning: string };
   agent_forecasts: AgentForecast[];

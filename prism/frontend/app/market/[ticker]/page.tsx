@@ -196,7 +196,6 @@ export default function MarketPage() {
   const confidence = memo ? getConfidenceLabel(memo) : "Medium";
   const keyReasons = summarizeReasons(memo, ivData);
   const evidence = memo ? memo.agent_forecasts.flatMap((agent) => agent.evidence_ledger.items) : [];
-  const relatedOptions = memo?.related_option_probabilities ?? [];
   const hasMultipleOptions = markets.length > 1;
 
   return (
@@ -466,32 +465,6 @@ export default function MarketPage() {
                   </summary>
 
                   <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
-                    {relatedOptions.length > 0 && memo.exclusivity_assessment === "single_winner" && (
-                      <ReasoningBlock title="How Prism compares the other outcomes">
-                        {relatedOptions.map((option) => (
-                          <div key={option.ticker} style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: "14px",
-                            padding: "8px 0",
-                            borderBottom: "1px solid #171717",
-                          }}>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: "14px", color: option.ticker === mkt.ticker ? "#f2ede7" : "#a79f97", fontWeight: option.ticker === mkt.ticker ? 700 : 500 }}>
-                                {option.label}
-                              </div>
-                              <div style={{ fontSize: "12px", color: "#6f6963", lineHeight: 1.6, marginTop: "4px" }}>
-                                {option.rationale}
-                              </div>
-                            </div>
-                            <div style={{ fontFamily: "var(--font-mono), monospace", color: "#f2ede7", fontSize: "13px", flexShrink: 0 }}>
-                              {fmtPct(option.probability)}
-                            </div>
-                          </div>
-                        ))}
-                      </ReasoningBlock>
-                    )}
-
                     <ReasoningBlock title="Why it might happen">
                       <BulletList items={ivData?.key_factors_for ?? []} emptyText="No strong upside drivers were surfaced." />
                     </ReasoningBlock>
