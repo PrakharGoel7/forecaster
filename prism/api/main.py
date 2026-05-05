@@ -63,8 +63,6 @@ from forecaster.config import ForecasterConfig
 from forecaster.forecaster_system import ForecasterSystem
 from forecaster import db
 
-_PROMPT_LOG_DIR = (ForecasterConfig().prompt_log_dir if ForecasterConfig().prompt_log_dir.is_absolute() else (_REPO_ROOT / ForecasterConfig().prompt_log_dir)).resolve()
-
 # Oracle agents (from trading_companion) — imported lazily inside endpoints
 # so a missing trading_companion path doesn't break the rest of the API.
 _TC_AVAILABLE = _TC_PATH.exists()
@@ -195,145 +193,6 @@ def _read_kalshi_log_rows(limit: int) -> list[dict[str, str]]:
     return rows[-limit:]
 
 
-def _prompt_log_files(date: str | None = None) -> list[Path]:
-    root = _PROMPT_LOG_DIR / date if date else _PROMPT_LOG_DIR
-    if not root.exists():
-        return []
-    return sorted(root.rglob("*.jsonl"))
-
-
-def _read_prompt_log_entries(limit: int, date: str | None = None, client: str | None = None) -> list[dict[str, Any]]:
-    files = _prompt_log_files(date)
-    if client:
-        client_name = client.removesuffix(".jsonl")
-        files = [p for p in files if p.stem == client_name]
-
-    entries: list[dict[str, Any]] = []
-    for path in files:
-        try:
-            for line in path.read_text(encoding="utf-8").splitlines():
-                if not line.strip():
-                    continue
-                record = json.loads(line)
-                record["_file"] = str(path.relative_to(_PROMPT_LOG_DIR))
-                entries.append(record)
-        except Exception as exc:
-            entries.append({
-                "_file": str(path.relative_to(_PROMPT_LOG_DIR)),
-                "phase": "read_error",
-                "error": str(exc),
-            })
-
-    entries.sort(key=lambda item: item.get("logged_at", ""))
-    if limit > 0:
-        entries = entries[-limit:]
-    return entries
-
-
-def _summarize_prompt_logs(entries: list[dict[str, Any]]) -> dict[str, Any]:
-    summary: dict[str, Any] = {
-        "response_calls": 0,
-        "error_calls": 0,
-        "total_prompt_duration_ms": 0.0,
-        "avg_prompt_duration_ms": None,
-        "max_prompt_duration_ms": None,
-        "tool_calls": 0,
-        "total_tool_duration_ms": 0.0,
-        "avg_tool_duration_ms": None,
-        "max_tool_duration_ms": None,
-        "by_client": {},
-        "by_tool": {},
-    }
-
-    prompt_durations: list[float] = []
-    tool_durations: list[float] = []
-
-    for entry in entries:
-        client_name = entry.get("client_name", "unknown")
-        client_summary = summary["by_client"].setdefault(client_name, {
-            "response_calls": 0,
-            "error_calls": 0,
-            "total_prompt_duration_ms": 0.0,
-            "tool_calls": 0,
-            "total_tool_duration_ms": 0.0,
-        })
-
-        if entry.get("phase") == "response" and isinstance(entry.get("duration_ms"), (int, float)):
-            duration = float(entry["duration_ms"])
-            prompt_durations.append(duration)
-            summary["response_calls"] += 1
-            summary["total_prompt_duration_ms"] += duration
-            client_summary["response_calls"] += 1
-            client_summary["total_prompt_duration_ms"] += duration
-        elif entry.get("phase") == "error":
-            summary["error_calls"] += 1
-            client_summary["error_calls"] += 1
-
-        if entry.get("phase") == "tool_results":
-            for tool_result in entry.get("tool_results", []):
-                if not isinstance(tool_result, dict):
-                    continue
-                duration = tool_result.get("duration_ms")
-                if not isinstance(duration, (int, float)):
-                    continue
-                tool_name = tool_result.get("tool_name", "unknown")
-                duration = float(duration)
-                tool_durations.append(duration)
-                summary["tool_calls"] += 1
-                summary["total_tool_duration_ms"] += duration
-                client_summary["tool_calls"] += 1
-                client_summary["total_tool_duration_ms"] += duration
-                tool_summary = summary["by_tool"].setdefault(tool_name, {
-                    "count": 0,
-                    "total_duration_ms": 0.0,
-                    "max_duration_ms": 0.0,
-                })
-                tool_summary["count"] += 1
-                tool_summary["total_duration_ms"] += duration
-                tool_summary["max_duration_ms"] = max(tool_summary["max_duration_ms"], duration)
-
-    if prompt_durations:
-        summary["avg_prompt_duration_ms"] = round(summary["total_prompt_duration_ms"] / len(prompt_durations), 2)
-        summary["max_prompt_duration_ms"] = round(max(prompt_durations), 2)
-        summary["total_prompt_duration_ms"] = round(summary["total_prompt_duration_ms"], 2)
-    if tool_durations:
-        summary["avg_tool_duration_ms"] = round(summary["total_tool_duration_ms"] / len(tool_durations), 2)
-        summary["max_tool_duration_ms"] = round(max(tool_durations), 2)
-        summary["total_tool_duration_ms"] = round(summary["total_tool_duration_ms"], 2)
-
-    for client_summary in summary["by_client"].values():
-        if client_summary["response_calls"]:
-            client_summary["avg_prompt_duration_ms"] = round(
-                client_summary["total_prompt_duration_ms"] / client_summary["response_calls"], 2
-            )
-        else:
-            client_summary["avg_prompt_duration_ms"] = None
-        if client_summary["tool_calls"]:
-            client_summary["avg_tool_duration_ms"] = round(
-                client_summary["total_tool_duration_ms"] / client_summary["tool_calls"], 2
-            )
-        else:
-            client_summary["avg_tool_duration_ms"] = None
-        client_summary["total_prompt_duration_ms"] = round(client_summary["total_prompt_duration_ms"], 2)
-        client_summary["total_tool_duration_ms"] = round(client_summary["total_tool_duration_ms"], 2)
-
-    for tool_summary in summary["by_tool"].values():
-        tool_summary["avg_duration_ms"] = round(tool_summary["total_duration_ms"] / tool_summary["count"], 2)
-        tool_summary["total_duration_ms"] = round(tool_summary["total_duration_ms"], 2)
-        tool_summary["max_duration_ms"] = round(tool_summary["max_duration_ms"], 2)
-
-    return summary
-
-
-def _resolve_prompt_log_file(rel_path: str) -> Path:
-    candidate = (_PROMPT_LOG_DIR / rel_path).resolve()
-    if _PROMPT_LOG_DIR not in candidate.parents and candidate != _PROMPT_LOG_DIR:
-        raise HTTPException(status_code=400, detail="Invalid prompt log path")
-    if not candidate.exists() or candidate.suffix != ".jsonl":
-        raise HTTPException(status_code=404, detail="Prompt log file not found")
-    return candidate
-
-
 @app.get("/api/me")
 async def me(request: Request):
     """Debug: returns the user_id extracted from the Bearer token."""
@@ -360,36 +219,6 @@ async def download_kalshi_log():
         path=_KALSHI_API_LOG_FILE,
         media_type="text/csv",
         filename=_KALSHI_API_LOG_FILE.name,
-    )
-
-
-@app.get("/api/debug/prompt-logs")
-async def get_prompt_logs(limit: int = 200, date: str | None = None, client: str | None = None):
-    files = _prompt_log_files(date)
-    if client:
-        client_name = client.removesuffix(".jsonl")
-        files = [p for p in files if p.stem == client_name]
-    entries = _read_prompt_log_entries(limit=limit, date=date, client=client)
-    return {
-        "root": str(_PROMPT_LOG_DIR),
-        "exists": _PROMPT_LOG_DIR.exists(),
-        "date": date,
-        "client": client,
-        "file_count": len(files),
-        "files": [str(p.relative_to(_PROMPT_LOG_DIR)) for p in files],
-        "entry_count": len(entries),
-        "summary": _summarize_prompt_logs(entries),
-        "entries": entries,
-    }
-
-
-@app.get("/api/debug/prompt-logs/download")
-async def download_prompt_log(path: str):
-    file_path = _resolve_prompt_log_file(path)
-    return FileResponse(
-        path=file_path,
-        media_type="application/x-ndjson",
-        filename=file_path.name,
     )
 
 

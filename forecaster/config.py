@@ -1,7 +1,6 @@
 import math
 from dataclasses import dataclass, field
 import os
-from pathlib import Path
 
 
 @dataclass
@@ -22,8 +21,6 @@ class ForecasterConfig:
     max_tokens_per_agent: int = 4096
     search_max_results: int = 5
     fetch_max_chars: int = 6000
-    prompt_logging_enabled: bool = field(default_factory=lambda: os.environ.get("FORECASTER_PROMPT_LOGGING", "1").lower() not in {"0", "false", "no"})
-    prompt_log_dir: Path = field(default_factory=lambda: Path(os.environ.get("FORECASTER_PROMPT_LOG_DIR", "runtime_logs/forecast_prompts")))
 
     # Platt scaling coefficient — √3 ≈ 1.732 (from paper, outperforms superforecaster fit)
     platt_coefficient: float = field(default_factory=lambda: math.sqrt(3))
