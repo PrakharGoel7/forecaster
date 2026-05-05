@@ -20,6 +20,12 @@ def _normalize_confidence(value: str | None, default: str = "low") -> str:
     normalized = value.lower()
     return normalized if normalized in {"low", "medium", "high"} else default
 
+
+def _require_mapping(value, context: str) -> dict:
+    if not isinstance(value, dict):
+        raise ValueError(f"{context} must be a JSON object, got {type(value).__name__}")
+    return value
+
 SHARED_USER_PROMPT = """Establish an outside-view base rate for the following parsed forecasting question.
 
 {parsed_question}
@@ -487,10 +493,11 @@ def _run_ov_agent(
         tool_results = []
         submitted = False
         for tb in response.tool_blocks:
-            result = _execute_search_tool(tb.name, tb.input, ledger, config)
+            tb_input = _require_mapping(tb.input, f"{agent_name} tool input for {tb.name}")
+            result = _execute_search_tool(tb.name, tb_input, ledger, config)
             tool_results.append({"tool_use_id": tb.id, "content": json.dumps(result)})
             if tb.name == submit_tool["name"]:
-                submit_input = tb.input
+                submit_input = tb_input
                 submitted = True
         llm.extend_messages(messages, response, tool_results)
         if submitted:
@@ -502,7 +509,7 @@ def _run_ov_agent(
         final = llm.complete(system_prompt, messages, [submit_tool], force_tool=True)
         if not final.tool_blocks:
             raise ValueError(f"{agent_name} failed to submit")
-        submit_input = final.tool_blocks[0].input
+        submit_input = _require_mapping(final.tool_blocks[0].input, f"{agent_name} final submit input")
 
     reference_class = (
         submit_input.get("searched_reference_class")
@@ -633,7 +640,7 @@ def reconcile_outside_view(
     response = llm.complete(RECONCILER_SYSTEM_PROMPT, messages, RECONCILER_TOOLS, force_tool=True)
     if not response.tool_blocks:
         raise ValueError("Outside View Reconciler failed to submit")
-    inp = response.tool_blocks[0].input
+    inp = _require_mapping(response.tool_blocks[0].input, "Outside View Reconciler submit input")
 
     valid_names = set(inp.get("valid_estimates_considered", []))
     valid_estimates = [est for est in estimates if est.agent_name in valid_names]

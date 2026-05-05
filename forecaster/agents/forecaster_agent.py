@@ -21,6 +21,12 @@ def _normalize_confidence(value: str | None, default: str = "medium") -> str:
     normalized = value.lower()
     return normalized if normalized in {"low", "medium", "high"} else default
 
+
+def _require_mapping(value, context: str) -> dict:
+    if not isinstance(value, dict):
+        raise ValueError(f"{context} must be a JSON object, got {type(value).__name__}")
+    return value
+
 SYSTEM_PROMPT = """You are an Inside View forecasting agent.
 
 The historical outside-view base rate has already been established. Your job is to find current, situation-specific evidence about THIS case and update from that base rate.
@@ -392,10 +398,11 @@ def run_forecasting_agent(
         submitted = False
 
         for tb in response.tool_blocks:
-            result = _execute_tool(tb.name, tb.input, ledger, config)
+            tb_input = _require_mapping(tb.input, f"Inside View Agent {agent_id} tool input for {tb.name}")
+            result = _execute_tool(tb.name, tb_input, ledger, config)
             tool_results.append({"tool_use_id": tb.id, "content": json.dumps(result)})
             if tb.name == "submit_forecast":
-                forecast_input = tb.input
+                forecast_input = tb_input
                 submitted = True
 
         llm.extend_messages(messages, response, tool_results)
@@ -420,7 +427,7 @@ def run_forecasting_agent(
         })
         final = llm.complete(SYSTEM_PROMPT, messages, _SUBMIT_ONLY, force_tool=True)
         if final.tool_blocks:
-            forecast_input = final.tool_blocks[0].input
+            forecast_input = _require_mapping(final.tool_blocks[0].input, f"Inside View Agent {agent_id} final submit_forecast input")
         else:
             raise ValueError(f"Inside View Agent {agent_id} failed to submit")
 

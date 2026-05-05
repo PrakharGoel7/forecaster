@@ -104,7 +104,15 @@ class LLMClient:
         choice = raw.choices[0]
 
         tool_blocks = [
-            ToolBlock(id=tc.id, name=tc.function.name, input=json.loads(tc.function.arguments))
+            ToolBlock(
+                id=tc.id,
+                name=tc.function.name,
+                input=(
+                    json.loads(tc.function.arguments)
+                    if getattr(tc.function, "arguments", None)
+                    else {}
+                ),
+            )
             for tc in (choice.message.tool_calls or [])
         ]
         self._append_log({

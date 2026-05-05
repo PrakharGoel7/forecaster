@@ -214,12 +214,13 @@ def run_supervisor(
         submitted = False
 
         for tb in response.tool_blocks:
+            tb_input = tb.input if isinstance(tb.input, dict) else {}
             if tb.name == "web_search":
-                content = json.dumps({"results": web_search(tb.input["query"], tb.input.get("max_results", 5))})
+                content = json.dumps({"results": web_search(tb_input["query"], tb_input.get("max_results", 5))})
             elif tb.name == "web_fetch":
-                content = json.dumps(web_fetch(tb.input["url"], config.fetch_max_chars))
+                content = json.dumps(web_fetch(tb_input["url"], config.fetch_max_chars))
             elif tb.name == "submit_reconciliation":
-                reconciliation_input = tb.input
+                reconciliation_input = tb_input
                 submitted = True
                 content = json.dumps({"status": "received"})
             else:
