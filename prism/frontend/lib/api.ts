@@ -7,6 +7,8 @@ import type {
   ManualBasketDraftHolding,
   OracleTurnResponse,
   OraclePipelineMessage,
+  KalshiEvent,
+  KalshiMarket,
 } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -21,13 +23,13 @@ async function apiFetch(path: string, init?: RequestInit, token?: string) {
   return res.json();
 }
 
-export const searchEvents = (query = "", limit = 24, category = "") =>
+export const searchEvents = (query = "", limit = 24, category = ""): Promise<KalshiEvent[]> =>
   apiFetch(`/api/events?query=${encodeURIComponent(query)}&limit=${limit}${category ? `&category=${encodeURIComponent(category)}` : ""}`);
 
-export const getMarkets = (eventTicker: string) =>
+export const getMarkets = (eventTicker: string): Promise<KalshiMarket[]> =>
   apiFetch(`/api/events/${eventTicker}/markets`);
 
-export const getMarket = (ticker: string) =>
+export const getMarket = (ticker: string): Promise<KalshiMarket> =>
   apiFetch(`/api/markets/${ticker}`);
 
 export const listForecasts = (limit = 48, token?: string) =>

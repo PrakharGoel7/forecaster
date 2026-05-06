@@ -33,6 +33,8 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const [savedBaskets, setSavedBaskets] = useState<SavedBasket[]>([]);
   const [basketId, setBasketId] = useState<number | null>(basketParam ? Number(basketParam) : null);
   const [eventQuery, setEventQuery] = useState("");
+  const [eventCategory, setEventCategory] = useState("");
+  const [oddsFilter, setOddsFilter] = useState<"all" | "low" | "mid" | "high">("all");
   const [eventResults, setEventResults] = useState<KalshiEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<KalshiEvent | null>(null);
   const [eventMarkets, setEventMarkets] = useState<KalshiMarket[]>([]);
@@ -49,8 +51,9 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   useEffect(() => {
     listBaskets(20).then(setSavedBaskets).catch(() => {});
     if (buildPath === "manual") {
-      searchEvents("", 12).then(setEventResults).catch(() => {});
+      void runEventSearch();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildPath]);
 
   useEffect(() => {
@@ -144,12 +147,37 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   }
 
   async function runEventSearch() {
-    setEventResults(await searchEvents(eventQuery, 24));
+    const events = await searchEvents(eventQuery, 24, eventCategory);
+    setEventResults(events);
+    setSelectedEvent((prev) => {
+      if (!prev) return null;
+      return events.find((event) => event.event_ticker === prev.event_ticker) ?? null;
+    });
+    if (!events.length) {
+      setEventMarkets([]);
+      return;
+    }
+    const seedEvent = selectedEvent && events.some((event) => event.event_ticker === selectedEvent.event_ticker)
+      ? selectedEvent
+      : events[0];
+    const marketsByEvent = await Promise.all(events.slice(0, 8).map(async (event) => ({
+      event,
+      markets: await getMarkets(event.event_ticker),
+    })));
+    setSelectedEvent(seedEvent);
+    setEventMarkets(
+      marketsByEvent.flatMap(({ event, markets }) =>
+        markets.map((market) => ({
+          ...market,
+          event_title: event.title,
+          category: event.category,
+        }))
+      )
+    );
   }
 
-  async function pickEvent(event: KalshiEvent) {
+  async function pickEvent(event: KalshiEvent | null) {
     setSelectedEvent(event);
-    setEventMarkets(await getMarkets(event.event_ticker));
   }
 
   function addManualHolding(market: KalshiMarket) {
@@ -241,6 +269,10 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                   <ManualBuildComposer
                     eventQuery={eventQuery}
                     setEventQuery={setEventQuery}
+                    eventCategory={eventCategory}
+                    setEventCategory={setEventCategory}
+                    oddsFilter={oddsFilter}
+                    setOddsFilter={setOddsFilter}
                     eventResults={eventResults}
                     selectedEvent={selectedEvent}
                     eventMarkets={eventMarkets}
@@ -433,6 +465,10 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
 function ManualBuildComposer(props: {
   eventQuery: string;
   setEventQuery: (value: string) => void;
+  eventCategory: string;
+  setEventCategory: (value: string) => void;
+  oddsFilter: "all" | "low" | "mid" | "high";
+  setOddsFilter: (value: "all" | "low" | "mid" | "high") => void;
   eventResults: KalshiEvent[];
   selectedEvent: KalshiEvent | null;
   eventMarkets: KalshiMarket[];
@@ -444,17 +480,26 @@ function ManualBuildComposer(props: {
   setManualTimeframe: (value: string) => void;
   manualHoldings: ManualBasketDraftHolding[];
   onEventSearch: () => void;
-  onPickEvent: (event: KalshiEvent) => void;
+  onPickEvent: (event: KalshiEvent | null) => void;
   onAddHolding: (market: KalshiMarket) => void;
   onUpdateHolding: (ticker: string, patch: Partial<ManualBasketDraftHolding>) => void;
   onRemoveHolding: (ticker: string) => void;
   onSaveManual: () => void;
 }) {
   const {
-    eventQuery, setEventQuery, eventResults, selectedEvent, eventMarkets,
+    eventQuery, setEventQuery, eventCategory, setEventCategory, oddsFilter, setOddsFilter, eventResults, selectedEvent, eventMarkets,
     manualTitle, setManualTitle, manualSummary, setManualSummary, manualTimeframe, setManualTimeframe,
     manualHoldings, onEventSearch, onPickEvent, onAddHolding, onUpdateHolding, onRemoveHolding, onSaveManual,
   } = props;
+  const categoryOptions = Array.from(new Set(eventResults.map((event) => event.category).filter(Boolean))).sort();
+  const filteredMarkets = eventMarkets.filter((market) => {
+    if (selectedEvent && market.event_ticker !== selectedEvent.event_ticker) return false;
+    const implied = market.mid_price * 100;
+    if (oddsFilter === "low") return implied < 33;
+    if (oddsFilter === "mid") return implied >= 33 && implied <= 66;
+    if (oddsFilter === "high") return implied > 66;
+    return true;
+  });
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <div>
@@ -478,51 +523,88 @@ function ManualBuildComposer(props: {
       </Card>
 
       <Card>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10 }}>
-          <input value={eventQuery} onChange={(e) => setEventQuery(e.target.value)} placeholder="Search events or themes" style={inputStyle} />
+        <div style={{ color: "#9e968f", fontSize: 13, marginBottom: 14 }}>
+          Search the catalog, narrow the list with filters, and add contracts straight from the market cards.
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.5fr) repeat(2, minmax(0,0.7fr)) auto", gap: 10 }}>
+          <input value={eventQuery} onChange={(e) => setEventQuery(e.target.value)} placeholder="Search themes, events, or keywords" style={inputStyle} />
+          <select value={eventCategory} onChange={(e) => setEventCategory(e.target.value)} style={inputStyle}>
+            <option value="">All categories</option>
+            {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
+          </select>
+          <select value={oddsFilter} onChange={(e) => setOddsFilter(e.target.value as "all" | "low" | "mid" | "high")} style={inputStyle}>
+            <option value="all">All odds</option>
+            <option value="low">Below 33%</option>
+            <option value="mid">33% to 66%</option>
+            <option value="high">Above 66%</option>
+          </select>
           <button onClick={onEventSearch} style={primaryButtonStyle}>Search</button>
         </div>
       </Card>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 14 }}>
-        <Card>
-          <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 12 }}>Events</div>
-          <div style={{ display: "grid", gap: 10 }}>
-            {eventResults.slice(0, 10).map((event) => (
-              <button
-                key={event.event_ticker}
-                onClick={() => onPickEvent(event)}
-                style={{
-                  textAlign: "left",
-                  background: selectedEvent?.event_ticker === event.event_ticker ? "linear-gradient(180deg, rgba(227,100,56,0.16), rgba(227,100,56,0.08))" : "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 16,
-                  padding: 14,
-                  color: "#ede9e3",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>{event.title}</div>
-                <div style={{ fontSize: 12, color: "#8f877e", marginBottom: 6 }}>{event.category}</div>
-                {event.sub_title && <div style={{ fontSize: 12, color: "#6f6861", lineHeight: 1.45 }}>{event.sub_title}</div>}
-              </button>
-            ))}
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 14 }}>
+          <div>
+            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>Event scopes</div>
+            <div style={{ color: "#867e77", fontSize: 13 }}>
+              Pick an event to narrow the results, or browse across every loaded event.
+            </div>
           </div>
-        </Card>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            onClick={() => onPickEvent(null)}
+            style={{
+              ...ghostButtonStyle,
+              borderColor: !selectedEvent ? "rgba(227,100,56,0.4)" : "rgba(255,255,255,0.08)",
+              background: !selectedEvent ? "rgba(227,100,56,0.12)" : "transparent",
+              color: "#ede9e3",
+            }}
+          >
+            All loaded events
+          </button>
+          {eventResults.slice(0, 12).map((event) => (
+            <button
+              key={event.event_ticker}
+              onClick={() => onPickEvent(event)}
+              style={{
+                textAlign: "left",
+                background: selectedEvent?.event_ticker === event.event_ticker ? "linear-gradient(180deg, rgba(227,100,56,0.16), rgba(227,100,56,0.08))" : "rgba(255,255,255,0.02)",
+                border: selectedEvent?.event_ticker === event.event_ticker ? "1px solid rgba(227,100,56,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 18,
+                padding: 14,
+                color: "#ede9e3",
+                cursor: "pointer",
+                maxWidth: 260,
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 6, lineHeight: 1.35 }}>{event.title}</div>
+              <div style={{ fontSize: 12, color: "#8f877e" }}>{event.category}</div>
+            </button>
+          ))}
+        </div>
+        {!eventResults.length && <div style={{ color: "#7d756d", fontSize: 13, marginTop: 12 }}>No events found for this search.</div>}
+      </Card>
 
-        <Card>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div style={{ color: "#ede9e3", fontWeight: 600 }}>Markets</div>
-            {selectedEvent && <div style={{ color: "#7f776f", fontSize: 12 }}>{selectedEvent.title}</div>}
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div>
+            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>Markets</div>
+            <div style={{ color: "#7f776f", fontSize: 13 }}>
+              {selectedEvent
+                ? `Scoped to ${selectedEvent.title}`
+                : "Showing markets from the loaded event set"}
+            </div>
           </div>
-          <div style={{ display: "grid", gap: 10 }}>
-            {eventMarkets.slice(0, 16).map((market) => (
-              <ManualMarketCard key={market.ticker} market={market} onAdd={() => onAddHolding(market)} />
-            ))}
-            {!eventMarkets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>Select an event to load contracts.</div>}
-          </div>
-        </Card>
-      </div>
+          <div style={{ color: "#8f877e", fontSize: 12 }}>{filteredMarkets.length} results</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+          {filteredMarkets.slice(0, 36).map((market) => (
+            <ManualMarketCard key={market.ticker} market={market} onAdd={() => onAddHolding(market)} />
+          ))}
+        </div>
+        {!filteredMarkets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No markets match the current search and filters.</div>}
+      </Card>
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -680,12 +762,21 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
 
 function ManualMarketCard({ market, onAdd }: { market: KalshiMarket; onAdd: () => void }) {
   return (
-    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))" }}>
-      <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 6, lineHeight: 1.45 }}>{market.question}</div>
+    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))" }}>
+      <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+        {market.category || "Market"}{market.event_title ? ` · ${market.event_title}` : ""}
+      </div>
+      <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 8, lineHeight: 1.45 }}>{market.question}</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
         <Tag>{Math.round(market.mid_price * 100)}% market odds</Tag>
         <Tag>{market.close_date}</Tag>
+        <Tag>${Math.round(market.volume).toLocaleString()} vol</Tag>
       </div>
+      {market.rules_primary && (
+        <div style={{ color: "#8c847c", fontSize: 13, lineHeight: 1.55, marginBottom: 12 }}>
+          {market.rules_primary.length > 140 ? `${market.rules_primary.slice(0, 140)}…` : market.rules_primary}
+        </div>
+      )}
       <button onClick={onAdd} style={ghostButtonStyle}>Add to basket</button>
     </div>
   );
