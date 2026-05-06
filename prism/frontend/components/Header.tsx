@@ -26,15 +26,19 @@ export default function Header() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!supabase) return;
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [supabase]);
 
   async function submit() {
+    if (!supabase) {
+      setError("Authentication is unavailable in this environment.");
+      return;
+    }
     if (!email.trim() || !password.trim()) return;
     setLoading(true);
     setError("");
@@ -52,6 +56,7 @@ export default function Header() {
   }
 
   async function signOut() {
+    if (!supabase) return;
     await supabase.auth.signOut();
     router.refresh();
   }

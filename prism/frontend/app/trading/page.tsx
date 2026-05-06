@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import BuilderClient from "./BuilderClient";
 
 export default function TradingPage() {
-  return <BuilderClient buildPath="ai" />;
+  return (
+    <Suspense>
+      <BuilderClient buildPath="ai" />
+    </Suspense>
+  );
 }
