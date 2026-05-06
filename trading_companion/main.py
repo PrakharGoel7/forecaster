@@ -1,22 +1,14 @@
-"""Trading Companion — main entry point.
-
-Four-agent pipeline:
-  1. BeliefAgent    — conversational interview to understand the user's belief
-  2. AnalystAgent   — maps belief ramifications across 16 domains
-  3. ScreenerAgent  — reads local events cache, shortlists relevant event_tickers
-  4. CuratorAgent   — fetches real-time markets for shortlisted events, picks best 5-8
-
-Run `python sync_events.py` once per day to keep the cache fresh.
-"""
+"""Trading Companion — local CLI for building prediction market ETFs."""
 from __future__ import annotations
+
 import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+
 load_dotenv(Path(__file__).parent / ".env")
 load_dotenv(Path(__file__).parent.parent / "forecaster" / ".env")
 
-# Make the forecaster package importable
 _FORECASTER_PATH = str(Path(__file__).parent.parent / "forecaster")
 if _FORECASTER_PATH not in sys.path:
     sys.path.insert(0, _FORECASTER_PATH)
@@ -25,185 +17,90 @@ from kalshi import KalshiClient, KalshiMarket
 from agents.belief_agent import BeliefAgent
 from agents.analyst_agent import AnalystAgent
 from agents.screener_agent import ScreenerAgent
-from agents.curator_agent import CuratorAgent
-from cache_paths import EVENTS_CACHE_FILE
-from event_cache_db import get_event_lookup
+from agents.curator_agent import BasketBuilderAgent
 
 DIVIDER = "─" * 60
 
 
 def _fetch_markets_for_events(client: KalshiClient, event_tickers: list[str]) -> list[KalshiMarket]:
-    """Fetch real-time open markets for a list of event_tickers."""
     all_markets: dict[str, KalshiMarket] = {}
     for ticker in event_tickers:
         try:
             markets, _ = client.get_markets(limit=20, status="open", event_ticker=ticker)
-            for m in markets:
-                if m.ticker not in all_markets:
-                    all_markets[m.ticker] = m
-        except Exception as e:
-            print(f"  Warning: could not fetch markets for {ticker}: {e}")
+            for market in markets:
+                if market.ticker not in all_markets:
+                    all_markets[market.ticker] = market
+        except Exception as exc:
+            print(f"  Warning: could not fetch markets for {ticker}: {exc}")
     return list(all_markets.values())
 
 
-def _load_event_lookup() -> dict[str, dict]:
-    """Return a dict of event_ticker -> {series_ticker, title, sub_title} from cache."""
-    if not EVENTS_CACHE_FILE.exists():
-        return {}
-    return get_event_lookup()
-
-
-def _display_recommendations(recommendations: list[dict], event_lookup: dict) -> None:
+def _display_basket(basket: dict) -> None:
     print(f"\n{DIVIDER}")
-    print("RECOMMENDED PREDICTION MARKETS")
+    print(basket.get("basket_title", "PREDICTION MARKET ETF"))
     print(DIVIDER)
+    print(basket.get("basket_summary", ""))
+    print(f"\nTotal notional: ${basket.get('total_notional', 0):.0f}\n")
 
-    if not recommendations:
-        print("No markets matched — try running sync_events.py to refresh the cache.")
+    holdings = basket.get("holdings", [])
+    if not holdings:
+        print("No holdings qualified for the basket.")
         return
 
-    for i, r in enumerate(recommendations, 1):
-        event = event_lookup.get(r.get("event_ticker", ""), {})
-        series_ticker = event.get("series_ticker", "—")
-        event_title = event.get("title", "")
-        event_sub = event.get("sub_title", "")
+    for idx, holding in enumerate(holdings, 1):
+        print(f"{idx}. {holding['question']}")
+        print(f"   Ticker   : {holding['ticker']}")
+        print(f"   Position : {holding['side']} | ${holding['weight_dollars']:.0f} | {holding['role']}")
+        print(f"   Market   : YES {holding['market_price']:.0%} | Closes {holding['close_date']}")
+        print(f"   Why own  : {holding['rationale']}")
+        print(f"   Risk     : {holding['main_risk']}\n")
 
-        print(f"\n{i}. {r['question']}")
-        print(f"   Series     : {series_ticker}")
-        print(f"   Event      : {r.get('event_ticker', '—')}" + (f"  ({event_title}" + (f" — {event_sub}" if event_sub else "") + ")" if event_title else ""))
-        print(f"   Market     : {r['ticker']}")
-        print(f"   Current YES: {r['price']:.0%}  |  Closes: {r['close_date']}")
-        print(f"   Your trade : Bet {r['direction']}")
-        print(f"   Why bet    : {r['rationale']}")
-        print(f"   Relevance  : {r['relevance']}")
-
-    print(f"\n{DIVIDER}\n")
-
-
-def _run_forecaster_on_markets(recommendations: list[dict]) -> None:
-    """Let user pick a recommended market and run it through the forecaster."""
-    from types import SimpleNamespace
-
-    try:
-        from forecaster.config import ForecasterConfig
-        from forecaster.forecaster_system import ForecasterSystem
-        from forecaster.cli import _print_memo, _comparison_panel
-        from rich.console import Console
-    except ImportError as e:
-        print(f"\n[ERROR] Could not load forecaster: {e}")
-        return
-
-    console = Console()
-
-    while True:
-        print(f"\nEnter a market number (1-{len(recommendations)}) to forecast, or press Enter to quit: ", end="", flush=True)
-        choice = input().strip().lower()
-        if not choice or choice == "q":
-            break
-        if not choice.isdigit():
-            print("Please enter a number or press Enter to quit.")
-            continue
-        idx = int(choice) - 1
-        if not (0 <= idx < len(recommendations)):
-            print(f"Please enter a number between 1 and {len(recommendations)}.")
-            continue
-
-        r = recommendations[idx]
-        console.print(f"\n[bold]Forecasting:[/bold] {r['question']}")
-        console.print(f"[dim]{r['ticker']} | Current YES: {r['price']:.1%} | Closes: {r['close_date']}[/dim]\n")
-
-        config = ForecasterConfig()
-        system = ForecasterSystem(config)
-        console.print("[bold]Pipeline:[/bold]")
-
-        def on_step(name: str, status: str) -> None:
-            if status == "running":
-                console.print(f"  [dim]→[/dim] {name}...", end="")
-            else:
-                console.print(" [green]✓[/green]")
-
-        try:
-            memo = system.forecast(
-                question=r["question"],
-                context=r.get("rules_summary") or None,
-                on_step=on_step,
-            )
-        except Exception as e:
-            console.print(f"\n[red]Forecaster error:[/red] {e}")
-            continue
-
-        _print_memo(memo)
-
-        fake_market = SimpleNamespace(
-            mid_price=r["price"],
-            ticker=r["ticker"],
-            close_date=r["close_date"],
-        )
-        console.print(_comparison_panel(memo, fake_market))
+    if basket.get("construction_notes"):
+        print("Construction notes:")
+        print(basket["construction_notes"])
 
 
 def main() -> None:
     print(f"\n{DIVIDER}")
-    print("  TRADING COMPANION")
-    print("  Turn your beliefs about the future into prediction market bets")
+    print("  PREDICTION MARKET ETF BUILDER")
+    print("  Turn a future thesis into a weighted Kalshi basket")
     print(f"{DIVIDER}\n")
 
-    # ── Connect to Kalshi ──────────────────────────────────────────────────
     try:
         kalshi = KalshiClient.from_env()
-    except Exception as e:
-        print(f"[ERROR] Could not connect to Kalshi: {e}")
+    except Exception as exc:
+        print(f"[ERROR] Could not connect to Kalshi: {exc}")
         sys.exit(1)
 
-    # ── Agent 1: Understand the belief ────────────────────────────────────
-    print("[ Agent 1 ] Belief Elicitor\n")
-    belief_agent = BeliefAgent()
-    belief_summary = belief_agent.run()
+    mode = input("Mode (instant/thinking) [thinking]: ").strip().lower() or "thinking"
+    if mode not in {"instant", "thinking"}:
+        mode = "thinking"
 
-    print(f"\n{DIVIDER}")
-    print(f"Belief captured: {belief_summary['core_belief']}")
-    print(DIVIDER)
+    print("\n[ Agent 1 ] Belief Intake\n")
+    belief_summary = BeliefAgent().run(mode=mode)
 
-    # ── Agent 2: Deep domain analysis ────────────────────────────────────
-    print("\n[ Agent 2 ] Belief Analyst — mapping ramifications across domains ...")
-    analyst = AnalystAgent()
-    analysis = analyst.run(belief_summary)
-    high_med = [d for d in analysis["affected_domains"] if d["relevance"] in ("high", "medium")]
-    for d in high_med:
-        print(f"  [{d['relevance'].upper():6}] {d['domain']}: {d['mechanism']}")
-    if analysis.get("most_surprising_connection"):
-        print(f"  [INSIGHT] {analysis['most_surprising_connection']}")
+    print("\n[ Agent 2 ] Exposure Mapping")
+    analysis = AnalystAgent().run(belief_summary)
 
-    # ── Agent 3: Screen cached events for relevance ───────────────────────
-    print("\n[ Agent 3 ] Market Screener — reading event cache ...")
-    screener = ScreenerAgent()
-    event_tickers = screener.run(belief_summary, analysis)
-    print(f"  Shortlisted {len(event_tickers)} events: {event_tickers}")
-
+    print("\n[ Agent 3 ] Market Screening")
+    screener_result = ScreenerAgent().run(belief_summary, analysis)
+    candidates = screener_result.get("candidates", [])
+    event_tickers = [c["event_ticker"] for c in candidates]
+    print(f"  Screened into {len(event_tickers)} relevant events")
     if not event_tickers:
         print("\nNo relevant events found. Try refreshing the cache with: python sync_events.py")
         sys.exit(0)
 
-    # ── Fetch real-time markets for shortlisted events ────────────────────
     print(f"\nFetching live market details for {len(event_tickers)} events ...")
     markets = _fetch_markets_for_events(kalshi, event_tickers)
     print(f"  Found {len(markets)} open markets.")
-
     if not markets:
         print("\nNo open markets found for the shortlisted events.")
         sys.exit(0)
 
-    # ── Agent 4: Curate ───────────────────────────────────────────────────
-    print("\n[ Agent 4 ] Market Curator — picking the best bets ...")
-    curator = CuratorAgent()
-    recommendations = curator.run(belief_summary, markets, analysis)
-
-    # ── Display results ───────────────────────────────────────────────────
-    event_lookup = _load_event_lookup()
-    _display_recommendations(recommendations, event_lookup)
-
-    # ── Optional: run forecaster on selected markets ──────────────────────
-    _run_forecaster_on_markets(recommendations)
+    print("\n[ Agent 4 ] Basket Construction")
+    basket = BasketBuilderAgent().run(belief_summary, markets, analysis, screener_candidates=candidates)
+    _display_basket(basket)
 
 
 if __name__ == "__main__":

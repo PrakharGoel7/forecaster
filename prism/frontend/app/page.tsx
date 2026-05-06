@@ -1,881 +1,138 @@
 "use client";
-import { useState, useRef, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { createClient } from "@/lib/supabase";
-import type { Session } from "@supabase/supabase-js";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
-import MarketCard from "@/components/MarketCard";
-import ProbabilityArc from "@/components/ProbabilityArc";
-import { tradingChat, streamTradingAnalysis, listForecasts, listTradingSessions, searchEvents } from "@/lib/api";
-import type {
-  BeliefSummary, BeliefAnalysis, DomainAnalysis,
-  TradeRecommendation, SavedForecast, TradingSession, KalshiEvent,
-} from "@/lib/types";
-
-type Stage = "idle" | "chatting" | "analyzing" | "done" | "error";
-interface ChatMsg { role: "user" | "assistant"; content: string; searchQueries?: string[]; }
 
 export default function HomePage() {
-  return <Suspense><HomeInner /></Suspense>;
-}
-
-function HomeInner() {
-  const router       = useRouter();
-  const searchParams = useSearchParams();
-  const supabase = createClient();
-  const [session, setSession]           = useState<Session | null>(null);
-  const [stage, setStage]               = useState<Stage>("idle");
-  const [input, setInput]               = useState("");
-  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
-  const [apiHistory, setApiHistory]     = useState<Record<string, unknown>[]>([]);
-  const [beliefSummary, setBeliefSummary]     = useState<BeliefSummary | null>(null);
-  const [analysis, setAnalysis]               = useState<BeliefAnalysis | null>(null);
-  const [screenedCount, setScreenedCount]     = useState(0);
-  const [recommendations, setRecommendations] = useState<TradeRecommendation[]>([]);
-  const [progressLabel, setProgressLabel]     = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
-  const [savedForecasts, setSavedForecasts] = useState<SavedForecast[]>([]);
-  const [sessions, setSessions]             = useState<TradingSession[]>([]);
-  const [sessionId, setSessionId]           = useState<number | null>(null);
-  const [marketQuery, setMarketQuery]       = useState("");
-  const [liveMarkets, setLiveMarkets]       = useState<KalshiEvent[]>([]);
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setSession(s));
-    return () => subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const sid = searchParams.get("session");
-    const token = session?.access_token;
-    listForecasts(500, token).then(setSavedForecasts).catch(() => {});
-    listTradingSessions(20, token).then(list => {
-      setSessions(list);
-      if (sid) {
-        const s = list.find(s => s.id === Number(sid));
-        if (s) {
-          setBeliefSummary(JSON.parse(s.belief_summary_json));
-          setAnalysis(JSON.parse(s.analysis_json));
-          setRecommendations(JSON.parse(s.recommendations_json));
-          setSessionId(s.id);
-          setStage("done");
-        }
-      }
-    }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
-
-  useEffect(() => {
-    searchEvents("", 6).then(setLiveMarkets).catch(() => {});
-  }, []);
-
-  function _token() {
-    return session?.access_token;
-  }
-
-  function startAnalysis(summary: BeliefSummary, token?: string) {
-    streamTradingAnalysis(summary, async msg => {
-      if (msg.type === "progress")       setProgressLabel(msg.label);
-      else if (msg.type === "analyst_done")  setAnalysis(msg.analysis);
-      else if (msg.type === "screener_done") setScreenedCount(msg.count);
-      else if (msg.type === "curator_done") {
-        setRecommendations(msg.recommendations);
-        setStage("done");
-        setProgressLabel("");
-        if (msg.session_id) {
-          setSessionId(msg.session_id);
-          router.replace(`/?session=${msg.session_id}`, { scroll: false });
-        }
-        const t = _token();
-        listForecasts(500, t).then(setSavedForecasts).catch(() => {});
-        listTradingSessions(20, t).then(setSessions).catch(() => {});
-      } else if (msg.type === "error") {
-        setError(msg.message);
-        setStage("error");
-        setProgressLabel("");
-      }
-    }, token);
-  }
-
-  async function sendMessage(message: string, history: Record<string, unknown>[], token?: string) {
-    if (!message.trim() || loading) return;
-    setLoading(true);
-    setInput("");
-    setChatMessages(prev => [...prev, { role: "user", content: message }]);
-    try {
-      const result = await tradingChat(history, message, token);
-      setApiHistory(result.history);
-      if (result.status === "finalized" && result.belief_summary) {
-        setBeliefSummary(result.belief_summary);
-        setStage("analyzing");
-        startAnalysis(result.belief_summary, token);
-      } else if (result.agent_message) {
-        setChatMessages(prev => [...prev, {
-          role: "assistant", content: result.agent_message!,
-          searchQueries: result.search_queries,
-        }]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed");
-      setStage("error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function restoreSession(s: TradingSession) {
-    setBeliefSummary(JSON.parse(s.belief_summary_json));
-    setAnalysis(JSON.parse(s.analysis_json));
-    setRecommendations(JSON.parse(s.recommendations_json));
-    setSessionId(s.id);
-    setChatMessages([]);
-    setApiHistory([]);
-    setError("");
-    setProgressLabel("");
-    setScreenedCount(0);
-    setStage("done");
-    router.replace(`/?session=${s.id}`, { scroll: false });
-    const t = await _token();
-    listForecasts(500, t).then(setSavedForecasts).catch(() => {});
-  }
-
-  function handleSubmit() {
-    const belief = input.trim();
-    if (!belief) return;
-    router.push(`/trading?belief=${encodeURIComponent(belief)}`);
-  }
-
-  function handleIntelSubmit() {
-    const q = marketQuery.trim();
-    router.push(q ? `/forecasts?q=${encodeURIComponent(q)}` : "/forecasts");
-  }
-
-  function onIdleKey(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
-  }
-  async function onReplyKey(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      const token = await _token();
-      sendMessage(input, apiHistory, token);
-    }
-  }
+  const router = useRouter();
+  const [belief, setBelief] = useState("");
+  const [marketQuery, setMarketQuery] = useState("");
 
   return (
     <div style={{ minHeight: "100vh", background: "#080808", position: "relative" }}>
       <Header />
       <GridOverlay />
+      <div style={{ position: "relative", zIndex: 10, maxWidth: 1140, margin: "0 auto", padding: "110px 24px 80px" }}>
+        <div style={{ maxWidth: 760, marginBottom: 34 }}>
+          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
+            Prism
+          </div>
+          <h1 style={{ color: "#ede9e3", fontSize: "clamp(38px, 6vw, 72px)", lineHeight: 0.98, letterSpacing: "-0.06em", margin: "0 0 14px" }}>
+            Build prediction market ETFs or inspect a single contract.
+          </h1>
+          <p style={{ color: "#948c84", fontSize: 19, lineHeight: 1.65, margin: 0 }}>
+            Prism now centers on thematic baskets of Kalshi contracts. Start from a future belief, or drop straight into market-specific analysis.
+          </p>
+        </div>
 
-
-      <div
-        ref={scrollRef}
-        style={{ position: "relative", zIndex: 10, paddingTop: "56px", overflowY: "auto", height: "100vh" }}
-      >
-        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "48px 28px 80px" }}>
-
-          {/* ── Idle ── */}
-          <AnimatePresence>
-            {stage === "idle" && (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12, transition: { duration: 0.2 } }}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18 }}>
+          <section style={cardStyle}>
+            <div style={eyebrowStyle}>Prediction Market ETFs</div>
+            <div style={titleStyle}>Turn a thesis into a weighted basket</div>
+            <p style={bodyStyle}>
+              Describe a future theme. Prism will clarify it, map the implications, and build a shareable $100 basket of direct and indirect prediction market exposures.
+            </p>
+            <textarea
+              value={belief}
+              onChange={(e) => setBelief(e.target.value)}
+              rows={5}
+              placeholder="Example: I think tighter export controls will reshape AI hardware supply chains over the next 12 months."
+              style={textareaStyle}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+              <div style={{ color: "#7e766d", fontSize: 13 }}>Instant and thinking modes available inside the builder.</div>
+              <button
+                onClick={() => router.push(belief.trim() ? `/trading?belief=${encodeURIComponent(belief.trim())}` : "/trading")}
+                style={primaryButtonStyle}
               >
-                <div style={{ marginBottom: "32px" }}>
-                  <motion.h1
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.05 }}
-                    style={{
-                      fontSize: "clamp(30px, 5vw, 54px)", fontWeight: 600,
-                      color: "#ede9e3", lineHeight: 1.02, letterSpacing: "-0.045em",
-                      marginBottom: "12px", maxWidth: "720px",
-                    }}
-                  >
-                    Turn your opinions into trades.
-                  </motion.h1>
-                  <motion.p
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.1 }}
-                    style={{
-                      fontSize: "clamp(16px, 2.1vw, 20px)", fontWeight: 400,
-                      color: "#8a847d", lineHeight: 1.45, letterSpacing: "-0.01em",
-                      margin: 0, maxWidth: "620px",
-                    }}
-                  >
-                    Start from a belief, or analyze a market you already have in mind.
-                  </motion.p>
-                </div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, delay: 0.16 }}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                    gap: "14px",
-                    marginBottom: "34px",
-                  }}
-                >
-                  <div style={{
-                    background: "linear-gradient(180deg, rgba(23,18,15,0.98), rgba(13,13,13,0.98))",
-                    border: "1px solid rgba(227,100,56,0.34)",
-                    borderRadius: "20px",
-                    padding: "22px 22px 18px",
-                    boxShadow: "0 0 0 1px rgba(227,100,56,0.05), 0 18px 44px rgba(0,0,0,0.45), 0 0 38px rgba(227,100,56,0.08)",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}>
-                    <div style={{
-                      position: "absolute", inset: 0,
-                      background: "radial-gradient(circle at top right, rgba(227,100,56,0.16), transparent 42%)",
-                      pointerEvents: "none",
-                    }} />
-                    <div style={{ position: "relative" }}>
-                      <div style={{
-                        fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700,
-                        textTransform: "uppercase", letterSpacing: "0.16em", color: "#e36438", marginBottom: "14px",
-                      }}>
-                        Compass
-                      </div>
-                      <div style={{ fontSize: "24px", fontWeight: 600, color: "#ede9e3", letterSpacing: "-0.03em", marginBottom: "10px" }}>
-                        Start with a take
-                      </div>
-                      <p style={{ fontSize: "14px", color: "#948d86", lineHeight: 1.6, margin: "0 0 18px" }}>
-                        You think something will happen. Prism finds the Kalshi markets that let you directly and indirectly bet on it.
-                      </p>
-                      <textarea
-                        value={input}
-                        onChange={e => setInput(e.target.value)}
-                        onKeyDown={onIdleKey}
-                        placeholder="Enter your opinion (e.g. I think the Fed will cut rates this summer)"
-                        rows={2}
-                        autoFocus
-                        style={{
-                          width: "100%", background: "rgba(8,8,8,0.9)", border: "1px solid rgba(227,100,56,0.18)",
-                          borderRadius: "14px", fontSize: "14px", color: "#ede9e3",
-                          fontFamily: "var(--font-jakarta), system-ui, sans-serif",
-                          outline: "none", resize: "none", lineHeight: 1.65, padding: "16px 16px 14px",
-                          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
-                        }}
-                      />
-                      <div style={{ display: "flex", justifyContent: "center", marginTop: "16px" }}>
-                        <button
-                          onClick={handleSubmit}
-                          disabled={!input.trim()}
-                          style={{
-                            background: "linear-gradient(180deg, #f07a4b, #d95426)",
-                            color: "#fff", border: "1px solid rgba(255,255,255,0.14)", borderRadius: "12px",
-                            padding: "12px 22px", fontSize: "11px",
-                            fontFamily: "var(--font-mono), monospace",
-                            fontWeight: 700, letterSpacing: "0.06em",
-                            transition: "transform 0.15s, filter 0.15s, box-shadow 0.15s",
-                            opacity: input.trim() ? 1 : 0.55,
-                            cursor: input.trim() ? "pointer" : "default",
-                            boxShadow: "0 10px 28px rgba(227,100,56,0.28), inset 0 1px 0 rgba(255,255,255,0.16)",
-                          }}
-                          onMouseEnter={e => {
-                            if (input.trim()) {
-                              e.currentTarget.style.transform = "translateY(-1px)";
-                              e.currentTarget.style.filter = "brightness(1.05)";
-                            }
-                          }}
-                          onMouseLeave={e => {
-                            if (input.trim()) {
-                              e.currentTarget.style.transform = "translateY(0)";
-                              e.currentTarget.style.filter = "brightness(1)";
-                            }
-                          }}
-                        >
-                          Find relevant markets →
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    background: "rgba(14,14,14,0.96)",
-                    border: "1px solid #262626",
-                    borderRadius: "20px",
-                    padding: "22px 22px 18px",
-                    boxShadow: "0 14px 38px rgba(0,0,0,0.38)",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}>
-                    <div style={{
-                      position: "absolute", inset: 0,
-                      background: "radial-gradient(circle at top left, rgba(91,156,246,0.08), transparent 42%)",
-                      pointerEvents: "none",
-                    }} />
-                    <div style={{ position: "relative" }}>
-                      <div style={{
-                        fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700,
-                        textTransform: "uppercase", letterSpacing: "0.16em", color: "#5b9cf6", marginBottom: "14px",
-                      }}>
-                        Intel
-                      </div>
-                      <div style={{ fontSize: "24px", fontWeight: 600, color: "#ede9e3", letterSpacing: "-0.03em", marginBottom: "10px" }}>
-                        Analyze a market
-                      </div>
-                      <p style={{ fontSize: "14px", color: "#948d86", lineHeight: 1.6, margin: "0 0 18px" }}>
-                        Already have a particular market in mind? Run deep research to see if it is underpriced on Kalshi.
-                      </p>
-                      <textarea
-                          value={marketQuery}
-                          onChange={e => setMarketQuery(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleIntelSubmit();
-                            }
-                          }}
-                          placeholder="Enter the market you're looking for (e.g. date of OpenAI IPO)"
-                          rows={2}
-                          style={{
-                            width: "100%", background: "rgba(8,8,8,0.92)", border: "1px solid #282828",
-                            borderRadius: "14px", fontSize: "14px", color: "#ede9e3",
-                            fontFamily: "var(--font-jakarta), system-ui, sans-serif",
-                            outline: "none", resize: "none", lineHeight: 1.65, padding: "16px 16px 14px",
-                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
-                          }}
-                        />
-                      <div style={{ display: "flex", justifyContent: "center", marginTop: "16px" }}>
-                        <button
-                          onClick={handleIntelSubmit}
-                          style={{
-                            background: "linear-gradient(180deg, #6faeff, #3f79e6)", color: "#fff",
-                            border: "1px solid rgba(255,255,255,0.14)", borderRadius: "12px", padding: "12px 22px",
-                            fontSize: "11px", fontFamily: "var(--font-mono), monospace",
-                            fontWeight: 700, letterSpacing: "0.06em", transition: "transform 0.15s, filter 0.15s, box-shadow 0.15s",
-                            cursor: "pointer", boxShadow: "0 10px 28px rgba(91,156,246,0.24), inset 0 1px 0 rgba(255,255,255,0.18)",
-                          }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.transform = "translateY(-1px)";
-                            e.currentTarget.style.filter = "brightness(1.05)";
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.filter = "brightness(1)";
-                          }}
-                        >
-                          Run analysis →
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {liveMarkets.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.4, delay: 0.22 }}
-                    style={{ marginBottom: sessions.length > 0 ? "36px" : 0 }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "14px", paddingBottom: "10px", borderBottom: "1px solid #1e1e1e" }}>
-                      <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.18em", color: "#9b9790" }}>
-                        Live markets
-                      </div>
-                      <button
-                        onClick={() => router.push("/forecasts")}
-                        style={{
-                          background: "transparent", border: "none", padding: 0,
-                          fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700,
-                          letterSpacing: "0.08em", color: "#5b9cf6", cursor: "pointer",
-                          transition: "color 0.15s",
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.color = "#8cbcff")}
-                        onMouseLeave={e => (e.currentTarget.style.color = "#5b9cf6")}
-                      >
-                        View all →
-                      </button>
-                    </div>
-                    <div style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                      gap: "10px",
-                    }}>
-                      {liveMarkets.slice(0, 6).map((event, i) => (
-                        <MarketCard
-                          key={event.event_ticker}
-                          event={event}
-                          index={i}
-                          onForecast={e => router.push(`/market/${e.event_ticker}?title=${encodeURIComponent(e.title)}&cat=${encodeURIComponent(e.category)}&sub=${encodeURIComponent(e.sub_title)}`)}
-                        />
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Previous sessions */}
-                {sessions.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.4, delay: 0.25 }}
-                    style={{ marginTop: "40px" }}
-                  >
-                    <SectionLabel label="Previous Sessions" />
-                    <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
-                      {sessions.map((s, i) => {
-                        const recs = (() => { try { return JSON.parse(s.recommendations_json).length; } catch { return 0; } })();
-                        const drivers = (() => { try { return JSON.parse(s.key_drivers_json) as string[]; } catch { return [] as string[]; } })();
-                        return (
-                          <motion.button
-                            key={s.id}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: 0.28 + i * 0.04 }}
-                            onClick={() => restoreSession(s)}
-                            style={{
-                              width: "100%", textAlign: "left",
-                              background: "rgba(14,14,14,0.95)",
-                              border: "1px solid #222", borderRadius: "11px",
-                              padding: "14px 16px", cursor: "pointer",
-                              transition: "border-color 0.15s, background 0.15s",
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = "rgba(227,100,56,0.22)";
-                              e.currentTarget.style.background = "rgba(18,18,18,0.98)";
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.borderColor = "#222";
-                              e.currentTarget.style.background = "rgba(14,14,14,0.95)";
-                            }}
-                          >
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                  fontSize: "13px", fontWeight: 600, color: "#ede9e3",
-                                  lineHeight: 1.4, marginBottom: "6px",
-                                  overflow: "hidden", display: "-webkit-box",
-                                  WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
-                                }}>
-                                  {s.core_belief}
-                                </div>
-                                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                                  {drivers.slice(0, 3).map((d, j) => (
-                                    <span key={j} style={{
-                                      fontSize: "10px", color: "#6b6865",
-                                      background: "rgba(255,255,255,0.03)",
-                                      border: "1px solid #1e1e1e", borderRadius: "4px",
-                                      padding: "2px 7px",
-                                    }}>{d}</span>
-                                  ))}
-                                </div>
-                              </div>
-                              <div style={{ flexShrink: 0, textAlign: "right" }}>
-                                <div style={{
-                                  fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                                  color: "#e36438", marginBottom: "4px",
-                                }}>
-                                  {recs} market{recs !== 1 ? "s" : ""}
-                                </div>
-                                <div style={{
-                                  fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                                  color: "#2a2826",
-                                }}>
-                                  {relTime(s.created_at)}
-                                </div>
-                              </div>
-                            </div>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ── Active: pipeline ── */}
-          {stage !== "idle" && (
-            <div>
-              <ChatThread messages={chatMessages} loading={loading && stage === "chatting"} />
-
-              {stage === "chatting" && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                  <ReplyBar
-                    input={input} setInput={setInput}
-                    onKey={onReplyKey}
-                    onSubmit={async () => { const t = await _token(); sendMessage(input, apiHistory, t); }}
-                    disabled={loading}
-                  />
-                </motion.div>
-              )}
-
-              {beliefSummary && (
-                <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}>
-                  <BeliefCard summary={beliefSummary} />
-                </motion.div>
-              )}
-
-              {analysis && (
-                <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}>
-                  <DomainGrid analysis={analysis} />
-                  {analysis.most_surprising_connection && <SurpriseCallout text={analysis.most_surprising_connection} />}
-                </motion.div>
-              )}
-
-              {screenedCount > 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{
-                  fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-                  color: "#3a3835", margin: "8px 0 4px",
-                  display: "flex", alignItems: "center", gap: "8px",
-                }}>
-                  <span style={{ color: "#e36438" }}>→</span>
-                  {screenedCount} relevant events screened from Kalshi catalog
-                </motion.div>
-              )}
-
-              <AnimatePresence mode="wait">
-                {progressLabel && (
-                  <motion.div
-                    key={progressLabel}
-                    initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                    style={{
-                      fontFamily: "var(--font-mono), monospace", fontSize: "11px",
-                      color: "#6b6865", margin: "14px 0",
-                      display: "flex", alignItems: "center", gap: "10px",
-                    }}
-                  >
-                    <span className="blink" style={{ color: "#e36438", fontSize: "7px" }}>●</span>
-                    {progressLabel}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {recommendations.length > 0 && (
-                <div style={{ marginTop: "28px" }}>
-                  <SectionLabel label={`${recommendations.length} recommended markets`} dot="orange" />
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {recommendations.map((rec, i) => (
-                      <motion.div
-                        key={rec.ticker}
-                        initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: i * 0.07, ease: [0.16, 1, 0.3, 1] }}
-                      >
-                        <RecCard
-                          rec={rec}
-                          forecast={savedForecasts.find(f => f.ticker === rec.ticker) ?? null}
-                          onExplore={() => router.push(
-                            `/market/${rec.event_ticker}?title=${encodeURIComponent(rec.event_title ?? rec.question)}&cat=${encodeURIComponent(rec.category ?? "")}&sub=&from=trading${sessionId ? `&session=${sessionId}` : ""}`
-                          )}
-                          onViewForecast={id => router.push(`/market/${rec.event_ticker}?saved=${id}&from=trading${sessionId ? `&session=${sessionId}` : ""}`)}
-                          onRunForecast={() => router.push(
-                            `/market/${rec.event_ticker}?title=${encodeURIComponent(rec.event_title ?? rec.question)}&cat=${encodeURIComponent(rec.category ?? "")}&sub=&from=trading${sessionId ? `&session=${sessionId}` : ""}`
-                          )}
-                        />
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {error && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{
-                  margin: "20px 0", padding: "14px 18px",
-                  background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)",
-                  borderRadius: "10px", fontFamily: "var(--font-mono), monospace",
-                  fontSize: "12px", color: "#f87171",
-                }}>
-                  {error}
-                </motion.div>
-              )}
+                Build basket
+              </button>
             </div>
-          )}
+          </section>
+
+          <section style={cardStyle}>
+            <div style={eyebrowStyle}>Intel</div>
+            <div style={titleStyle}>Analyze one market in depth</div>
+            <p style={bodyStyle}>
+              Already know the contract you care about? Jump into Prism’s forecast flow and compare the market’s price to Prism’s estimate.
+            </p>
+            <textarea
+              value={marketQuery}
+              onChange={(e) => setMarketQuery(e.target.value)}
+              rows={5}
+              placeholder="Search for a market or theme."
+              style={textareaStyle}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+              <div style={{ color: "#7e766d", fontSize: 13 }}>Search event and market pages from the cached Kalshi catalog.</div>
+              <button
+                onClick={() => router.push(marketQuery.trim() ? `/forecasts?q=${encodeURIComponent(marketQuery.trim())}` : "/forecasts")}
+                style={primaryButtonStyle}
+              >
+                Open Intel
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+const cardStyle: React.CSSProperties = {
+  background: "linear-gradient(180deg, rgba(18,18,18,0.97), rgba(12,12,12,0.98))",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 24,
+  padding: 24,
+  boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
+};
 
-function relTime(ts: string): string {
-  try {
-    const d = Date.now() - new Date(ts).getTime();
-    const m = Math.floor(d / 60000);
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-  } catch { return ""; }
-}
+const eyebrowStyle: React.CSSProperties = {
+  color: "#e36438",
+  fontSize: 11,
+  textTransform: "uppercase",
+  letterSpacing: "0.16em",
+  fontFamily: "var(--font-mono), monospace",
+  marginBottom: 10,
+};
 
-function ChatThread({ messages, loading }: { messages: ChatMsg[]; loading: boolean }) {
-  if (messages.length === 0 && !loading) return null;
-  return (
-    <div style={{ marginBottom: "28px" }}>
-      <SectionLabel label="Belief Interview" dot="orange" />
-      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-        {messages.map((msg, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            {msg.role === "user" ? (
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <div style={{
-                  maxWidth: "76%", background: "rgba(227,100,56,0.07)",
-                  border: "1px solid rgba(227,100,56,0.16)",
-                  borderRadius: "12px 12px 3px 12px", padding: "11px 15px",
-                  fontSize: "14px", color: "#ede9e3", lineHeight: 1.6,
-                }}>
-                  {msg.content}
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "7px", maxWidth: "84%" }}>
-                {msg.searchQueries && msg.searchQueries.length > 0 && (
-                  <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
-                    {msg.searchQueries.map((q, j) => (
-                      <span key={j} style={{
-                        fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                        color: "#3a3835", background: "rgba(91,156,246,0.05)",
-                        border: "1px solid rgba(91,156,246,0.1)",
-                        borderRadius: "4px", padding: "3px 8px", letterSpacing: "0.04em",
-                      }}>↗ {q}</span>
-                    ))}
-                  </div>
-                )}
-                <div style={{
-                  background: "rgba(18,18,18,0.95)", border: "1px solid #252525",
-                  borderRadius: "12px 12px 12px 3px", padding: "12px 16px",
-                  fontSize: "14px", color: "#c5c0ba", lineHeight: 1.65,
-                }}>
-                  {msg.content}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        ))}
-        {loading && (
-          <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", color: "#3a3835", display: "flex", alignItems: "center", gap: "8px" }}>
-            <span className="blink" style={{ color: "#e36438", fontSize: "7px" }}>●</span>
-            thinking…
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+const titleStyle: React.CSSProperties = {
+  color: "#ede9e3",
+  fontSize: 28,
+  fontWeight: 600,
+  letterSpacing: "-0.04em",
+  marginBottom: 10,
+};
 
-function ReplyBar({ input, setInput, onKey, onSubmit, disabled }: {
-  input: string; setInput: (v: string) => void;
-  onKey: (e: React.KeyboardEvent) => void; onSubmit: () => void; disabled: boolean;
-}) {
-  return (
-    <div style={{
-      background: "rgba(14,14,14,0.95)", border: "1px solid #282828",
-      borderRadius: "12px", padding: "6px 6px 6px 16px",
-      display: "flex", gap: "8px", alignItems: "center", marginBottom: "32px",
-      backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-    }}>
-      <input
-        value={input} onChange={e => setInput(e.target.value)} onKeyDown={onKey}
-        placeholder="Your reply…" disabled={disabled} autoFocus
-        style={{
-          flex: 1, background: "transparent", border: "none",
-          fontSize: "13px", color: "#ede9e3",
-          fontFamily: "var(--font-jakarta), system-ui, sans-serif",
-          outline: "none", opacity: disabled ? 0.5 : 1,
-        }}
-      />
-      <button
-        onClick={onSubmit} disabled={disabled || !input.trim()}
-        style={{
-          background: disabled || !input.trim() ? "#181818" : "#e36438",
-          color: "#fff", border: "none", borderRadius: "8px",
-          padding: "8px 18px", fontSize: "11px",
-          fontFamily: "var(--font-mono), monospace",
-          fontWeight: 600, letterSpacing: "0.06em", transition: "background 0.15s",
-          opacity: disabled || !input.trim() ? 0.4 : 1,
-          cursor: disabled || !input.trim() ? "default" : "pointer",
-        }}
-        onMouseEnter={e => { if (!disabled && input.trim()) e.currentTarget.style.background = "#c4421a"; }}
-        onMouseLeave={e => { if (!disabled && input.trim()) e.currentTarget.style.background = "#e36438"; }}
-      >
-        {disabled ? "…" : "Reply →"}
-      </button>
-    </div>
-  );
-}
+const bodyStyle: React.CSSProperties = {
+  color: "#948c84",
+  fontSize: 15,
+  lineHeight: 1.65,
+  margin: "0 0 16px",
+};
 
-function BeliefCard({ summary }: { summary: BeliefSummary }) {
-  return (
-    <div style={{ marginBottom: "28px" }}>
-      <SectionLabel label="Your Belief" dot="blue" />
-      <div style={{
-        background: "rgba(18,18,18,0.98)", border: "1px solid rgba(91,156,246,0.18)",
-        borderRadius: "14px", padding: "22px 24px", position: "relative", overflow: "hidden",
-      }}>
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: "1px",
-          background: "linear-gradient(90deg, transparent, rgba(91,156,246,0.5) 50%, transparent)",
-        }} />
-        <p style={{ fontSize: "16px", fontWeight: 600, color: "#ede9e3", lineHeight: 1.5, marginBottom: "20px", fontStyle: "italic" }}>
-          &ldquo;{summary.core_belief}&rdquo;
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          <MetaField label="Time Horizon" value={summary.time_horizon} />
-          <MetaField label="Scope" value={summary.scope} />
-          <div style={{ gridColumn: "1 / -1" }}>
-            <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#3a3835", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "7px" }}>
-              Key Drivers
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-              {summary.key_drivers.slice(0, 5).map((d, i) => (
-                <span key={i} style={{ fontSize: "11px", background: "rgba(255,255,255,0.04)", border: "1px solid #252525", borderRadius: "5px", padding: "3px 8px", color: "#9b9790" }}>{d}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const textareaStyle: React.CSSProperties = {
+  width: "100%",
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: 16,
+  padding: "16px 18px",
+  color: "#ede9e3",
+  fontSize: 15,
+  lineHeight: 1.6,
+  resize: "vertical",
+  minHeight: 140,
+  outline: "none",
+};
 
-function MetaField({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#3a3835", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "5px" }}>{label}</div>
-      <div style={{ fontSize: "13px", color: "#9b9790", lineHeight: 1.4 }}>{value}</div>
-    </div>
-  );
-}
-
-function DomainGrid({ analysis }: { analysis: BeliefAnalysis }) {
-  return (
-    <div style={{ marginBottom: "8px" }}>
-      <SectionLabel label="Domain Impact Map" dot="orange" />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(195px, 1fr))", gap: "5px" }}>
-        {analysis.affected_domains.map((d: DomainAnalysis, i: number) => {
-          const hi = d.relevance === "high", med = d.relevance === "medium";
-          return (
-            <motion.div
-              key={d.domain}
-              initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.28, delay: i * 0.025 }}
-              style={{
-                background: hi ? "rgba(22,10,5,0.97)" : "rgba(13,13,13,0.97)",
-                border: hi ? "1px solid rgba(227,100,56,0.28)" : med ? "1px solid rgba(227,100,56,0.09)" : "1px solid #191919",
-                borderRadius: "9px", padding: "11px 13px",
-                opacity: d.relevance === "low" ? 0.38 : 1,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: hi || med ? "7px" : 0 }}>
-                <span style={{ width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0, background: hi ? "#e36438" : med ? "#6b3822" : "#252320" }} />
-                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: hi ? "#e36438" : med ? "#6b4830" : "#2a2826", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {d.domain.split(" (")[0]}
-                </div>
-              </div>
-              {(hi || med) && (
-                <div style={{ fontSize: "11px", color: "#4a4845", lineHeight: 1.45, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>
-                  {d.mechanism}
-                </div>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function SurpriseCallout({ text }: { text: string }) {
-  return (
-    <div style={{ margin: "16px 0 28px", padding: "15px 20px", background: "rgba(91,156,246,0.04)", border: "1px solid rgba(91,156,246,0.14)", borderRadius: "11px", display: "flex", gap: "14px", alignItems: "flex-start" }}>
-      <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: "#5b9cf6", flexShrink: 0, paddingTop: "2px", whiteSpace: "nowrap" }}>Non-obvious bet</span>
-      <div style={{ fontSize: "13px", color: "#9b9790", lineHeight: 1.6 }}>{text}</div>
-    </div>
-  );
-}
-
-function RecCard({ rec, forecast, onExplore, onViewForecast, onRunForecast }: {
-  rec: TradeRecommendation; forecast: SavedForecast | null;
-  onExplore: () => void; onViewForecast: (id: number) => void; onRunForecast: () => void;
-}) {
-  const isYes = rec.direction === "YES";
-  const dirColor = isYes ? "#4ade80" : "#f87171";
-  const edge = forecast ? forecast.forecaster_prob - forecast.kalshi_price : null;
-  const edgePos = edge !== null && edge > 0.03, edgeNeg = edge !== null && edge < -0.03;
-  const edgeColor = edgePos ? "#5b9cf6" : edgeNeg ? "#f87171" : "#3a3835";
-
-  return (
-    <div
-      style={{ background: "rgba(18,18,18,0.98)", border: "1px solid #272727", borderRadius: "14px", overflow: "hidden", position: "relative", transition: "border-color 0.2s, box-shadow 0.2s" }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(227,100,56,0.28)"; e.currentTarget.style.boxShadow = "0 0 0 1px rgba(227,100,56,0.07), 0 12px 40px rgba(0,0,0,0.7)"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "#272727"; e.currentTarget.style.boxShadow = "none"; }}
-    >
-      <div style={{ position: "absolute", top: 0, left: 0, width: `${rec.score * 10}%`, height: "2px", background: "linear-gradient(90deg, #e36438, rgba(227,100,56,0.2))" }} />
-      <div style={{ padding: "20px 22px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ marginBottom: "10px" }}>
-              {rec.category && <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em", color: "#e36438", marginBottom: "4px" }}>{rec.category}</div>}
-              {rec.event_title && <div style={{ fontSize: "12px", color: "#4a4845", lineHeight: 1.4, marginBottom: "2px" }}>{rec.event_title}</div>}
-              {rec.series_ticker && <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#2a2826", letterSpacing: "0.06em" }}>{rec.series_ticker}</div>}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
-              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: dirColor, background: isYes ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)", border: `1px solid ${dirColor}30`, borderRadius: "4px", padding: "3px 9px" }}>BET {rec.direction}</span>
-              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#3a3835", letterSpacing: "0.06em" }}>{rec.score}/10</span>
-            </div>
-            <div style={{ fontSize: "14px", fontWeight: 600, color: "#ede9e3", lineHeight: 1.5, marginBottom: "10px" }}>{rec.question}</div>
-            <div style={{ fontSize: "12px", color: "#6b6865", lineHeight: 1.55, marginBottom: "12px" }}>{rec.rationale}</div>
-            <div style={{ fontSize: "11px", color: "#3a3835", lineHeight: 1.5, marginBottom: "14px", fontStyle: "italic" }}>{rec.relevance}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
-              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "10px", color: "#3a3835" }}>closes {rec.close_date}</span>
-              <button onClick={onExplore} style={{ background: "transparent", border: "none", padding: 0, fontFamily: "var(--font-mono), monospace", fontSize: "10px", color: "#e36438", letterSpacing: "0.04em", cursor: "pointer", transition: "color 0.15s" }} onMouseEnter={e => e.currentTarget.style.color = "#ff7a50"} onMouseLeave={e => e.currentTarget.style.color = "#e36438"}>explore market →</button>
-            </div>
-          </div>
-          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "#3a3835" }}>Kalshi Price</span>
-            <ProbabilityArc probability={rec.price} size={72} />
-          </div>
-        </div>
-      </div>
-      <div style={{ borderTop: "1px solid #222", padding: "12px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", background: forecast ? "rgba(91,156,246,0.05)" : "rgba(227,100,56,0.03)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-          <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: forecast ? "#5b9cf6" : "#e36438", flexShrink: 0 }}>Prism Forecast</span>
-          {forecast ? (
-            <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "10px", color: "#6b6865", letterSpacing: "0.04em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              <span style={{ color: "#9b9790" }}>{(forecast.forecaster_prob * 100).toFixed(1)}%</span>
-              <span style={{ color: "#4a4845" }}> · mkt {(forecast.kalshi_price * 100).toFixed(1)}%</span>
-              <span style={{ color: edgeColor, fontWeight: 600 }}>{" "}· {edgePos ? "+" : ""}{((edge ?? 0) * 100).toFixed(1)}pp</span>
-            </span>
-          ) : (
-            <span style={{ fontSize: "11px", color: "#9b9790" }}>Ask Prism to forecast the probability of this event</span>
-          )}
-        </div>
-        <button
-          onClick={forecast ? () => onViewForecast(forecast.id) : onRunForecast}
-          style={{ background: "transparent", border: "none", padding: 0, flexShrink: 0, fontFamily: "var(--font-mono), monospace", fontSize: "10px", color: forecast ? "#5b9cf6" : "#e36438", letterSpacing: "0.04em", cursor: "pointer", transition: "color 0.15s", whiteSpace: "nowrap" }}
-          onMouseEnter={e => e.currentTarget.style.color = forecast ? "#7fb3ff" : "#ff7a50"}
-          onMouseLeave={e => e.currentTarget.style.color = forecast ? "#5b9cf6" : "#e36438"}
-        >
-          {forecast ? "view report →" : "forecast →"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SectionLabel({ label, dot }: { label: string; dot?: "orange" | "blue" }) {
-  return (
-    <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.18em", color: "#9b9790", marginBottom: "14px", paddingBottom: "10px", borderBottom: "1px solid #1e1e1e", display: "flex", alignItems: "center", gap: "10px" }}>
-      {dot && <span className="blink" style={{ fontSize: "7px", color: dot === "orange" ? "#e36438" : "#5b9cf6", animationDelay: dot === "blue" ? "0.7s" : "0s" }}>●</span>}
-      {label}
-    </div>
-  );
-}
+const primaryButtonStyle: React.CSSProperties = {
+  background: "#e36438",
+  color: "#fff",
+  border: "none",
+  borderRadius: 12,
+  padding: "12px 18px",
+  fontWeight: 600,
+  cursor: "pointer",
+};

@@ -225,7 +225,7 @@ export default function MarketPage() {
           onMouseEnter={(e) => (e.currentTarget.style.color = "#8d8780")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "#4a4845")}
         >
-          ← {fromTrading ? "back to recommendations" : "home"}
+          ← {fromTrading ? "back to basket" : "home"}
         </button>
 
         {primaryMarket && (

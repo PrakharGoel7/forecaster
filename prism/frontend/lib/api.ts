@@ -3,7 +3,7 @@ import type {
   TradingChatResponse,
   TradingStreamMessage,
   BeliefSummary,
-  TradingSession,
+  SavedBasket,
   OracleTurnResponse,
   OraclePipelineMessage,
 } from "./types";
@@ -84,23 +84,28 @@ export function streamForecast(
   return () => { cancelled = true; };
 }
 
-export const listTradingSessions = (limit = 20, token?: string): Promise<TradingSession[]> =>
-  apiFetch(`/api/trading/sessions?limit=${limit}`, undefined, token);
+export const listBaskets = (limit = 20, token?: string): Promise<SavedBasket[]> =>
+  apiFetch(`/api/baskets?limit=${limit}`, undefined, token);
+
+export const getBasket = (basketId: number, token?: string): Promise<SavedBasket> =>
+  apiFetch(`/api/baskets/${basketId}`, undefined, token);
 
 export async function tradingChat(
   history: Record<string, unknown>[],
   message: string,
+  mode: "instant" | "thinking",
   token?: string,
 ): Promise<TradingChatResponse> {
   return apiFetch("/api/trading/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ history, message }),
+    body: JSON.stringify({ history, message, mode }),
   }, token);
 }
 
 export function streamTradingAnalysis(
   beliefSummary: BeliefSummary,
+  mode: "instant" | "thinking",
   onMessage: (msg: TradingStreamMessage) => void,
   token?: string,
 ): () => void {
@@ -113,7 +118,7 @@ export function streamTradingAnalysis(
       const res = await fetch(`${BASE}/api/trading/analyze`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ belief_summary: beliefSummary }),
+        body: JSON.stringify({ belief_summary: beliefSummary, mode }),
       });
       if (!res.body) return;
 

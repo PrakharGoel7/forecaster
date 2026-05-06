@@ -1,4 +1,4 @@
-"""Storage for completed forecasts and trading sessions.
+"""Storage for completed forecasts and basket builds.
 Supports PostgreSQL (DATABASE_URL env var) with SQLite fallback for local dev.
 """
 import json
@@ -68,23 +68,50 @@ def _init():
                 )
             """)
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS trading_sessions (
+                CREATE TABLE IF NOT EXISTS baskets (
                     id                   SERIAL PRIMARY KEY,
                     created_at           TEXT    NOT NULL,
+                    title                TEXT    NOT NULL,
+                    summary              TEXT    NOT NULL,
                     core_belief          TEXT    NOT NULL,
+                    mode                 TEXT    NOT NULL,
                     time_horizon         TEXT,
+                    timeframe_start      TEXT,
+                    timeframe_end        TEXT,
+                    resolution_target    TEXT,
+                    mechanism            TEXT,
                     scope                TEXT,
                     key_drivers_json     TEXT,
                     belief_summary_json  TEXT    NOT NULL,
                     analysis_json        TEXT    NOT NULL,
-                    recommendations_json TEXT    NOT NULL,
+                    basket_json          TEXT    NOT NULL,
+                    total_notional       REAL    NOT NULL,
+                    screened_count       INTEGER,
+                    is_public            BOOLEAN NOT NULL DEFAULT TRUE,
                     user_id              TEXT
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS basket_holdings (
+                    id                     SERIAL PRIMARY KEY,
+                    basket_id              INTEGER NOT NULL REFERENCES baskets(id) ON DELETE CASCADE,
+                    ticker                 TEXT    NOT NULL,
+                    event_ticker           TEXT,
+                    question               TEXT    NOT NULL,
+                    side                   TEXT    NOT NULL,
+                    role                   TEXT    NOT NULL,
+                    weight_dollars         REAL    NOT NULL,
+                    rationale              TEXT,
+                    main_risk              TEXT,
+                    market_price_at_create REAL,
+                    close_date             TEXT
                 )
             """)
             # Safe migrations for existing tables
             for stmt in [
                 "ALTER TABLE forecasts ADD COLUMN IF NOT EXISTS user_id TEXT",
-                "ALTER TABLE trading_sessions ADD COLUMN IF NOT EXISTS user_id TEXT",
+                "ALTER TABLE baskets ADD COLUMN IF NOT EXISTS user_id TEXT",
+                "ALTER TABLE baskets ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE",
             ]:
                 try:
                     cur.execute(stmt)
@@ -109,17 +136,44 @@ def _init():
                 )
             """)
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS trading_sessions (
+                CREATE TABLE IF NOT EXISTS baskets (
                     id                   INTEGER PRIMARY KEY AUTOINCREMENT,
                     created_at           TEXT    NOT NULL,
+                    title                TEXT    NOT NULL,
+                    summary              TEXT    NOT NULL,
                     core_belief          TEXT    NOT NULL,
+                    mode                 TEXT    NOT NULL,
                     time_horizon         TEXT,
+                    timeframe_start      TEXT,
+                    timeframe_end        TEXT,
+                    resolution_target    TEXT,
+                    mechanism            TEXT,
                     scope                TEXT,
                     key_drivers_json     TEXT,
                     belief_summary_json  TEXT    NOT NULL,
                     analysis_json        TEXT    NOT NULL,
-                    recommendations_json TEXT    NOT NULL,
+                    basket_json          TEXT    NOT NULL,
+                    total_notional       REAL    NOT NULL,
+                    screened_count       INTEGER,
+                    is_public            INTEGER NOT NULL DEFAULT 1,
                     user_id              TEXT
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS basket_holdings (
+                    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+                    basket_id              INTEGER NOT NULL,
+                    ticker                 TEXT    NOT NULL,
+                    event_ticker           TEXT,
+                    question               TEXT    NOT NULL,
+                    side                   TEXT    NOT NULL,
+                    role                   TEXT    NOT NULL,
+                    weight_dollars         REAL    NOT NULL,
+                    rationale              TEXT,
+                    main_risk              TEXT,
+                    market_price_at_create REAL,
+                    close_date             TEXT,
+                    FOREIGN KEY(basket_id) REFERENCES baskets(id) ON DELETE CASCADE
                 )
             """)
             for col in ["user_id"]:
@@ -127,8 +181,13 @@ def _init():
                     cur.execute(f"ALTER TABLE forecasts ADD COLUMN {col} TEXT")
                 except Exception:
                     pass
+            for col_def in [
+                "user_id TEXT",
+                "is_public INTEGER NOT NULL DEFAULT 1",
+                "screened_count INTEGER",
+            ]:
                 try:
-                    cur.execute(f"ALTER TABLE trading_sessions ADD COLUMN {col} TEXT")
+                    cur.execute(f"ALTER TABLE baskets ADD COLUMN {col_def}")
                 except Exception:
                     pass
         conn.commit()
@@ -187,62 +246,109 @@ def get_forecasts(limit: int = 48, user_id: str | None = None):
         conn.close()
 
 
-def save_trading_session(*, core_belief, time_horizon, scope, key_drivers,
-                         belief_summary, analysis, recommendations,
-                         user_id: str | None = None) -> int:
+def save_basket(*, title, summary, core_belief, mode, time_horizon, timeframe_start,
+                timeframe_end, resolution_target, mechanism, scope, key_drivers,
+                belief_summary, analysis, basket, total_notional, screened_count,
+                holdings, is_public: bool = True, user_id: str | None = None) -> int:
     _init()
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     p = _ph()
     conn = _conn()
     try:
         cur = conn.cursor()
+        basket_values = (
+            ts, title, summary, core_belief, mode, time_horizon, timeframe_start,
+            timeframe_end, resolution_target, mechanism, scope, json.dumps(key_drivers),
+            json.dumps(belief_summary), json.dumps(analysis), json.dumps(basket),
+            total_notional, screened_count, is_public, user_id,
+        )
         if _use_pg():
             cur.execute(f"""
-                INSERT INTO trading_sessions
-                    (created_at, core_belief, time_horizon, scope, key_drivers_json,
-                     belief_summary_json, analysis_json, recommendations_json, user_id)
-                VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p})
+                INSERT INTO baskets
+                    (created_at, title, summary, core_belief, mode, time_horizon,
+                     timeframe_start, timeframe_end, resolution_target, mechanism, scope,
+                     key_drivers_json, belief_summary_json, analysis_json, basket_json,
+                     total_notional, screened_count, is_public, user_id)
+                VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})
                 RETURNING id
-            """, (ts, core_belief, time_horizon, scope,
-                  json.dumps(key_drivers),
-                  json.dumps(belief_summary),
-                  json.dumps(analysis),
-                  json.dumps(recommendations),
-                  user_id))
-            row = cur.fetchone()
-            conn.commit()
-            return row[0]
+            """, basket_values)
+            basket_id = cur.fetchone()[0]
         else:
             cur.execute(f"""
-                INSERT INTO trading_sessions
-                    (created_at, core_belief, time_horizon, scope, key_drivers_json,
-                     belief_summary_json, analysis_json, recommendations_json, user_id)
-                VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p})
-            """, (ts, core_belief, time_horizon, scope,
-                  json.dumps(key_drivers),
-                  json.dumps(belief_summary),
-                  json.dumps(analysis),
-                  json.dumps(recommendations),
-                  user_id))
-            conn.commit()
-            return cur.lastrowid
+                INSERT INTO baskets
+                    (created_at, title, summary, core_belief, mode, time_horizon,
+                     timeframe_start, timeframe_end, resolution_target, mechanism, scope,
+                     key_drivers_json, belief_summary_json, analysis_json, basket_json,
+                     total_notional, screened_count, is_public, user_id)
+                VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})
+            """, basket_values)
+            basket_id = cur.lastrowid
+
+        for holding in holdings:
+            cur.execute(f"""
+                INSERT INTO basket_holdings
+                    (basket_id, ticker, event_ticker, question, side, role, weight_dollars,
+                     rationale, main_risk, market_price_at_create, close_date)
+                VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})
+            """, (
+                basket_id,
+                holding.get("ticker"),
+                holding.get("event_ticker"),
+                holding.get("question"),
+                holding.get("side"),
+                holding.get("role"),
+                holding.get("weight_dollars"),
+                holding.get("rationale"),
+                holding.get("main_risk"),
+                holding.get("market_price"),
+                holding.get("close_date"),
+            ))
+        conn.commit()
+        return basket_id
     finally:
         conn.close()
 
 
-def get_trading_sessions(limit: int = 20, user_id: str | None = None):
-    if not user_id:
-        return []
+def get_baskets(limit: int = 20, user_id: str | None = None, public_only: bool = False):
     _init()
     p = _ph()
     conn = _conn()
     try:
         cur = conn.cursor()
+        clauses: list[str] = []
+        params: list = []
+        if user_id:
+            clauses.append(f"user_id = {p}")
+            params.append(user_id)
+        elif public_only:
+            clauses.append("is_public = 1" if not _use_pg() else "is_public = TRUE")
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         cur.execute(
-            f"SELECT * FROM trading_sessions WHERE user_id = {p} ORDER BY created_at DESC LIMIT {p}",
-            (user_id, limit)
+            f"SELECT * FROM baskets {where} ORDER BY created_at DESC LIMIT {p}",
+            (*params, limit),
         )
-        rows = cur.fetchall()
-        return _rows_to_dicts(rows, cur)
+        rows = _rows_to_dicts(cur.fetchall(), cur)
+        return rows
+    finally:
+        conn.close()
+
+
+def get_basket(basket_id: int, user_id: str | None = None):
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        if user_id:
+            cur.execute(f"SELECT * FROM baskets WHERE id = {p} AND (user_id = {p} OR is_public = {'TRUE' if _use_pg() else '1'})", (basket_id, user_id))
+        else:
+            cur.execute(f"SELECT * FROM baskets WHERE id = {p} AND is_public = {'TRUE' if _use_pg() else '1'}", (basket_id,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        basket = _rows_to_dicts([row], cur)[0]
+        cur.execute(f"SELECT * FROM basket_holdings WHERE basket_id = {p} ORDER BY weight_dollars DESC, id ASC", (basket_id,))
+        basket["holdings"] = _rows_to_dicts(cur.fetchall(), cur)
+        return basket
     finally:
         conn.close()

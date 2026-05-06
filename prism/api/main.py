@@ -566,15 +566,25 @@ async def oracle_pipeline_stream(req: OraclePipelineRequest):
 class TradingChatRequest(BaseModel):
     history: list[dict]
     message: str
+    mode: str = "thinking"
 
 
-@app.get("/api/trading/sessions")
-async def list_trading_sessions(request: Request, limit: int = 20):
+@app.get("/api/baskets")
+async def list_baskets(request: Request, limit: int = 20):
     user_id = _get_user_id(request)
     try:
-        return db.get_trading_sessions(limit=limit, user_id=user_id)
+        return db.get_baskets(limit=limit, user_id=user_id, public_only=not bool(user_id))
     except Exception as e:
         return {"error": str(e), "items": []}
+
+
+@app.get("/api/baskets/{basket_id}")
+async def get_basket(basket_id: int, request: Request):
+    user_id = _get_user_id(request)
+    basket = db.get_basket(basket_id, user_id=user_id)
+    if not basket:
+        raise HTTPException(status_code=404, detail="Basket not found")
+    return basket
 
 
 @app.post("/api/trading/chat")
@@ -585,7 +595,7 @@ async def trading_chat(req: TradingChatRequest):
 
     def _run():
         from agents.belief_agent import BeliefAgent
-        return BeliefAgent().step(req.history, req.message)
+        return BeliefAgent().step(req.history, req.message, mode=req.mode)
 
     try:
         result = await loop.run_in_executor(None, _run)
@@ -596,6 +606,7 @@ async def trading_chat(req: TradingChatRequest):
 
 class TradingAnalyzeRequest(BaseModel):
     belief_summary: dict
+    mode: str = "thinking"
 
 
 @app.post("/api/trading/analyze")
@@ -614,10 +625,10 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
             try:
                 from agents.analyst_agent import AnalystAgent
                 from agents.screener_agent import ScreenerAgent
-                from agents.curator_agent import CuratorAgent
+                from agents.curator_agent import BasketBuilderAgent
 
                 asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "progress", "label": "Analyzing ramifications across 16 domains…"}), loop
+                    queue.put({"type": "progress", "label": "Mapping the thesis across key domains…"}), loop
                 )
                 analysis = AnalystAgent().run(req.belief_summary)
                 asyncio.run_coroutine_threadsafe(
@@ -728,40 +739,50 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
                 markets.sort(key=_market_sort_key)
 
                 asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "progress", "label": f"Curating best bets from {len(markets)} live markets…"}), loop
+                    queue.put({"type": "progress", "label": f"Building a $100 prediction market ETF from {len(markets)} candidate markets…"}), loop
                 )
-                recommendations = CuratorAgent().run(req.belief_summary, markets, analysis,
-                                                     screener_candidates=filtered_candidates)
+                basket = BasketBuilderAgent().run(req.belief_summary, markets, analysis,
+                                                  screener_candidates=filtered_candidates)
 
-                # Debug: final portfolio
-                print(f"[COMPASS] Final portfolio ({len(recommendations)} markets):")
-                for r in recommendations:
-                    print(f"  [{r.get('tier','?')}] {r['ticker']} | {r['direction']} | score={r['score']}")
+                # Debug: final basket
+                print(f"[COMPASS] Final basket ({len(basket.get('holdings', []))} holdings):")
+                for holding in basket.get("holdings", []):
+                    print(f"  [{holding.get('role','?')}] {holding['ticker']} | {holding['side']} | ${holding['weight_dollars']}")
 
-                event_lookup = get_event_lookup([rec.get("event_ticker", "") for rec in recommendations])
-                for rec in recommendations:
-                    evt = event_lookup.get(rec.get("event_ticker", ""), {})
-                    rec["event_title"]   = evt.get("title", "")
-                    rec["series_ticker"] = evt.get("series_ticker", "")
-                    rec["category"]      = evt.get("category", "")
+                event_lookup = get_event_lookup([holding.get("event_ticker", "") for holding in basket.get("holdings", [])])
+                for holding in basket.get("holdings", []):
+                    evt = event_lookup.get(holding.get("event_ticker", ""), {})
+                    holding["event_title"] = evt.get("title", "")
+                    holding["series_ticker"] = evt.get("series_ticker", "")
+                    holding["category"] = evt.get("category", "")
 
-                session_id: int | None = None
+                basket_id: int | None = None
                 try:
-                    session_id = db.save_trading_session(
+                    basket_id = db.save_basket(
+                        title=basket.get("basket_title", req.belief_summary.get("core_belief", "Prediction Market ETF")),
+                        summary=basket.get("basket_summary", ""),
                         core_belief=req.belief_summary.get("core_belief", ""),
+                        mode=req.mode or req.belief_summary.get("mode_used", "thinking"),
                         time_horizon=req.belief_summary.get("time_horizon", ""),
+                        timeframe_start=req.belief_summary.get("timeframe_start", ""),
+                        timeframe_end=req.belief_summary.get("timeframe_end", req.belief_summary.get("time_horizon", "")),
+                        resolution_target=req.belief_summary.get("resolution_target", ""),
+                        mechanism=req.belief_summary.get("mechanism", ""),
                         scope=req.belief_summary.get("scope", ""),
                         key_drivers=req.belief_summary.get("key_drivers", []),
                         belief_summary=req.belief_summary,
                         analysis=analysis,
-                        recommendations=recommendations,
+                        basket=basket,
+                        total_notional=basket.get("total_notional", 100.0),
+                        screened_count=len(filtered_candidates),
+                        holdings=basket.get("holdings", []),
                         user_id=_get_user_id(request),
                     )
                 except Exception:
                     pass
 
                 asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "curator_done", "recommendations": recommendations, "session_id": session_id}), loop
+                    queue.put({"type": "basket_done", "basket": basket, "basket_id": basket_id}), loop
                 )
 
             except Exception as exc:
@@ -778,7 +799,7 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
                     yield f"data: {json.dumps({'type': 'error', 'message': 'Analysis timed out'})}\n\n"
                     break
                 yield f"data: {json.dumps(msg)}\n\n"
-                if msg["type"] in ("curator_done", "error"):
+                if msg["type"] in ("basket_done", "error"):
                     break
         finally:
             try:

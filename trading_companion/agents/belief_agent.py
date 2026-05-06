@@ -17,12 +17,15 @@ from bs4 import BeautifulSoup
 from ddgs import DDGS
 from openai import OpenAI
 
-def _make_system_prompt() -> str:
+def _make_system_prompt(mode: str = "thinking") -> str:
     from datetime import date
     today = date.today().strftime("%B %d, %Y")
+    max_turns = 1 if mode == "instant" else 3
+    mode_line = "INSTANT MODE" if mode == "instant" else "THINKING MODE"
     return f"""You are an assistant helping a user express their belief about the future clearly enough to map it to relevant prediction markets.
 
 TODAY'S DATE: {today}
+MODE: {mode_line}
 Your training data has a knowledge cutoff that may be over a year old. You MUST use web_search to learn the current state of affairs — do not rely on your own memory for recent events. Treat search results as ground truth.
 
 WORKFLOW
@@ -56,15 +59,17 @@ Examples:
 4. FINALIZE
 - After either:
   a) zero questions (if already clear and includes timeframe), OR
-  b) one user response to your clarification, if that response resolves the ambiguity and gives a usable timeframe
+  b) user clarification responses, if they resolve the ambiguity and give a usable timeframe
 → call finalize_belief
 
 RULES
 - Ask as few questions as possible
-- Ask at most 2 questions in a single response, and only when the second is needed to pin down timeframe
-- Ask at most 1 clarification turn before finalizing
+- Ask at most 2 questions in a single response
+- Ask at most {max_turns} clarification turn(s) before finalizing
 - Never finalize without a usable timeframe
-- If the user's reply still does not provide a timeframe, infer the narrowest reasonable one from their answer and current context rather than asking again
+- In instant mode, ask only the single highest-value clarification needed to identify tradable markets.
+- In thinking mode, prioritize these gaps in order: resolution target, timeframe, mechanism.
+- If you have reached the clarification limit and timeframe is still missing, infer the narrowest reasonable one from the user's answer and current context rather than asking again
 - Keep responses extremely concise
 - Never include research backstory in the user-facing question
 - Never preface the question with context like “current context indicates”, “markets expect”, “despite”, or similar framing
@@ -153,12 +158,16 @@ _TOOLS = [
                         "items": {"type": "string"},
                         "description": "2-3 pieces of evidence or events that would make the user doubt or abandon this belief.",
                     },
+                    "mode_used": {
+                        "type": "string",
+                        "enum": ["instant", "thinking"],
+                    },
                 },
                 "required": [
                     "core_belief", "time_horizon", "key_drivers",
                     "scope", "confidence_level", "supporting_reasoning", "current_context",
                     "resolution_target", "resolution_type", "timeframe_start", "timeframe_end",
-                    "mechanism", "falsifiers",
+                    "mechanism", "falsifiers", "mode_used",
                 ],
             },
         },
@@ -233,7 +242,7 @@ class BeliefAgent:
         )
         self._model = model
 
-    def step(self, history: list[dict], new_message: str) -> dict:
+    def step(self, history: list[dict], new_message: str, mode: str = "thinking") -> dict:
         """Single-turn step for web UI — stateless, history passed in and returned.
 
         Returns::
@@ -245,7 +254,7 @@ class BeliefAgent:
         while True:
             response = self._client.chat.completions.create(
                 model=self._model,
-                messages=[{"role": "system", "content": _make_system_prompt()}] + msgs,
+                messages=[{"role": "system", "content": _make_system_prompt(mode)}] + msgs,
                 tools=_TOOLS,
                 max_tokens=400,
             )
@@ -305,7 +314,7 @@ class BeliefAgent:
                 "history": msgs,
             }
 
-    def run(self) -> dict:
+    def run(self, mode: str = "thinking") -> dict:
         print("What's your belief about how the future will unfold?")
         print("(Could be about technology, geopolitics, economics, climate, markets — anything.)\n")
         initial = input("Your belief: ").strip()
@@ -318,7 +327,7 @@ class BeliefAgent:
         while True:
             response = self._client.chat.completions.create(
                 model=self._model,
-                messages=[{"role": "system", "content": _make_system_prompt()}] + messages,
+                messages=[{"role": "system", "content": _make_system_prompt(mode)}] + messages,
                 tools=_TOOLS,
                 max_tokens=400,
             )

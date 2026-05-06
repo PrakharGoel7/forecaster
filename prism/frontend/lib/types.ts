@@ -98,6 +98,7 @@ export interface BeliefSummary {
   timeframe_end?: string;
   mechanism?: string;
   falsifiers?: string[];
+  mode_used?: "instant" | "thinking";
 }
 
 export interface DomainAnalysis {
@@ -112,25 +113,30 @@ export interface BeliefAnalysis {
   most_surprising_connection: string;
 }
 
-export interface TradeRecommendation {
+export interface BasketHolding {
   ticker: string;
   event_ticker: string;
   question: string;
-  price: number;
+  market_price: number;
   close_date: string;
-  rules_summary: string;
-  relevance: string;
-  direction: "YES" | "NO";
+  side: "YES" | "NO";
+  role: "direct" | "mechanism" | "indirect" | "hedge";
+  weight_dollars: number;
   rationale: string;
-  score: number;
+  main_risk: string;
+  tier?: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
+  rules_summary?: string;
   event_title?: string;
   series_ticker?: string;
   category?: string;
-  tier?: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
-  expressiveness_score?: number;
-  causal_purity_score?: number;
-  timeframe_alignment_score?: number;
-  main_risk?: string;
+}
+
+export interface PredictionBasket {
+  basket_title: string;
+  basket_summary: string;
+  construction_notes: string;
+  holdings: BasketHolding[];
+  total_notional: number;
 }
 
 export interface TradingChatResponse {
@@ -141,16 +147,27 @@ export interface TradingChatResponse {
   history: Record<string, unknown>[];
 }
 
-export interface TradingSession {
+export interface SavedBasket {
   id: number;
   created_at: string;
+  title: string;
+  summary: string;
   core_belief: string;
+  mode: "instant" | "thinking";
   time_horizon: string;
+  timeframe_start: string;
+  timeframe_end: string;
+  resolution_target: string;
+  mechanism: string;
   scope: string;
   key_drivers_json: string;
   belief_summary_json: string;
   analysis_json: string;
-  recommendations_json: string;
+  basket_json: string;
+  total_notional: number;
+  screened_count: number;
+  is_public: boolean;
+  holdings?: BasketHolding[];
 }
 
 // ── Oracle (legacy) ───────────────────────────────────────────────────────────
@@ -197,5 +214,5 @@ export type TradingStreamMessage =
   | { type: "progress"; label: string }
   | { type: "analyst_done"; analysis: BeliefAnalysis }
   | { type: "screener_done"; tickers: string[]; count: number }
-  | { type: "curator_done"; recommendations: TradeRecommendation[]; session_id?: number }
+  | { type: "basket_done"; basket: PredictionBasket; basket_id?: number }
   | { type: "error"; message: string };

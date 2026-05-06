@@ -1,108 +1,103 @@
 "use client";
-import { useState, useRef, useEffect, Suspense } from "react";
+
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
-import ProbabilityArc from "@/components/ProbabilityArc";
-import { tradingChat, streamTradingAnalysis, listForecasts, listTradingSessions } from "@/lib/api";
-import type {
-  BeliefSummary,
-  BeliefAnalysis,
-  DomainAnalysis,
-  TradeRecommendation,
-  SavedForecast,
-  TradingSession,
-} from "@/lib/types";
+import { tradingChat, streamTradingAnalysis, listBaskets, getBasket } from "@/lib/api";
+import type { BeliefAnalysis, BeliefSummary, PredictionBasket, SavedBasket } from "@/lib/types";
 
+type Mode = "instant" | "thinking";
 type Stage = "idle" | "chatting" | "analyzing" | "done" | "error";
 
 interface ChatMsg {
   role: "user" | "assistant";
   content: string;
-  searchQueries?: string[];
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 export default function TradingPage() {
-  return (
-    <Suspense>
-      <TradingPageInner />
-    </Suspense>
-  );
+  return <Suspense><TradingPageInner /></Suspense>;
 }
 
 function TradingPageInner() {
-  const router       = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialBelief = searchParams.get("belief") ?? "";
-  const [stage, setStage]                 = useState<Stage>("idle");
-  const [input, setInput]                 = useState("");
-  const [chatMessages, setChatMessages]   = useState<ChatMsg[]>([]);
-  const [apiHistory, setApiHistory]       = useState<Record<string, unknown>[]>([]);
+  const basketParam = searchParams.get("basket");
+  const [mode, setMode] = useState<Mode>("thinking");
+  const [stage, setStage] = useState<Stage>("idle");
+  const [input, setInput] = useState(initialBelief);
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  const [apiHistory, setApiHistory] = useState<Record<string, unknown>[]>([]);
   const [beliefSummary, setBeliefSummary] = useState<BeliefSummary | null>(null);
-  const [analysis, setAnalysis]           = useState<BeliefAnalysis | null>(null);
+  const [analysis, setAnalysis] = useState<BeliefAnalysis | null>(null);
+  const [basket, setBasket] = useState<PredictionBasket | null>(null);
+  const [savedBaskets, setSavedBaskets] = useState<SavedBasket[]>([]);
+  const [basketId, setBasketId] = useState<number | null>(basketParam ? Number(basketParam) : null);
   const [screenedCount, setScreenedCount] = useState(0);
-  const [recommendations, setRecommendations] = useState<TradeRecommendation[]>([]);
   const [progressLabel, setProgressLabel] = useState("");
-  const [loading, setLoading]             = useState(false);
-  const [error, setError]                 = useState("");
-  const [savedForecasts, setSavedForecasts] = useState<SavedForecast[]>([]);
-  const [sessions, setSessions]             = useState<TradingSession[]>([]);
-  const [sessionId, setSessionId]           = useState<number | null>(null);
-
-  const scrollRef  = useRef<HTMLDivElement>(null);
-  const inputRef   = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
-  const bootstrappedBeliefRef = useRef(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const bootstrapped = useRef(false);
 
   useEffect(() => {
-    const sid = searchParams.get("session");
-    listForecasts(500).then(setSavedForecasts).catch(() => {});
-    listTradingSessions(20).then(list => {
-      setSessions(list);
-      if (sid) {
-        const s = list.find(s => s.id === Number(sid));
-        if (s) {
-          setBeliefSummary(JSON.parse(s.belief_summary_json));
-          setAnalysis(JSON.parse(s.analysis_json));
-          setRecommendations(JSON.parse(s.recommendations_json));
-          setSessionId(s.id);
-          setStage("done");
-        }
-      }
-    }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    listBaskets(20).then(setSavedBaskets).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!initialBelief.trim() || bootstrappedBeliefRef.current) return;
-    bootstrappedBeliefRef.current = true;
+    if (!basketId) return;
+    getBasket(basketId).then((saved) => {
+      setBeliefSummary(JSON.parse(saved.belief_summary_json));
+      setAnalysis(JSON.parse(saved.analysis_json));
+      setBasket(JSON.parse(saved.basket_json));
+      setMode(saved.mode);
+      setStage("done");
+    }).catch(() => {});
+  }, [basketId]);
+
+  useEffect(() => {
+    if (!initialBelief.trim() || bootstrapped.current) return;
+    bootstrapped.current = true;
     setStage("chatting");
-    setInput(initialBelief);
     void sendMessage(initialBelief, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialBelief]);
 
+  const stepLabel = useMemo(() => {
+    if (mode === "instant") return "1 follow-up max";
+    return "up to 3 follow-ups";
+  }, [mode]);
+
+  function resetFlow() {
+    setStage("idle");
+    setInput("");
+    setChatMessages([]);
+    setApiHistory([]);
+    setBeliefSummary(null);
+    setAnalysis(null);
+    setBasket(null);
+    setBasketId(null);
+    setScreenedCount(0);
+    setProgressLabel("");
+    setError("");
+    router.replace("/trading", { scroll: false });
+  }
 
   function startAnalysis(summary: BeliefSummary) {
-    streamTradingAnalysis(summary, (msg) => {
-      if (msg.type === "progress") {
-        setProgressLabel(msg.label);
-      } else if (msg.type === "analyst_done") {
-        setAnalysis(msg.analysis);
-      } else if (msg.type === "screener_done") {
-        setScreenedCount(msg.count);
-      } else if (msg.type === "curator_done") {
-        setRecommendations(msg.recommendations);
+    streamTradingAnalysis(summary, mode, (msg) => {
+      if (msg.type === "progress") setProgressLabel(msg.label);
+      else if (msg.type === "analyst_done") setAnalysis(msg.analysis);
+      else if (msg.type === "screener_done") setScreenedCount(msg.count);
+      else if (msg.type === "basket_done") {
+        setBasket(msg.basket);
+        setBasketId(msg.basket_id ?? null);
         setStage("done");
         setProgressLabel("");
-        if (msg.session_id) {
-          setSessionId(msg.session_id);
-          router.replace(`/trading?session=${msg.session_id}`, { scroll: false });
+        if (msg.basket_id) {
+          router.replace(`/trading?basket=${msg.basket_id}`, { scroll: false });
         }
-        listForecasts(500).then(setSavedForecasts).catch(() => {});
-        listTradingSessions(20).then(setSessions).catch(() => {});
+        listBaskets(20).then(setSavedBaskets).catch(() => {});
       } else if (msg.type === "error") {
         setError(msg.message);
         setStage("error");
@@ -115,23 +110,16 @@ function TradingPageInner() {
     if (!message.trim() || loading) return;
     setLoading(true);
     setInput("");
-
-    setChatMessages(prev => [...prev, { role: "user", content: message }]);
-
+    setChatMessages((prev) => [...prev, { role: "user", content: message }]);
     try {
-      const result = await tradingChat(history, message);
+      const result = await tradingChat(history, message, mode);
       setApiHistory(result.history);
-
       if (result.status === "finalized" && result.belief_summary) {
         setBeliefSummary(result.belief_summary);
         setStage("analyzing");
         startAnalysis(result.belief_summary);
       } else if (result.agent_message) {
-        setChatMessages(prev => [...prev, {
-          role: "assistant",
-          content: result.agent_message!,
-          searchQueries: result.search_queries,
-        }]);
+        setChatMessages((prev) => [...prev, { role: "assistant", content: result.agent_message! }]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
@@ -141,966 +129,386 @@ function TradingPageInner() {
     }
   }
 
-  function restoreSession(s: TradingSession) {
-    setBeliefSummary(JSON.parse(s.belief_summary_json));
-    setAnalysis(JSON.parse(s.analysis_json));
-    setRecommendations(JSON.parse(s.recommendations_json));
-    setSessionId(s.id);
-    setChatMessages([]);
-    setApiHistory([]);
-    setError("");
-    setProgressLabel("");
-    setScreenedCount(0);
-    setStage("done");
-    router.replace(`/trading?session=${s.id}`, { scroll: false });
-    listForecasts(500).then(setSavedForecasts).catch(() => {});
-  }
-
-  function handleInitialSubmit() {
+  function onSubmitInitial() {
     if (!input.trim()) return;
     setStage("chatting");
-    sendMessage(input, []);
+    void sendMessage(input, []);
   }
 
-  function handleReply() {
-    sendMessage(input, apiHistory);
-  }
-
-  function onIdleKey(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleInitialSubmit(); }
-  }
-  function onReplyKey(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleReply(); }
+  function onSubmitReply() {
+    void sendMessage(input, apiHistory);
   }
 
   return (
     <div style={{ minHeight: "100vh", background: "#080808", position: "relative" }}>
       <Header />
       <GridOverlay />
-
-      <div
-        ref={scrollRef}
-        style={{
-          position: "relative", zIndex: 10,
-          paddingTop: "56px",
-          overflowY: "auto",
-          height: "100vh",
-        }}
-      >
-        <div style={{ maxWidth: "740px", margin: "0 auto", padding: "40px 28px 80px" }}>
-
-          {/* ── Idle: large centered input ── */}
-          <AnimatePresence>
-            {stage === "idle" && (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16, transition: { duration: 0.2 } }}
-                style={{
-                  minHeight: "calc(100vh - 180px)",
-                  display: "flex", flexDirection: "column", justifyContent: "center",
-                }}
-              >
-                <IdleView
+      <div style={{ position: "relative", zIndex: 10, paddingTop: 56 }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto", padding: "40px 24px 80px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 24 }}>
+            <div>
+              {stage === "idle" && (
+                <IdleComposer
+                  mode={mode}
+                  setMode={setMode}
                   input={input}
                   setInput={setInput}
-                  onKey={onIdleKey}
-                  onSubmit={handleInitialSubmit}
-                  inputRef={inputRef as React.RefObject<HTMLTextAreaElement>}
-                  sessions={sessions}
-                  onRestoreSession={restoreSession}
+                  stepLabel={stepLabel}
+                  onSubmit={onSubmitInitial}
                 />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ── Active: chat + progressive results ── */}
-          {stage !== "idle" && (
-            <div>
-              {/* New session button */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
-                <div style={{
-                  fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                  letterSpacing: "0.2em", textTransform: "uppercase",
-                  color: "#3a3835", display: "flex", alignItems: "center", gap: "8px",
-                }}>
-                  <span style={{ color: "#e36438" }}>◈</span> Trading Companion
-                </div>
-                <button
-                  onClick={() => {
-                    setStage("idle");
-                    setBeliefSummary(null);
-                    setAnalysis(null);
-                    setRecommendations([]);
-                    setChatMessages([]);
-                    setApiHistory([]);
-                    setError("");
-                    setProgressLabel("");
-                    setScreenedCount(0);
-                    setSessionId(null);
-                    router.replace("/trading", { scroll: false });
-                  }}
-                  style={{
-                    background: "transparent", border: "1px solid #282828",
-                    borderRadius: "7px", padding: "6px 14px",
-                    fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                    fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
-                    color: "#3a3835", cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#9b7fe8"; e.currentTarget.style.color = "#9b7fe8"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#282828"; e.currentTarget.style.color = "#3a3835"; }}
-                >
-                  + New Session
-                </button>
-              </div>
-              {/* Chat thread */}
-              <ChatThread messages={chatMessages} loading={loading && stage === "chatting"} />
-
-              {/* Reply bar (only while waiting for agent to finalize) */}
-              {stage === "chatting" && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <ReplyBar
-                    input={input}
-                    setInput={setInput}
-                    onKey={onReplyKey}
-                    onSubmit={handleReply}
-                    disabled={loading}
-                  />
-                </motion.div>
               )}
 
-              {/* Belief summary card */}
-              {beliefSummary && (
-                <motion.div
-                  initial={{ opacity: 0, y: 28 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <BeliefCard summary={beliefSummary} />
-                </motion.div>
-              )}
+              {stage !== "idle" && (
+                <div style={{ display: "grid", gap: 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace" }}>
+                        Prediction Market ETF Builder
+                      </div>
+                      <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.03em" }}>
+                        Build a shareable basket
+                      </div>
+                    </div>
+                    <button onClick={resetFlow} style={ghostButtonStyle}>New basket</button>
+                  </div>
 
-              {/* Domain impact grid */}
-              {analysis && (
-                <motion.div
-                  initial={{ opacity: 0, y: 28 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.55, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <DomainGrid analysis={analysis} />
-                  {analysis.most_surprising_connection && (
-                    <SurpriseCallout text={analysis.most_surprising_connection} />
-                  )}
-                </motion.div>
-              )}
-
-              {/* Screener status line */}
-              {screenedCount > 0 && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  style={{
-                    fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-                    color: "#3a3835", margin: "8px 0 4px",
-                    display: "flex", alignItems: "center", gap: "8px",
-                  }}
-                >
-                  <span style={{ color: "#9b7fe8" }}>→</span>
-                  {screenedCount} relevant events screened from Kalshi catalog
-                </motion.div>
-              )}
-
-              {/* Running progress indicator */}
-              <AnimatePresence mode="wait">
-                {progressLabel && (
-                  <motion.div
-                    key={progressLabel}
-                    initial={{ opacity: 0, x: -6 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                    style={{
-                      fontFamily: "var(--font-mono), monospace", fontSize: "11px",
-                      color: "#6b6865", margin: "14px 0",
-                      display: "flex", alignItems: "center", gap: "10px",
-                    }}
-                  >
-                    <span className="blink" style={{ color: "#9b7fe8", fontSize: "7px" }}>●</span>
-                    {progressLabel}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Recommendation cards */}
-              {recommendations.length > 0 && (
-                <div style={{ marginTop: "28px" }}>
-                  <SectionLabel label={`${recommendations.length} recommended markets`} dot="purple" />
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {recommendations.map((rec, i) => (
-                      <motion.div
-                        key={rec.ticker}
-                        initial={{ opacity: 0, y: 18 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: i * 0.07, ease: [0.16, 1, 0.3, 1] }}
-                      >
-                        <RecCard
-                          rec={rec}
-                          forecast={savedForecasts.find(f => f.ticker === rec.ticker) ?? null}
-                          onExplore={() => router.push(
-                            `/market/${rec.event_ticker}?title=${encodeURIComponent(rec.event_title ?? rec.question)}&cat=${encodeURIComponent(rec.category ?? "")}&sub=&from=trading${sessionId ? `&session=${sessionId}` : ""}`
-                          )}
-                          onViewForecast={(id) => router.push(`/market/${rec.event_ticker}?saved=${id}&from=trading${sessionId ? `&session=${sessionId}` : ""}`)}
-                          onRunForecast={() => router.push(
-                            `/market/${rec.event_ticker}?title=${encodeURIComponent(rec.event_title ?? rec.question)}&cat=${encodeURIComponent(rec.category ?? "")}&sub=&from=trading${sessionId ? `&session=${sessionId}` : ""}`
-                          )}
+                  <Card>
+                    <div style={{ color: "#8f877e", fontSize: 13, marginBottom: 10 }}>
+                      Mode: <span style={{ color: "#ede9e3" }}>{mode === "instant" ? "Instant" : "Thinking"}</span>
+                    </div>
+                    <ChatThread messages={chatMessages} />
+                    {stage === "chatting" && (
+                      <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+                        <textarea
+                          value={input}
+                          onChange={(e) => setInput(e.target.value)}
+                          rows={3}
+                          placeholder="Answer the follow-up..."
+                          style={textareaStyle}
                         />
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                        <button onClick={onSubmitReply} style={primaryButtonStyle}>Continue</button>
+                      </div>
+                    )}
+                  </Card>
 
-              {/* Previous sessions (done state only) */}
-              {stage === "done" && sessions.filter(s => s.id !== sessionId).length > 0 && (
-                <div style={{ marginTop: "48px" }}>
-                  <SectionLabel label="Previous Sessions" />
-                  <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
-                    {sessions.filter(s => s.id !== sessionId).map((s, i) => {
-                      const recs = (() => { try { return JSON.parse(s.recommendations_json).length; } catch { return 0; } })();
-                      const drivers = (() => { try { return JSON.parse(s.key_drivers_json) as string[]; } catch { return [] as string[]; } })();
-                      return (
-                        <motion.button
-                          key={s.id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: i * 0.04 }}
-                          onClick={() => restoreSession(s)}
-                          style={{
-                            width: "100%", textAlign: "left",
-                            background: "rgba(14,14,14,0.95)",
-                            border: "1px solid #222", borderRadius: "11px",
-                            padding: "14px 16px",
-                            transition: "border-color 0.15s, background 0.15s",
-                            cursor: "pointer",
-                          }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.borderColor = "rgba(155,127,232,0.3)";
-                            e.currentTarget.style.background = "rgba(18,18,18,0.98)";
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.borderColor = "#222";
-                            e.currentTarget.style.background = "rgba(14,14,14,0.95)";
-                          }}
-                        >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                fontSize: "13px", fontWeight: 600, color: "#ede9e3",
-                                lineHeight: 1.4, marginBottom: "6px",
-                                overflow: "hidden", display: "-webkit-box",
-                                WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
-                              }}>
-                                {s.core_belief}
-                              </div>
-                              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                                {drivers.slice(0, 3).map((d, j) => (
-                                  <span key={j} style={{
-                                    fontSize: "10px", color: "#4a4845",
-                                    background: "rgba(255,255,255,0.03)",
-                                    border: "1px solid #1e1e1e", borderRadius: "4px",
-                                    padding: "2px 7px",
-                                  }}>{d}</span>
-                                ))}
-                              </div>
-                            </div>
-                            <div style={{ flexShrink: 0, textAlign: "right" }}>
-                              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#e36438", marginBottom: "4px" }}>
-                                {recs} market{recs !== 1 ? "s" : ""}
-                              </div>
-                              <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", color: "#2a2826" }}>
-                                {relTime(s.created_at)}
-                              </div>
-                            </div>
-                          </div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                  {beliefSummary && <BeliefBrief summary={beliefSummary} />}
 
-              {/* Error state */}
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  style={{
-                    margin: "20px 0",
-                    padding: "14px 18px",
-                    background: "rgba(248,113,113,0.06)",
-                    border: "1px solid rgba(248,113,113,0.2)",
-                    borderRadius: "10px",
-                    fontFamily: "var(--font-mono), monospace",
-                    fontSize: "12px", color: "#f87171",
-                  }}
-                >
-                  {error}
-                </motion.div>
+                  {analysis && <AnalysisSummary analysis={analysis} screenedCount={screenedCount} />}
+
+                  {progressLabel && stage === "analyzing" && (
+                    <Card>
+                      <div style={{ color: "#e36438", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+                        Building Basket
+                      </div>
+                      <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{progressLabel}</div>
+                      <div style={{ color: "#8f877e", fontSize: 14 }}>Prism is mapping the theme, screening markets, and allocating a $100 basket.</div>
+                    </Card>
+                  )}
+
+                  {basket && <BasketView basket={basket} basketId={basketId} />}
+
+                  {error && (
+                    <Card>
+                      <div style={{ color: "#ff8f74", fontWeight: 600, marginBottom: 6 }}>Build failed</div>
+                      <div style={{ color: "#d8d0c8" }}>{error}</div>
+                    </Card>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+            <div style={{ display: "grid", gap: 18, alignSelf: "start", position: "sticky", top: 84 }}>
+              <Card>
+                <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+                  How It Works
+                </div>
+                <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, marginBottom: 10 }}>From belief to basket</div>
+                <ul style={{ margin: 0, paddingLeft: 18, color: "#9c948c", lineHeight: 1.7, fontSize: 14 }}>
+                  <li>Clarify the future theme.</li>
+                  <li>Map direct and indirect implications.</li>
+                  <li>Screen prediction markets.</li>
+                  <li>Build a weighted $100 ETF.</li>
+                </ul>
+              </Card>
 
-function relTime(ts: string): string {
-  try {
-    const d = Date.now() - new Date(ts).getTime();
-    const m = Math.floor(d / 60000);
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-  } catch { return ""; }
-}
-
-function IdleView({
-  input, setInput, onKey, onSubmit, inputRef, sessions, onRestoreSession,
-}: {
-  input: string;
-  setInput: (v: string) => void;
-  onKey: (e: React.KeyboardEvent) => void;
-  onSubmit: () => void;
-  inputRef: React.RefObject<HTMLTextAreaElement>;
-  sessions: TradingSession[];
-  onRestoreSession: (s: TradingSession) => void;
-}) {
-  return (
-    <div>
-      <div style={{
-        fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-        letterSpacing: "0.2em", textTransform: "uppercase",
-        color: "#3a3835", marginBottom: "20px",
-        display: "flex", alignItems: "center", gap: "8px",
-      }}>
-        <span style={{ color: "#9b7fe8" }}>◈</span> Trading Companion
-      </div>
-
-      <h1 style={{
-        fontSize: "30px", fontWeight: 600, color: "#ede9e3",
-        lineHeight: 1.25, marginBottom: "12px",
-      }}>
-        What&apos;s your belief<br />about the future?
-      </h1>
-
-      <p style={{
-        fontSize: "14px", color: "#4a4845", lineHeight: 1.65,
-        marginBottom: "32px", maxWidth: "520px",
-      }}>
-        Describe a view on geopolitics, markets, technology, or anything else.
-        The pipeline interviews you, maps second-order effects across 16 domains,
-        and surfaces the best Kalshi prediction markets to express it.
-      </p>
-
-      <div style={{
-        background: "rgba(14,14,14,0.95)",
-        border: "1px solid #282828", borderRadius: "14px",
-        padding: "18px 20px",
-        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-        boxShadow: "0 0 0 1px rgba(255,255,255,0.02), 0 8px 32px rgba(0,0,0,0.5)",
-      }}>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={onKey}
-          placeholder="e.g. I think the US-China trade war will escalate significantly this year, pushing inflation back up and delaying Fed cuts…"
-          rows={4}
-          style={{
-            width: "100%", background: "transparent", border: "none",
-            fontSize: "14px", color: "#ede9e3",
-            fontFamily: "var(--font-jakarta), system-ui, sans-serif",
-            outline: "none", resize: "none", lineHeight: 1.65,
-          }}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px" }}>
-          <span style={{
-            fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-            color: "#2a2826", letterSpacing: "0.1em",
-          }}>
-            ↵ enter to submit
-          </span>
-          <button
-            onClick={onSubmit}
-            disabled={!input.trim()}
-            style={{
-              background: input.trim() ? "#9b7fe8" : "#181818",
-              color: "#fff", border: "none", borderRadius: "8px",
-              padding: "9px 22px", fontSize: "11px",
-              fontFamily: "var(--font-mono), monospace",
-              fontWeight: 600, letterSpacing: "0.06em",
-              transition: "background 0.15s",
-              opacity: input.trim() ? 1 : 0.35,
-              cursor: input.trim() ? "pointer" : "default",
-            }}
-            onMouseEnter={e => { if (input.trim()) e.currentTarget.style.background = "#7b5fc8"; }}
-            onMouseLeave={e => { if (input.trim()) e.currentTarget.style.background = "#9b7fe8"; }}
-          >
-            Find Markets →
-          </button>
-        </div>
-      </div>
-
-      {/* Previous sessions */}
-      {sessions.length > 0 && (
-        <div style={{ marginTop: "40px" }}>
-          <SectionLabel label="Previous Sessions" />
-          <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
-            {sessions.map((s, i) => {
-              const recs = (() => { try { return JSON.parse(s.recommendations_json).length; } catch { return 0; } })();
-              const drivers = (() => { try { return JSON.parse(s.key_drivers_json) as string[]; } catch { return [] as string[]; } })();
-              return (
-                <motion.button
-                  key={s.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: i * 0.04 }}
-                  onClick={() => onRestoreSession(s)}
-                  style={{
-                    width: "100%", textAlign: "left",
-                    background: "rgba(14,14,14,0.95)",
-                    border: "1px solid #222", borderRadius: "11px",
-                    padding: "14px 16px",
-                    transition: "border-color 0.15s, background 0.15s",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = "rgba(155,127,232,0.3)";
-                    e.currentTarget.style.background = "rgba(18,18,18,0.98)";
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = "#222";
-                    e.currentTarget.style.background = "rgba(14,14,14,0.95)";
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: "13px", fontWeight: 600, color: "#ede9e3",
-                        lineHeight: 1.4, marginBottom: "6px",
-                        overflow: "hidden", display: "-webkit-box",
-                        WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
-                      }}>
-                        {s.core_belief}
-                      </div>
-                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                        {drivers.slice(0, 3).map((d, j) => (
-                          <span key={j} style={{
-                            fontSize: "10px", color: "#4a4845",
-                            background: "rgba(255,255,255,0.03)",
-                            border: "1px solid #1e1e1e", borderRadius: "4px",
-                            padding: "2px 7px",
-                          }}>{d}</span>
-                        ))}
-                      </div>
-                    </div>
-                    <div style={{ flexShrink: 0, textAlign: "right" }}>
-                      <div style={{
-                        fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                        color: "#e36438", marginBottom: "4px",
-                      }}>
-                        {recs} market{recs !== 1 ? "s" : ""}
-                      </div>
-                      <div style={{
-                        fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                        color: "#2a2826",
-                      }}>
-                        {relTime(s.created_at)}
-                      </div>
-                    </div>
-                  </div>
-                </motion.button>
-              );
-            })}
+              <Card>
+                <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+                  Saved ETFs
+                </div>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {savedBaskets.slice(0, 8).map((saved) => (
+                    <Link
+                      key={saved.id}
+                      href={`/trading?basket=${saved.id}`}
+                      style={{
+                        display: "block",
+                        textDecoration: "none",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: 14,
+                        padding: 14,
+                        background: "rgba(255,255,255,0.02)",
+                      }}
+                    >
+                      <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 6 }}>{saved.title}</div>
+                      <div style={{ color: "#938b83", fontSize: 13, lineHeight: 1.5 }}>{saved.summary}</div>
+                    </Link>
+                  ))}
+                  {!savedBaskets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No saved baskets yet.</div>}
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
-
-function ChatThread({ messages, loading }: { messages: ChatMsg[]; loading: boolean }) {
-  if (messages.length === 0 && !loading) return null;
-  return (
-    <div style={{ marginBottom: "28px" }}>
-      <SectionLabel label="Belief Interview" dot="purple" />
-      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-        {messages.map((msg, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {msg.role === "user" ? (
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <div style={{
-                  maxWidth: "76%",
-                  background: "rgba(227,100,56,0.07)",
-                  border: "1px solid rgba(227,100,56,0.16)",
-                  borderRadius: "12px 12px 3px 12px",
-                  padding: "11px 15px",
-                  fontSize: "14px", color: "#ede9e3", lineHeight: 1.6,
-                }}>
-                  {msg.content}
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "7px", maxWidth: "84%" }}>
-                <div style={{
-                  background: "rgba(18,18,18,0.95)",
-                  border: "1px solid #252525",
-                  borderRadius: "12px 12px 12px 3px",
-                  padding: "12px 16px",
-                  fontSize: "14px", color: "#c5c0ba", lineHeight: 1.65,
-                }}>
-                  {msg.content}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        ))}
-        {loading && (
-          <div style={{
-            fontFamily: "var(--font-mono), monospace", fontSize: "11px",
-            color: "#3a3835", display: "flex", alignItems: "center", gap: "8px",
-          }}>
-            <span className="blink" style={{ color: "#9b7fe8", fontSize: "7px" }}>●</span>
-            thinking…
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
-function ReplyBar({
-  input, setInput, onKey, onSubmit, disabled,
+function IdleComposer({
+  mode, setMode, input, setInput, stepLabel, onSubmit,
 }: {
+  mode: Mode;
+  setMode: (mode: Mode) => void;
   input: string;
-  setInput: (v: string) => void;
-  onKey: (e: React.KeyboardEvent) => void;
+  setInput: (value: string) => void;
+  stepLabel: string;
   onSubmit: () => void;
-  disabled: boolean;
 }) {
   return (
-    <div style={{
-      background: "rgba(14,14,14,0.95)",
-      border: "1px solid #282828", borderRadius: "12px",
-      padding: "6px 6px 6px 16px",
-      display: "flex", gap: "8px", alignItems: "center",
-      marginBottom: "32px",
-      backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-    }}>
-      <input
-        value={input}
-        onChange={e => setInput(e.target.value)}
-        onKeyDown={onKey}
-        placeholder="Your reply…"
-        disabled={disabled}
-        autoFocus
-        style={{
-          flex: 1, background: "transparent", border: "none",
-          fontSize: "13px", color: "#ede9e3",
-          fontFamily: "var(--font-jakarta), system-ui, sans-serif",
-          outline: "none", opacity: disabled ? 0.5 : 1,
-        }}
-      />
-      <button
-        onClick={onSubmit}
-        disabled={disabled || !input.trim()}
-        style={{
-          background: disabled || !input.trim() ? "#181818" : "#9b7fe8",
-          color: "#fff", border: "none", borderRadius: "8px",
-          padding: "8px 18px", fontSize: "11px",
-          fontFamily: "var(--font-mono), monospace",
-          fontWeight: 600, letterSpacing: "0.06em",
-          transition: "background 0.15s",
-          opacity: disabled || !input.trim() ? 0.4 : 1,
-          cursor: disabled || !input.trim() ? "default" : "pointer",
-        }}
-        onMouseEnter={e => { if (!disabled && input.trim()) e.currentTarget.style.background = "#7b5fc8"; }}
-        onMouseLeave={e => { if (!disabled && input.trim()) e.currentTarget.style.background = "#9b7fe8"; }}
-      >
-        {disabled ? "…" : "Reply →"}
-      </button>
-    </div>
-  );
-}
-
-function BeliefCard({ summary }: { summary: BeliefSummary }) {
-  return (
-    <div style={{ marginBottom: "28px" }}>
-      <SectionLabel label="Your Belief" dot="purple" />
-      <div style={{
-        background: "rgba(18,18,18,0.98)",
-        border: "1px solid rgba(155,127,232,0.18)",
-        borderRadius: "14px", padding: "22px 24px",
-        position: "relative", overflow: "hidden",
-      }}>
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: "1px",
-          background: "linear-gradient(90deg, transparent, rgba(155,127,232,0.5) 50%, transparent)",
-        }} />
-        <p style={{
-          fontSize: "16px", fontWeight: 600, color: "#ede9e3",
-          lineHeight: 1.5, marginBottom: "20px",
-          fontStyle: "italic",
-        }}>
-          &ldquo;{summary.core_belief}&rdquo;
+    <div style={{ display: "grid", gap: 18 }}>
+      <div>
+        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
+          Prediction Market ETFs
+        </div>
+        <h1 style={{ color: "#ede9e3", fontSize: "clamp(34px, 5vw, 58px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 12px" }}>
+          Turn a future theme into a weighted basket of prediction markets.
+        </h1>
+        <p style={{ color: "#948c84", fontSize: 18, lineHeight: 1.6, margin: 0, maxWidth: 700 }}>
+          Describe a belief about the future. Prism will clarify it, map the implications, find tradable contracts, and build a shareable $100 thematic ETF.
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          <MetaField label="Time Horizon" value={summary.time_horizon} />
-          <MetaField label="Scope" value={summary.scope} />
-          <div style={{ gridColumn: "1 / -1" }}>
-            <div style={{
-              fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-              color: "#3a3835", letterSpacing: "0.12em", textTransform: "uppercase",
-              marginBottom: "7px",
-            }}>Key Drivers</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-              {summary.key_drivers.slice(0, 5).map((d, i) => (
-                <span key={i} style={{
-                  fontSize: "11px", background: "rgba(255,255,255,0.04)",
-                  border: "1px solid #252525", borderRadius: "5px",
-                  padding: "3px 8px", color: "#9b9790",
-                }}>{d}</span>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
-  );
-}
-
-function MetaField({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div>
-      <div style={{
-        fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-        color: "#3a3835", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "5px",
-      }}>
-        {label}
-      </div>
-      <div style={{ fontSize: "13px", color: color ?? "#9b9790", lineHeight: 1.4 }}>{value}</div>
-    </div>
-  );
-}
-
-function DomainGrid({ analysis }: { analysis: BeliefAnalysis }) {
-  return (
-    <div style={{ marginBottom: "8px" }}>
-      <SectionLabel label="Domain Impact Map" dot="purple" />
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(195px, 1fr))",
-        gap: "5px",
-      }}>
-        {analysis.affected_domains.map((d: DomainAnalysis, i: number) => {
-          const hi = d.relevance === "high";
-          const med = d.relevance === "medium";
-          return (
-            <motion.div
-              key={d.domain}
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.28, delay: i * 0.025 }}
+      <Card>
+        <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+          {(["instant", "thinking"] as Mode[]).map((value) => (
+            <button
+              key={value}
+              onClick={() => setMode(value)}
               style={{
-                background: hi ? "rgba(22,10,5,0.97)" : "rgba(13,13,13,0.97)",
-                border: hi
-                  ? "1px solid rgba(227,100,56,0.28)"
-                  : med
-                  ? "1px solid rgba(227,100,56,0.09)"
-                  : "1px solid #191919",
-                borderRadius: "9px", padding: "11px 13px",
-                opacity: d.relevance === "low" ? 0.38 : 1,
+                ...ghostButtonStyle,
+                borderColor: mode === value ? "rgba(227,100,56,0.6)" : "rgba(255,255,255,0.08)",
+                color: mode === value ? "#ede9e3" : "#8d857d",
+                background: mode === value ? "rgba(227,100,56,0.12)" : "transparent",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: hi || med ? "7px" : 0 }}>
-                <span style={{
-                  width: "5px", height: "5px", borderRadius: "50%", flexShrink: 0,
-                  background: hi ? "#e36438" : med ? "#6b3822" : "#252320",
-                }} />
-                <div style={{
-                  fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                  fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em",
-                  color: hi ? "#e36438" : med ? "#6b4830" : "#2a2826",
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                  {d.domain.split(" (")[0]}
-                </div>
-              </div>
-              {(hi || med) && (
-                <div style={{
-                  fontSize: "11px", color: "#4a4845", lineHeight: 1.45,
-                  overflow: "hidden", display: "-webkit-box",
-                  WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const,
-                }}>
-                  {d.mechanism}
-                </div>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function SurpriseCallout({ text }: { text: string }) {
-  return (
-    <div style={{
-      margin: "16px 0 28px",
-      padding: "15px 20px",
-      background: "rgba(155,127,232,0.04)",
-      border: "1px solid rgba(155,127,232,0.14)",
-      borderRadius: "11px",
-      display: "flex", gap: "14px", alignItems: "flex-start",
-    }}>
-      <span style={{
-        fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-        fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em",
-        color: "#9b7fe8", flexShrink: 0, paddingTop: "2px",
-        whiteSpace: "nowrap",
-      }}>
-        Non-obvious bet
-      </span>
-      <div style={{ fontSize: "13px", color: "#9b9790", lineHeight: 1.6 }}>{text}</div>
-    </div>
-  );
-}
-
-function RecCard({
-  rec, forecast, onExplore, onViewForecast, onRunForecast,
-}: {
-  rec: TradeRecommendation;
-  forecast: SavedForecast | null;
-  onExplore: () => void;
-  onViewForecast: (id: number) => void;
-  onRunForecast: () => void;
-}) {
-  const isYes = rec.direction === "YES";
-  const dirColor = isYes ? "#4ade80" : "#f87171";
-
-  const edge    = forecast ? forecast.forecaster_prob - forecast.kalshi_price : null;
-  const edgePos = edge !== null && edge > 0.03;
-  const edgeNeg = edge !== null && edge < -0.03;
-  const edgeColor = edgePos ? "#5b9cf6" : edgeNeg ? "#f87171" : "#3a3835";
-
-  return (
-    <div
-      style={{
-        background: "rgba(18,18,18,0.98)",
-        border: "1px solid #272727", borderRadius: "14px",
-        overflow: "hidden", position: "relative",
-        transition: "border-color 0.2s, box-shadow 0.2s",
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.borderColor = "rgba(155,127,232,0.35)";
-        e.currentTarget.style.boxShadow = "0 0 0 1px rgba(155,127,232,0.07), 0 12px 40px rgba(0,0,0,0.7)";
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.borderColor = "#272727";
-        e.currentTarget.style.boxShadow = "none";
-      }}
-    >
-      {/* Score bar */}
-      <div style={{
-        position: "absolute", top: 0, left: 0,
-        width: `${rec.score * 10}%`, height: "2px",
-        background: "linear-gradient(90deg, #9b7fe8, rgba(155,127,232,0.2))",
-      }} />
-
-      {/* Main body */}
-      <div style={{ padding: "20px 22px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-
-            {/* Meta: category + event + series */}
-            <div style={{ marginBottom: "10px" }}>
-              {rec.category && (
-                <div style={{
-                  fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                  fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em",
-                  color: "#e36438", marginBottom: "4px",
-                }}>
-                  {rec.category}
-                </div>
-              )}
-              {rec.event_title && (
-                <div style={{ fontSize: "12px", color: "#4a4845", lineHeight: 1.4, marginBottom: "2px" }}>
-                  {rec.event_title}
-                </div>
-              )}
-              {rec.series_ticker && (
-                <div style={{
-                  fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                  color: "#2a2826", letterSpacing: "0.06em",
-                }}>
-                  {rec.series_ticker}
-                </div>
-              )}
-            </div>
-
-            {/* Direction badge + score */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
-              <span style={{
-                fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em",
-                color: dirColor,
-                background: isYes ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)",
-                border: `1px solid ${dirColor}30`,
-                borderRadius: "4px", padding: "3px 9px",
-              }}>
-                BET {rec.direction}
-              </span>
-              <span style={{
-                fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-                color: "#3a3835", letterSpacing: "0.06em",
-              }}>
-                {rec.score}/10
-              </span>
-            </div>
-
-            {/* Question */}
-            <div style={{
-              fontSize: "14px", fontWeight: 600, color: "#ede9e3",
-              lineHeight: 1.5, marginBottom: "10px",
-            }}>
-              {rec.question}
-            </div>
-
-            <div style={{ fontSize: "12px", color: "#6b6865", lineHeight: 1.55, marginBottom: "12px" }}>
-              {rec.rationale}
-            </div>
-
-            <div style={{ fontSize: "11px", color: "#3a3835", lineHeight: 1.5, marginBottom: "14px", fontStyle: "italic" }}>
-              {rec.relevance}
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
-              <span style={{ fontFamily: "var(--font-mono), monospace", fontSize: "10px", color: "#3a3835" }}>
-                closes {rec.close_date}
-              </span>
-              <button
-                onClick={onExplore}
-                style={{
-                  background: "transparent", border: "none", padding: 0,
-                  fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-                  color: "#9b7fe8", letterSpacing: "0.04em", cursor: "pointer",
-                  transition: "color 0.15s",
-                }}
-                onMouseEnter={e => e.currentTarget.style.color = "#b89ff0"}
-                onMouseLeave={e => e.currentTarget.style.color = "#9b7fe8"}
-              >
-                explore market →
-              </button>
-            </div>
+              {value === "instant" ? "Instant" : "Thinking"}
+            </button>
+          ))}
+        </div>
+        <div style={{ color: "#9e968f", fontSize: 13, marginBottom: 12 }}>
+          {mode === "instant" ? "Fastest path to a tradable basket." : "More clarification before Prism allocates the basket."} {stepLabel}.
+        </div>
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          rows={6}
+          placeholder="Example: I think renewed US-China export controls will reshape the AI hardware supply chain over the next 12 months."
+          style={textareaStyle}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+          <div style={{ color: "#7f776f", fontSize: 13 }}>
+            Output: a weighted basket with direct exposure, indirect implications, and optional hedge positions.
           </div>
+          <button onClick={onSubmit} style={primaryButtonStyle}>Build basket</button>
+        </div>
+      </Card>
+    </div>
+  );
+}
 
-          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
-            <span style={{
-              fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-              fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em",
-              color: "#3a3835",
-            }}>
-              Kalshi Price
-            </span>
-            <ProbabilityArc probability={rec.price} size={72} />
+function ChatThread({ messages }: { messages: ChatMsg[] }) {
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {messages.map((message, index) => (
+        <div
+          key={index}
+          style={{
+            padding: "14px 16px",
+            borderRadius: 16,
+            background: message.role === "user" ? "rgba(227,100,56,0.12)" : "rgba(255,255,255,0.03)",
+            border: message.role === "user" ? "1px solid rgba(227,100,56,0.26)" : "1px solid rgba(255,255,255,0.06)",
+            color: "#ede9e3",
+          }}
+        >
+          <div style={{ color: message.role === "user" ? "#e36438" : "#8b837c", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+            {message.role === "user" ? "You" : "Prism"}
+          </div>
+          <div style={{ lineHeight: 1.65 }}>{message.content}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BeliefBrief({ summary }: { summary: BeliefSummary }) {
+  return (
+    <Card>
+      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+        Basket Thesis
+      </div>
+      <div style={{ color: "#ede9e3", fontSize: 24, fontWeight: 600, letterSpacing: "-0.03em", marginBottom: 8 }}>
+        {summary.core_belief}
+      </div>
+      <div style={{ color: "#9c948b", fontSize: 14, lineHeight: 1.7 }}>
+        <strong style={{ color: "#d8d0c8" }}>Resolution target:</strong> {summary.resolution_target || "Not specified"}<br />
+        <strong style={{ color: "#d8d0c8" }}>Time horizon:</strong> {summary.timeframe_start || "now"} → {summary.timeframe_end || summary.time_horizon}<br />
+        <strong style={{ color: "#d8d0c8" }}>Mechanism:</strong> {summary.mechanism || "Not specified"}
+      </div>
+    </Card>
+  );
+}
+
+function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis; screenedCount: number }) {
+  const topDomains = analysis.affected_domains.filter((d) => d.relevance !== "low").slice(0, 6);
+  return (
+    <Card>
+      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+        Exposure Map
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        {topDomains.map((domain) => (
+          <div key={domain.domain} style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 14, background: "rgba(255,255,255,0.02)" }}>
+            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 8 }}>{domain.domain}</div>
+            <div style={{ color: "#928981", fontSize: 13, lineHeight: 1.55 }}>{domain.mechanism}</div>
+          </div>
+        ))}
+      </div>
+      {!!screenedCount && (
+        <div style={{ color: "#938b83", fontSize: 13, marginTop: 14 }}>
+          {screenedCount} relevant events screened from the Kalshi catalog.
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: number | null }) {
+  return (
+    <Card>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}>
+        <div>
+          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+            Prediction Market ETF
+          </div>
+          <div style={{ color: "#ede9e3", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
+            {basket.basket_title}
+          </div>
+          <div style={{ color: "#958d86", fontSize: 15, lineHeight: 1.6, maxWidth: 700 }}>
+            {basket.basket_summary}
           </div>
         </div>
-      </div>
-
-      {/* Prism Forecast strip */}
-      <div style={{
-        borderTop: "1px solid #222",
-        padding: "12px 22px",
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
-        background: forecast ? "rgba(91,156,246,0.05)" : "rgba(155,127,232,0.03)",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-          <span style={{
-            fontFamily: "var(--font-mono), monospace", fontSize: "9px",
-            fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em",
-            color: forecast ? "#5b9cf6" : "#9b7fe8", flexShrink: 0,
-          }}>
-            Prism Forecast
-          </span>
-
-          {forecast ? (
-            <span style={{
-              fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-              color: "#6b6865", letterSpacing: "0.04em",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              <span style={{ color: "#9b9790" }}>{(forecast.forecaster_prob * 100).toFixed(1)}%</span>
-              <span style={{ color: "#4a4845" }}> · mkt {(forecast.kalshi_price * 100).toFixed(1)}%</span>
-              <span style={{ color: edgeColor, fontWeight: 600 }}>
-                {" "}· {edgePos ? "+" : ""}{((edge ?? 0) * 100).toFixed(1)}pp
-              </span>
-            </span>
-          ) : (
-            <span style={{ fontSize: "11px", color: "#9b9790" }}>
-              Ask Prism to forecast the probability of this event
-            </span>
+        <div style={{ minWidth: 150, textAlign: "right" }}>
+          <div style={{ color: "#8b837b", fontSize: 12, marginBottom: 4 }}>Total notional</div>
+          <div style={{ color: "#ede9e3", fontSize: 34, fontWeight: 600 }}>${basket.total_notional.toFixed(0)}</div>
+          {basketId && (
+            <Link href={`/baskets/${basketId}`} style={{ color: "#e36438", fontSize: 13, textDecoration: "none" }}>
+              Open share page
+            </Link>
           )}
         </div>
-
-        <button
-          onClick={forecast ? () => onViewForecast(forecast.id) : onRunForecast}
-          style={{
-            background: "transparent", border: "none", padding: 0, flexShrink: 0,
-            fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-            color: forecast ? "#5b9cf6" : "#9b7fe8",
-            letterSpacing: "0.04em", cursor: "pointer", transition: "color 0.15s",
-            whiteSpace: "nowrap",
-          }}
-          onMouseEnter={e => e.currentTarget.style.color = forecast ? "#7fb3ff" : "#b89ff0"}
-          onMouseLeave={e => e.currentTarget.style.color = forecast ? "#5b9cf6" : "#9b7fe8"}
-        >
-          {forecast ? "view report →" : "forecast →"}
-        </button>
       </div>
-    </div>
+
+      <div style={{ display: "grid", gap: 10 }}>
+        {basket.holdings.map((holding) => (
+          <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 16, background: "rgba(255,255,255,0.02)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 120px", gap: 16, alignItems: "start" }}>
+              <div>
+                <div style={{ color: "#ede9e3", fontSize: 17, fontWeight: 600, marginBottom: 6 }}>{holding.question}</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                  <Tag>{holding.side}</Tag>
+                  <Tag>{holding.role}</Tag>
+                  <Tag>{Math.round(holding.market_price * 100)}% market odds</Tag>
+                </div>
+                <div style={{ color: "#9b938c", fontSize: 14, lineHeight: 1.6, marginBottom: 6 }}>{holding.rationale}</div>
+                <div style={{ color: "#7f776f", fontSize: 13, lineHeight: 1.5 }}>
+                  Risk: {holding.main_risk}
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ color: "#8f877f", fontSize: 12, marginBottom: 6 }}>Weight</div>
+                <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600 }}>${holding.weight_dollars.toFixed(0)}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 18, color: "#8f877f", fontSize: 14, lineHeight: 1.6 }}>
+        {basket.construction_notes}
+      </div>
+    </Card>
   );
 }
 
-function SectionLabel({ label, dot }: { label: string; dot?: "orange" | "blue" | "purple" }) {
-  const dotColor = dot === "orange" ? "#e36438" : dot === "purple" ? "#9b7fe8" : "#5b9cf6";
+function Card({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      fontFamily: "var(--font-mono), monospace", fontSize: "10px", fontWeight: 700,
-      textTransform: "uppercase", letterSpacing: "0.18em", color: "#9b9790",
-      marginBottom: "14px", paddingBottom: "10px", borderBottom: "1px solid #1e1e1e",
-      display: "flex", alignItems: "center", gap: "10px",
+      background: "linear-gradient(180deg, rgba(18,18,18,0.97), rgba(12,12,12,0.98))",
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 22,
+      padding: 22,
+      boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
     }}>
-      {dot && (
-        <span
-          className="blink"
-          style={{ fontSize: "7px", color: dotColor, animationDelay: dot === "blue" ? "0.7s" : "0s" }}
-        >●</span>
-      )}
-      {label}
+      {children}
     </div>
   );
 }
+
+function Tag({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      padding: "5px 9px",
+      borderRadius: 999,
+      border: "1px solid rgba(255,255,255,0.08)",
+      color: "#c9c0b7",
+      fontSize: 12,
+      background: "rgba(255,255,255,0.03)",
+    }}>
+      {children}
+    </span>
+  );
+}
+
+const textareaStyle: React.CSSProperties = {
+  width: "100%",
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: 16,
+  padding: "16px 18px",
+  color: "#ede9e3",
+  fontSize: 16,
+  lineHeight: 1.6,
+  resize: "vertical",
+  minHeight: 140,
+  outline: "none",
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  background: "#e36438",
+  color: "#fff",
+  border: "none",
+  borderRadius: 12,
+  padding: "12px 18px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const ghostButtonStyle: React.CSSProperties = {
+  background: "transparent",
+  color: "#8d857d",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 12,
+  padding: "10px 14px",
+  cursor: "pointer",
+};
