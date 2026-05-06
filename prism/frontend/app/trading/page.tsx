@@ -414,65 +414,71 @@ function IdleComposer({
           Describe a belief about the future. Prism will clarify it, map the implications, find tradable contracts, and build a shareable $100 thematic ETF.
         </p>
       </div>
-      <Card>
-        <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
-          {([
-            { key: "ai", label: "AI build" },
-            { key: "manual", label: "Manual build" },
-          ] as const).map((option) => (
-            <button
-              key={option.key}
-              onClick={() => setBuildPath(option.key)}
-              style={{
-                ...ghostButtonStyle,
-                borderColor: buildPath === option.key ? "rgba(227,100,56,0.6)" : "rgba(255,255,255,0.08)",
-                color: buildPath === option.key ? "#ede9e3" : "#8d857d",
-                background: buildPath === option.key ? "rgba(227,100,56,0.12)" : "transparent",
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        {buildPath === "ai" ? (
-          <>
-        <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
-          {(["instant", "thinking"] as Mode[]).map((value) => (
-            <button
-              key={value}
-              onClick={() => setMode(value)}
-              style={{
-                ...ghostButtonStyle,
-                borderColor: mode === value ? "rgba(227,100,56,0.6)" : "rgba(255,255,255,0.08)",
-                color: mode === value ? "#ede9e3" : "#8d857d",
-                background: mode === value ? "rgba(227,100,56,0.12)" : "transparent",
-              }}
-            >
-              {value === "instant" ? "Instant" : "Thinking"}
-            </button>
-          ))}
-        </div>
-        <div style={{ color: "#9e968f", fontSize: 13, marginBottom: 12 }}>
-          {mode === "instant" ? "Fastest path to a tradable basket." : "More clarification before Prism allocates the basket."} {stepLabel}.
-        </div>
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          rows={6}
-          placeholder="Example: I think renewed US-China export controls will reshape the AI hardware supply chain over the next 12 months."
-          style={textareaStyle}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
-          <div style={{ color: "#7f776f", fontSize: 13 }}>
-            Output: a weighted basket with direct exposure, indirect implications, and optional hedge positions.
+      <div style={{ display: "flex", gap: 10 }}>
+        {([
+          { key: "ai", label: "AI Build", description: "Explain a future belief and let Prism map it into a basket." },
+          { key: "manual", label: "Manual Build", description: "Browse markets yourself and assemble a basket contract by contract." },
+        ] as const).map((option) => (
+          <button
+            key={option.key}
+            onClick={() => setBuildPath(option.key)}
+            style={{
+              flex: 1,
+              textAlign: "left",
+              background: buildPath === option.key ? "linear-gradient(180deg, rgba(227,100,56,0.18), rgba(227,100,56,0.08))" : "rgba(255,255,255,0.02)",
+              border: buildPath === option.key ? "1px solid rgba(227,100,56,0.45)" : "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 18,
+              padding: 18,
+              color: "#ede9e3",
+              cursor: "pointer",
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 6 }}>{option.label}</div>
+            <div style={{ color: buildPath === option.key ? "#d8cdc4" : "#8d857d", fontSize: 13, lineHeight: 1.55 }}>{option.description}</div>
+          </button>
+        ))}
+      </div>
+
+      {buildPath === "ai" ? (
+        <Card>
+          <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+            {(["instant", "thinking"] as Mode[]).map((value) => (
+              <button
+                key={value}
+                onClick={() => setMode(value)}
+                style={{
+                  ...ghostButtonStyle,
+                  borderColor: mode === value ? "rgba(227,100,56,0.6)" : "rgba(255,255,255,0.08)",
+                  color: mode === value ? "#ede9e3" : "#8d857d",
+                  background: mode === value ? "rgba(227,100,56,0.12)" : "transparent",
+                }}
+              >
+                {value === "instant" ? "Instant" : "Thinking"}
+              </button>
+            ))}
           </div>
-          <button onClick={onSubmit} style={primaryButtonStyle}>Build basket</button>
-        </div>
-          </>
-        ) : (
-          <div style={{ display: "grid", gap: 16 }}>
-            <div style={{ color: "#9e968f", fontSize: 13 }}>
-              Search the Kalshi catalog, choose contracts, set side and weights, and save your own $100 basket.
+          <div style={{ color: "#9e968f", fontSize: 13, marginBottom: 12 }}>
+            {mode === "instant" ? "Fastest path to a tradable basket." : "More clarification before Prism allocates the basket."} {stepLabel}.
+          </div>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={6}
+            placeholder="Example: I think renewed US-China export controls will reshape the AI hardware supply chain over the next 12 months."
+            style={textareaStyle}
+          />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+            <div style={{ color: "#7f776f", fontSize: 13 }}>
+              Output: a weighted basket with direct exposure, indirect implications, and optional hedge positions.
+            </div>
+            <button onClick={onSubmit} style={primaryButtonStyle}>Build basket</button>
+          </div>
+        </Card>
+      ) : (
+        <div style={{ display: "grid", gap: 16 }}>
+          <Card>
+            <div style={{ color: "#9e968f", fontSize: 13, marginBottom: 16 }}>
+              Search the Kalshi catalog, choose contracts, and save your own $100 basket.
             </div>
             <input
               value={manualTitle}
@@ -493,95 +499,144 @@ function IdleComposer({
               placeholder="Timeframe (optional)"
               style={inputStyle}
             />
+          </Card>
 
+          <Card>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10 }}>
               <input
                 value={eventQuery}
                 onChange={(e) => setEventQuery(e.target.value)}
-                placeholder="Search events"
+                placeholder="Search events or themes"
                 style={inputStyle}
               />
               <button onClick={onEventSearch} style={primaryButtonStyle}>Search</button>
             </div>
+          </Card>
 
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 14 }}>
-              <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, minHeight: 260 }}>
-                <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 10 }}>Events</div>
-                <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 14 }}>
+            <Card>
+              <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 12 }}>Events</div>
+              <div style={{ display: "grid", gap: 10 }}>
                   {eventResults.slice(0, 10).map((event) => (
                     <button
                       key={event.event_ticker}
                       onClick={() => onPickEvent(event)}
                       style={{
                         textAlign: "left",
-                        background: selectedEvent?.event_ticker === event.event_ticker ? "rgba(227,100,56,0.12)" : "rgba(255,255,255,0.02)",
+                        background: selectedEvent?.event_ticker === event.event_ticker ? "linear-gradient(180deg, rgba(227,100,56,0.16), rgba(227,100,56,0.08))" : "rgba(255,255,255,0.02)",
                         border: "1px solid rgba(255,255,255,0.08)",
-                        borderRadius: 12,
-                        padding: 12,
+                        borderRadius: 16,
+                        padding: 14,
                         color: "#ede9e3",
                         cursor: "pointer",
                       }}
                     >
-                      <div style={{ fontWeight: 600, marginBottom: 4 }}>{event.title}</div>
-                      <div style={{ fontSize: 12, color: "#8f877e" }}>{event.category}</div>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>{event.title}</div>
+                      <div style={{ fontSize: 12, color: "#8f877e", marginBottom: 6 }}>{event.category}</div>
+                      {event.sub_title && <div style={{ fontSize: 12, color: "#6f6861", lineHeight: 1.45 }}>{event.sub_title}</div>}
                     </button>
                   ))}
-                </div>
               </div>
+            </Card>
 
-              <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, minHeight: 260 }}>
-                <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 10 }}>Contracts</div>
-                <div style={{ display: "grid", gap: 8 }}>
+            <Card>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ color: "#ede9e3", fontWeight: 600 }}>Markets</div>
+                {selectedEvent && <div style={{ color: "#7f776f", fontSize: 12 }}>{selectedEvent.title}</div>}
+              </div>
+              <div style={{ display: "grid", gap: 10 }}>
                   {eventMarkets.slice(0, 16).map((market) => (
-                    <div key={market.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.02)" }}>
-                      <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>{market.question}</div>
-                      <div style={{ color: "#8f877e", fontSize: 12, marginBottom: 8 }}>{Math.round(market.mid_price * 100)}% market odds</div>
-                      <button onClick={() => onAddHolding(market)} style={ghostButtonStyle}>Add to basket</button>
-                    </div>
+                    <ManualMarketCard key={market.ticker} market={market} onAdd={() => onAddHolding(market)} />
                   ))}
                   {!eventMarkets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>Select an event to load contracts.</div>}
-                </div>
+              </div>
+            </Card>
+          </div>
+
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ color: "#ede9e3", fontWeight: 600 }}>Selected holdings</div>
+              <div style={{ color: "#8f877e", fontSize: 12 }}>
+                ${manualHoldings.reduce((sum, holding) => sum + (holding.weight_dollars || 0), 0).toFixed(0)} draft notional
               </div>
             </div>
-
-            <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14 }}>
-              <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 10 }}>Manual holdings</div>
-              <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ display: "grid", gap: 10 }}>
                 {manualHoldings.map((holding) => (
-                  <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.02)" }}>
-                    <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 10 }}>{holding.question}</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr)) auto", gap: 8, marginBottom: 8 }}>
-                      <select value={holding.side} onChange={(e) => onUpdateHolding(holding.ticker, { side: e.target.value as "YES" | "NO" })} style={inputStyle}>
-                        <option value="YES">YES</option>
-                        <option value="NO">NO</option>
-                      </select>
-                      <select value={holding.role} onChange={(e) => onUpdateHolding(holding.ticker, { role: e.target.value as ManualBasketDraftHolding["role"] })} style={inputStyle}>
-                        <option value="direct">direct</option>
-                        <option value="mechanism">mechanism</option>
-                        <option value="indirect">indirect</option>
-                        <option value="hedge">hedge</option>
-                      </select>
-                      <input value={holding.weight_dollars} type="number" min={1} onChange={(e) => onUpdateHolding(holding.ticker, { weight_dollars: Number(e.target.value) })} style={inputStyle} />
-                      <input value={holding.market_price} disabled style={inputStyle} />
-                      <button onClick={() => onRemoveHolding(holding.ticker)} style={ghostButtonStyle}>Remove</button>
-                    </div>
-                    <input value={holding.rationale} onChange={(e) => onUpdateHolding(holding.ticker, { rationale: e.target.value })} placeholder="Why this belongs in the basket" style={{ ...inputStyle, marginBottom: 8 }} />
-                    <input value={holding.main_risk} onChange={(e) => onUpdateHolding(holding.ticker, { main_risk: e.target.value })} placeholder="Main risk" style={inputStyle} />
-                  </div>
+                  <ManualHoldingCard
+                    key={holding.ticker}
+                    holding={holding}
+                    onUpdate={(patch) => onUpdateHolding(holding.ticker, patch)}
+                    onRemove={() => onRemoveHolding(holding.ticker)}
+                  />
                 ))}
                 {!manualHoldings.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No holdings yet.</div>}
-              </div>
             </div>
+          </Card>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ color: "#7f776f", fontSize: 13 }}>
-                Weights will be normalized to a $100 basket when you save.
-              </div>
-              <button onClick={onSaveManual} style={primaryButtonStyle}>Save manual basket</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ color: "#7f776f", fontSize: 13 }}>
+              Weights will be normalized to a $100 basket when you save.
             </div>
+            <button onClick={onSaveManual} style={primaryButtonStyle}>Save manual basket</button>
           </div>
+        </div>
         )}
-      </Card>
+    </div>
+  );
+}
+
+function ManualMarketCard({ market, onAdd }: { market: KalshiMarket; onAdd: () => void }) {
+  return (
+    <div style={{
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 16,
+      padding: 14,
+      background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
+    }}>
+      <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 6, lineHeight: 1.45 }}>{market.question}</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+        <Tag>{Math.round(market.mid_price * 100)}% market odds</Tag>
+        <Tag>{market.close_date}</Tag>
+      </div>
+      <button onClick={onAdd} style={ghostButtonStyle}>Add to basket</button>
+    </div>
+  );
+}
+
+function ManualHoldingCard({
+  holding,
+  onUpdate,
+  onRemove,
+}: {
+  holding: ManualBasketDraftHolding;
+  onUpdate: (patch: Partial<ManualBasketDraftHolding>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div style={{
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 16,
+      padding: 14,
+      background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
+    }}>
+      <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 10, lineHeight: 1.45 }}>{holding.question}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr)) auto", gap: 8, marginBottom: 8 }}>
+        <select value={holding.side} onChange={(e) => onUpdate({ side: e.target.value as "YES" | "NO" })} style={inputStyle}>
+          <option value="YES">YES</option>
+          <option value="NO">NO</option>
+        </select>
+        <select value={holding.role} onChange={(e) => onUpdate({ role: e.target.value as ManualBasketDraftHolding["role"] })} style={inputStyle}>
+          <option value="direct">direct</option>
+          <option value="mechanism">mechanism</option>
+          <option value="indirect">indirect</option>
+          <option value="hedge">hedge</option>
+        </select>
+        <input value={holding.weight_dollars} type="number" min={1} onChange={(e) => onUpdate({ weight_dollars: Number(e.target.value) })} style={inputStyle} />
+        <input value={`${Math.round(holding.market_price * 100)}%`} disabled style={inputStyle} />
+        <button onClick={onRemove} style={ghostButtonStyle}>Remove</button>
+      </div>
+      <input value={holding.rationale} onChange={(e) => onUpdate({ rationale: e.target.value })} placeholder="Why this belongs in the basket" style={{ ...inputStyle, marginBottom: 8 }} />
+      <input value={holding.main_risk} onChange={(e) => onUpdate({ main_risk: e.target.value })} placeholder="Main risk" style={inputStyle} />
     </div>
   );
 }
