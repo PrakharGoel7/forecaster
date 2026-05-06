@@ -252,8 +252,8 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       <Header />
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, paddingTop: 56 }}>
-        <div style={{ maxWidth: 1040, margin: "0 auto", padding: "40px 24px 80px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 24 }}>
+        <div style={{ maxWidth: buildPath === "manual" ? 1440 : 1040, margin: "0 auto", padding: "40px 24px 80px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: buildPath === "manual" ? "minmax(0, 1fr) 380px" : "minmax(0, 1fr) 320px", gap: 24 }}>
             <div>
               {stage === "idle" && (
                 buildPath === "ai" ? (
@@ -276,19 +276,9 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     eventResults={eventResults}
                     selectedEvent={selectedEvent}
                     eventMarkets={eventMarkets}
-                    manualTitle={manualTitle}
-                    setManualTitle={setManualTitle}
-                    manualSummary={manualSummary}
-                    setManualSummary={setManualSummary}
-                    manualTimeframe={manualTimeframe}
-                    setManualTimeframe={setManualTimeframe}
-                    manualHoldings={manualHoldings}
                     onEventSearch={runEventSearch}
                     onPickEvent={pickEvent}
                     onAddHolding={addManualHolding}
-                    onUpdateHolding={updateManualHolding}
-                    onRemoveHolding={removeManualHolding}
-                    onSaveManual={saveManual}
                   />
                 )
               )}
@@ -350,57 +340,23 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
             </div>
 
             <div style={{ display: "grid", gap: 18, alignSelf: "start", position: "sticky", top: 84 }}>
-              <Card>
-                <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-                  How It Works
-                </div>
-                <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, marginBottom: 10 }}>
-                  {buildPath === "ai" ? "From belief to basket" : "From market picker to basket"}
-                </div>
-                <ul style={{ margin: 0, paddingLeft: 18, color: "#9c948c", lineHeight: 1.7, fontSize: 14 }}>
-                  {buildPath === "ai" ? (
-                    <>
-                      <li>Clarify the future theme.</li>
-                      <li>Map direct and indirect implications.</li>
-                      <li>Screen prediction markets.</li>
-                      <li>Build a weighted $100 ETF.</li>
-                    </>
-                  ) : (
-                    <>
-                      <li>Search the market catalog.</li>
-                      <li>Select the contracts you want.</li>
-                      <li>Choose sides, roles, and weights.</li>
-                      <li>Save a weighted $100 ETF.</li>
-                    </>
-                  )}
-                </ul>
-              </Card>
-
-              <Card>
-                <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-                  Saved ETFs
-                </div>
-                <div style={{ display: "grid", gap: 10 }}>
-                  {savedBaskets.slice(0, 8).map((saved) => (
-                    <Link
-                      key={saved.id}
-                      href={`${saved.mode === "manual" ? "/trading/manual" : "/trading"}?basket=${saved.id}`}
-                      style={{
-                        display: "block",
-                        textDecoration: "none",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        borderRadius: 14,
-                        padding: 14,
-                        background: "rgba(255,255,255,0.02)",
-                      }}
-                    >
-                      <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 6 }}>{saved.title}</div>
-                      <div style={{ color: "#938b83", fontSize: 13, lineHeight: 1.5 }}>{saved.summary}</div>
-                    </Link>
-                  ))}
-                  {!savedBaskets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No saved baskets yet.</div>}
-                </div>
-              </Card>
+              {buildPath === "manual" && stage === "idle" ? (
+                <ManualBasketSidebar
+                  manualTitle={manualTitle}
+                  setManualTitle={setManualTitle}
+                  manualSummary={manualSummary}
+                  setManualSummary={setManualSummary}
+                  manualTimeframe={manualTimeframe}
+                  setManualTimeframe={setManualTimeframe}
+                  manualHoldings={manualHoldings}
+                  onUpdateHolding={updateManualHolding}
+                  onRemoveHolding={removeManualHolding}
+                  onSaveManual={saveManual}
+                  loading={loading}
+                />
+              ) : (
+                <HowItWorksSidebar buildPath={buildPath} savedBaskets={savedBaskets} />
+              )}
             </div>
           </div>
         </div>
@@ -472,24 +428,13 @@ function ManualBuildComposer(props: {
   eventResults: KalshiEvent[];
   selectedEvent: KalshiEvent | null;
   eventMarkets: KalshiMarket[];
-  manualTitle: string;
-  setManualTitle: (value: string) => void;
-  manualSummary: string;
-  setManualSummary: (value: string) => void;
-  manualTimeframe: string;
-  setManualTimeframe: (value: string) => void;
-  manualHoldings: ManualBasketDraftHolding[];
   onEventSearch: () => void;
   onPickEvent: (event: KalshiEvent | null) => void;
   onAddHolding: (market: KalshiMarket) => void;
-  onUpdateHolding: (ticker: string, patch: Partial<ManualBasketDraftHolding>) => void;
-  onRemoveHolding: (ticker: string) => void;
-  onSaveManual: () => void;
 }) {
   const {
     eventQuery, setEventQuery, eventCategory, setEventCategory, oddsFilter, setOddsFilter, eventResults, selectedEvent, eventMarkets,
-    manualTitle, setManualTitle, manualSummary, setManualSummary, manualTimeframe, setManualTimeframe,
-    manualHoldings, onEventSearch, onPickEvent, onAddHolding, onUpdateHolding, onRemoveHolding, onSaveManual,
+    onEventSearch, onPickEvent, onAddHolding,
   } = props;
   const categoryOptions = Array.from(new Set(eventResults.map((event) => event.category).filter(Boolean))).sort();
   const filteredMarkets = eventMarkets.filter((market) => {
@@ -513,14 +458,6 @@ function ManualBuildComposer(props: {
           Search the Kalshi catalog, select contracts, set sides and weights, and save a shareable $100 ETF.
         </p>
       </div>
-      <Card>
-        <div style={{ color: "#9e968f", fontSize: 13, marginBottom: 16 }}>
-          Build your basket title and summary first, then add market holdings below.
-        </div>
-        <input value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} placeholder="Basket title" style={inputStyle} />
-        <textarea value={manualSummary} onChange={(e) => setManualSummary(e.target.value)} rows={3} placeholder="Basket summary" style={{ ...textareaStyle, minHeight: 100 }} />
-        <input value={manualTimeframe} onChange={(e) => setManualTimeframe(e.target.value)} placeholder="Timeframe (optional)" style={inputStyle} />
-      </Card>
 
       <Card>
         <div style={{ color: "#9e968f", fontSize: 13, marginBottom: 14 }}>
@@ -605,15 +542,54 @@ function ManualBuildComposer(props: {
         </div>
         {!filteredMarkets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No markets match the current search and filters.</div>}
       </Card>
+    </div>
+  );
+}
+
+function ManualBasketSidebar(props: {
+  manualTitle: string;
+  setManualTitle: (value: string) => void;
+  manualSummary: string;
+  setManualSummary: (value: string) => void;
+  manualTimeframe: string;
+  setManualTimeframe: (value: string) => void;
+  manualHoldings: ManualBasketDraftHolding[];
+  onUpdateHolding: (ticker: string, patch: Partial<ManualBasketDraftHolding>) => void;
+  onRemoveHolding: (ticker: string) => void;
+  onSaveManual: () => void;
+  loading: boolean;
+}) {
+  const {
+    manualTitle, setManualTitle, manualSummary, setManualSummary, manualTimeframe, setManualTimeframe,
+    manualHoldings, onUpdateHolding, onRemoveHolding, onSaveManual, loading,
+  } = props;
+  return (
+    <>
+      <Card>
+        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+          Basket Builder
+        </div>
+        <div style={{ color: "#ede9e3", fontSize: 22, fontWeight: 600, marginBottom: 10 }}>
+          Build your ETF as you browse
+        </div>
+        <div style={{ color: "#948c84", fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
+          Search and filter on the left. Add contracts to the tray here, then finalize the title, summary, and weights.
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          <input value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} placeholder="Basket title" style={inputStyle} />
+          <textarea value={manualSummary} onChange={(e) => setManualSummary(e.target.value)} rows={3} placeholder="Basket summary" style={{ ...textareaStyle, minHeight: 100 }} />
+          <input value={manualTimeframe} onChange={(e) => setManualTimeframe(e.target.value)} placeholder="Timeframe (optional)" style={inputStyle} />
+        </div>
+      </Card>
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ color: "#ede9e3", fontWeight: 600 }}>Selected holdings</div>
           <div style={{ color: "#8f877e", fontSize: 12 }}>
-            ${manualHoldings.reduce((sum, holding) => sum + (holding.weight_dollars || 0), 0).toFixed(0)} draft notional
+            ${manualHoldings.reduce((sum, holding) => sum + (holding.weight_dollars || 0), 0).toFixed(0)} draft
           </div>
         </div>
-        <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: "grid", gap: 10, maxHeight: "calc(100vh - 360px)", overflowY: "auto", paddingRight: 4 }}>
           {manualHoldings.map((holding) => (
             <ManualHoldingCard
               key={holding.ticker}
@@ -622,17 +598,74 @@ function ManualBuildComposer(props: {
               onRemove={() => onRemoveHolding(holding.ticker)}
             />
           ))}
-          {!manualHoldings.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No holdings yet.</div>}
+          {!manualHoldings.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No holdings yet. Add them from the market cards.</div>}
         </div>
-      </Card>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ color: "#7f776f", fontSize: 13 }}>
+        <div style={{ color: "#7f776f", fontSize: 13, lineHeight: 1.6, marginTop: 14, marginBottom: 14 }}>
           Weights will be normalized to a $100 basket when you save.
         </div>
-        <button onClick={onSaveManual} style={primaryButtonStyle}>Save manual basket</button>
-      </div>
-    </div>
+        <button onClick={onSaveManual} style={{ ...primaryButtonStyle, width: "100%", opacity: loading ? 0.7 : 1 }}>
+          {loading ? "Saving..." : "Save manual basket"}
+        </button>
+      </Card>
+    </>
+  );
+}
+
+function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; savedBaskets: SavedBasket[] }) {
+  return (
+    <>
+      <Card>
+        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+          How It Works
+        </div>
+        <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, marginBottom: 10 }}>
+          {buildPath === "ai" ? "From belief to basket" : "From market picker to basket"}
+        </div>
+        <ul style={{ margin: 0, paddingLeft: 18, color: "#9c948c", lineHeight: 1.7, fontSize: 14 }}>
+          {buildPath === "ai" ? (
+            <>
+              <li>Clarify the future theme.</li>
+              <li>Map direct and indirect implications.</li>
+              <li>Screen prediction markets.</li>
+              <li>Build a weighted $100 ETF.</li>
+            </>
+          ) : (
+            <>
+              <li>Search the market catalog.</li>
+              <li>Select the contracts you want.</li>
+              <li>Choose sides, roles, and weights.</li>
+              <li>Save a weighted $100 ETF.</li>
+            </>
+          )}
+        </ul>
+      </Card>
+
+      <Card>
+        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+          Saved ETFs
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          {savedBaskets.slice(0, 8).map((saved) => (
+            <Link
+              key={saved.id}
+              href={`${saved.mode === "manual" ? "/trading/manual" : "/trading"}?basket=${saved.id}`}
+              style={{
+                display: "block",
+                textDecoration: "none",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 14,
+                padding: 14,
+                background: "rgba(255,255,255,0.02)",
+              }}
+            >
+              <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 6 }}>{saved.title}</div>
+              <div style={{ color: "#938b83", fontSize: 13, lineHeight: 1.5 }}>{saved.summary}</div>
+            </Link>
+          ))}
+          {!savedBaskets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No saved baskets yet.</div>}
+        </div>
+      </Card>
+    </>
   );
 }
 
