@@ -130,10 +130,19 @@ def _get_live_markets_for_events(client: KalshiClient, event_tickers: list[str])
 
 def _seconds_until_next_cache_refresh(now: datetime | None = None) -> float:
     now = now or datetime.now(_PACIFIC_TZ)
-    target = now.replace(hour=15, minute=5, second=0, microsecond=0)
-    if now >= target:
-        target += timedelta(days=1)
-    return max((target - now).total_seconds(), 0.0)
+    targets: list[datetime] = []
+
+    daily_target = now.replace(hour=1, minute=0, second=0, microsecond=0)
+    if now >= daily_target:
+        daily_target += timedelta(days=1)
+    targets.append(daily_target)
+
+    one_off_target = datetime(2026, 5, 6, 16, 42, tzinfo=_PACIFIC_TZ)
+    if now < one_off_target:
+        targets.append(one_off_target)
+
+    next_target = min(targets)
+    return max((next_target - now).total_seconds(), 0.0)
 
 
 async def _run_cache_refresh() -> None:
