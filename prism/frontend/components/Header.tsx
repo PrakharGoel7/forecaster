@@ -7,7 +7,8 @@ import type { User } from "@supabase/supabase-js";
 
 const NAV = [
   { href: "/",          label: "Home"      },
-  { href: "/trading",   label: "ETFs"      },
+  { href: "/trading",   label: "AI Build"  },
+  { href: "/trading/manual", label: "Manual Build" },
   { href: "/model",     label: "Model"     },
 ];
 
@@ -97,7 +98,10 @@ export default function Header() {
           {/* Nav links */}
           <nav style={{ display: "flex", alignItems: "center", gap: "2px", flex: 1 }}>
             {NAV.map(({ href, label }) => {
-              const active = href === "/" ? path === "/" : path.startsWith(href);
+              const active =
+                href === "/" ? path === "/" :
+                href === "/trading" ? path === "/trading" :
+                path.startsWith(href);
               const activeBorder = "1px solid #252525";
               const navStyle = {
                 fontFamily: "var(--font-mono), monospace",
