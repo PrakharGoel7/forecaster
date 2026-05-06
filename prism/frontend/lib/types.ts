@@ -153,7 +153,7 @@ export interface SavedBasket {
   title: string;
   summary: string;
   core_belief: string;
-  mode: "instant" | "thinking";
+  mode: "instant" | "thinking" | "manual";
   time_horizon: string;
   timeframe_start: string;
   timeframe_end: string;
@@ -168,6 +168,20 @@ export interface SavedBasket {
   screened_count: number;
   is_public: boolean;
   holdings?: BasketHolding[];
+}
+
+export interface ManualBasketDraftHolding {
+  ticker: string;
+  event_ticker: string;
+  question: string;
+  market_price: number;
+  close_date: string;
+  side: "YES" | "NO";
+  role: "direct" | "mechanism" | "indirect" | "hedge";
+  weight_dollars: number;
+  rationale: string;
+  main_risk: string;
+  rules_summary?: string;
 }
 
 // ── Oracle (legacy) ───────────────────────────────────────────────────────────

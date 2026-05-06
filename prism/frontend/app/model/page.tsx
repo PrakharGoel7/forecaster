@@ -1,61 +1,34 @@
 "use client";
 import Header from "@/components/Header";
 
-const INTEL_STEPS = [
-  {
-    id: "01",
-    title: "Question Parser",
-    color: "#e36438",
-    description: "Decomposes the raw market ticker into its structural components — what must happen for YES, the natural reference class, and the most informative searches — so downstream agents start with a precise problem.",
-  },
-  {
-    id: "02",
-    title: "Independent Forecasting Agents",
-    color: "#5b9cf6",
-    description: "An ensemble of agents research in parallel, each anchoring on historical base rates before updating with current evidence. Working in isolation, their disagreements surface genuine uncertainty rather than herding.",
-  },
-  {
-    id: "03",
-    title: "Supervisor Reconciliation",
-    color: "#9b9790",
-    description: "Reviews all agent estimates and either aggregates them directly or resolves the specific factual crux driving disagreement before weighting agents by evidence quality.",
-  },
-  {
-    id: "04",
-    title: "Calibration",
-    color: "#4ade80",
-    description: "Passes the reconciled estimate through a Platt scaling transform to correct for LLMs' tendency to cluster near 50%, stretching well-supported estimates toward the extremes.",
-  },
-];
-
-const COMPASS_STEPS = [
+const ETF_STEPS = [
   {
     id: "01",
     title: "Belief Elicitor",
     color: "#e36438",
-    description: "Interviews you with three focused questions — after first searching the web so it never asks things it can look up. Outputs a structured belief summary: core thesis, time horizon, key drivers, and scope.",
+    description: "Clarifies the user's future thesis in instant or thinking mode, producing a structured brief with a resolution target, timeframe, mechanism, and key drivers.",
   },
   {
     id: "02",
     title: "Domain Analyst",
     color: "#a78bfa",
-    description: "Maps your belief's ramifications across 16 domains via causal chains, surfacing second and third-order effects a keyword search would miss — a conflict thesis shouldn't only find geopolitics markets.",
+    description: "Maps the thesis across major domains and causal chains so Prism can separate direct exposure from indirect implications, hedges, and falsifiers.",
   },
   {
     id: "03",
     title: "Market Screener",
     color: "#fbbf24",
-    description: "Reads the full Kalshi event catalog and uses the domain impact map — not keyword matching — to shortlist 20–35 relevant events, erring on the side of inclusion.",
+    description: "Screens the Kalshi event catalog using the structured thesis and domain map to shortlist markets that provide meaningful thematic exposure.",
   },
   {
     id: "04",
-    title: "Market Curator",
+    title: "Basket Builder",
     color: "#4ade80",
-    description: "Selects 5–8 positions optimised for relevance, variety across belief dimensions, and conviction match — specifying YES or NO and why the current price is interesting given your thesis.",
+    description: "Constructs a weighted $100 prediction market ETF with direct holdings, mechanism bets, indirect implications, and selective hedge positions.",
   },
 ];
 
-function PipelineColumn({ steps }: { steps: typeof INTEL_STEPS }) {
+function PipelineColumn({ steps }: { steps: typeof ETF_STEPS }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
       {steps.map((step, i) => (
@@ -132,30 +105,13 @@ export default function ModelPage() {
           </h1>
         </div>
 
-        {/* Two-column layout */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "32px",
-          alignItems: "start",
-        }}>
-          <div>
-            <ColumnHeader
-              label="Compass — How Prism Trades"
-              subtitle="Compass converts a freeform belief about the future into a curated portfolio of prediction market positions."
-              accent="#a78bfa"
-            />
-            <PipelineColumn steps={COMPASS_STEPS} />
-          </div>
-
-          <div>
-            <ColumnHeader
-              label="Intel — How Prism Forecasts"
-              subtitle="Every forecast runs a four-stage pipeline — parsing, parallel research, reconciliation, and calibration."
-              accent="#e36438"
-            />
-            <PipelineColumn steps={INTEL_STEPS} />
-          </div>
+        <div style={{ maxWidth: "760px" }}>
+          <ColumnHeader
+            label="Prediction Market ETFs"
+            subtitle="Prism converts a freeform belief about the future into a weighted, shareable thematic basket of Kalshi contracts."
+            accent="#a78bfa"
+          />
+          <PipelineColumn steps={ETF_STEPS} />
         </div>
 
       </div>

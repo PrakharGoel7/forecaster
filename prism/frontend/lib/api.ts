@@ -4,6 +4,7 @@ import type {
   TradingStreamMessage,
   BeliefSummary,
   SavedBasket,
+  ManualBasketDraftHolding,
   OracleTurnResponse,
   OraclePipelineMessage,
 } from "./types";
@@ -89,6 +90,23 @@ export const listBaskets = (limit = 20, token?: string): Promise<SavedBasket[]> 
 
 export const getBasket = (basketId: number, token?: string): Promise<SavedBasket> =>
   apiFetch(`/api/baskets/${basketId}`, undefined, token);
+
+export async function saveManualBasket(
+  body: {
+    title: string;
+    summary: string;
+    timeframe?: string;
+    holdings: ManualBasketDraftHolding[];
+    is_public?: boolean;
+  },
+  token?: string,
+): Promise<{ basket_id: number; basket: SavedBasket }> {
+  return apiFetch("/api/baskets/manual", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }, token);
+}
 
 export async function tradingChat(
   history: Record<string, unknown>[],

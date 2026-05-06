@@ -609,6 +609,28 @@ class TradingAnalyzeRequest(BaseModel):
     mode: str = "thinking"
 
 
+class ManualBasketHoldingRequest(BaseModel):
+    ticker: str
+    event_ticker: str
+    question: str
+    market_price: float
+    close_date: str
+    side: str
+    role: str
+    weight_dollars: float
+    rationale: str = ""
+    main_risk: str = ""
+    rules_summary: str = ""
+
+
+class ManualBasketRequest(BaseModel):
+    title: str
+    summary: str
+    timeframe: str = ""
+    holdings: list[ManualBasketHoldingRequest]
+    is_public: bool = True
+
+
 @app.post("/api/trading/analyze")
 async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
     if not _TC_AVAILABLE:
@@ -812,3 +834,84 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.post("/api/baskets/manual")
+async def create_manual_basket(req: ManualBasketRequest, request: Request):
+    if not req.holdings:
+        raise HTTPException(status_code=400, detail="At least one holding is required")
+
+    total_notional = round(sum(max(0.0, h.weight_dollars) for h in req.holdings), 2)
+    if total_notional <= 0:
+        raise HTTPException(status_code=400, detail="Basket total must be positive")
+
+    normalized_holdings = []
+    running_total = 0.0
+    holdings = sorted(req.holdings, key=lambda h: h.weight_dollars, reverse=True)
+    for idx, holding in enumerate(holdings):
+        if idx == len(holdings) - 1:
+            weight = round(100.0 - running_total, 2)
+        else:
+            weight = round((holding.weight_dollars / total_notional) * 100.0, 2)
+            running_total += weight
+        normalized_holdings.append({
+            "ticker": holding.ticker,
+            "event_ticker": holding.event_ticker,
+            "question": holding.question,
+            "market_price": holding.market_price,
+            "close_date": holding.close_date,
+            "side": holding.side,
+            "role": holding.role,
+            "weight_dollars": weight,
+            "rationale": holding.rationale,
+            "main_risk": holding.main_risk,
+            "rules_summary": holding.rules_summary,
+        })
+
+    basket_payload = {
+        "basket_title": req.title,
+        "basket_summary": req.summary,
+        "construction_notes": "Manually constructed by the user from selected Kalshi contracts.",
+        "holdings": normalized_holdings,
+        "total_notional": 100.0,
+    }
+    belief_summary = {
+        "core_belief": req.title,
+        "time_horizon": req.timeframe,
+        "key_drivers": [],
+        "scope": "Manual basket",
+        "confidence_level": "medium",
+        "supporting_reasoning": req.summary,
+        "current_context": "",
+        "resolution_target": req.summary,
+        "timeframe_start": "now",
+        "timeframe_end": req.timeframe,
+        "mechanism": "User-selected basket",
+        "falsifiers": [],
+        "mode_used": "manual",
+    }
+    analysis = {"affected_domains": [], "most_surprising_connection": ""}
+
+    basket_id = db.save_basket(
+        title=req.title,
+        summary=req.summary,
+        core_belief=req.title,
+        mode="manual",
+        time_horizon=req.timeframe,
+        timeframe_start="now",
+        timeframe_end=req.timeframe,
+        resolution_target=req.summary,
+        mechanism="User-selected basket",
+        scope="Manual basket",
+        key_drivers=[],
+        belief_summary=belief_summary,
+        analysis=analysis,
+        basket=basket_payload,
+        total_notional=100.0,
+        screened_count=len(normalized_holdings),
+        holdings=normalized_holdings,
+        is_public=req.is_public,
+        user_id=_get_user_id(request),
+    )
+    saved = db.get_basket(basket_id, user_id=_get_user_id(request))
+    return {"basket_id": basket_id, "basket": saved}

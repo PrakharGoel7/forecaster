@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
-import { tradingChat, streamTradingAnalysis, listBaskets, getBasket } from "@/lib/api";
-import type { BeliefAnalysis, BeliefSummary, PredictionBasket, SavedBasket } from "@/lib/types";
+import { tradingChat, streamTradingAnalysis, listBaskets, getBasket, searchEvents, getMarkets, saveManualBasket } from "@/lib/api";
+import type { BeliefAnalysis, BeliefSummary, PredictionBasket, SavedBasket, KalshiEvent, KalshiMarket, ManualBasketDraftHolding } from "@/lib/types";
 
 type Mode = "instant" | "thinking";
+type BuildPath = "ai" | "manual";
 type Stage = "idle" | "chatting" | "analyzing" | "done" | "error";
 
 interface ChatMsg {
@@ -25,6 +26,7 @@ function TradingPageInner() {
   const searchParams = useSearchParams();
   const initialBelief = searchParams.get("belief") ?? "";
   const basketParam = searchParams.get("basket");
+  const [buildPath, setBuildPath] = useState<BuildPath>("ai");
   const [mode, setMode] = useState<Mode>("thinking");
   const [stage, setStage] = useState<Stage>("idle");
   const [input, setInput] = useState(initialBelief);
@@ -35,6 +37,14 @@ function TradingPageInner() {
   const [basket, setBasket] = useState<PredictionBasket | null>(null);
   const [savedBaskets, setSavedBaskets] = useState<SavedBasket[]>([]);
   const [basketId, setBasketId] = useState<number | null>(basketParam ? Number(basketParam) : null);
+  const [eventQuery, setEventQuery] = useState("");
+  const [eventResults, setEventResults] = useState<KalshiEvent[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<KalshiEvent | null>(null);
+  const [eventMarkets, setEventMarkets] = useState<KalshiMarket[]>([]);
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualSummary, setManualSummary] = useState("");
+  const [manualTimeframe, setManualTimeframe] = useState("");
+  const [manualHoldings, setManualHoldings] = useState<ManualBasketDraftHolding[]>([]);
   const [screenedCount, setScreenedCount] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,6 +53,7 @@ function TradingPageInner() {
 
   useEffect(() => {
     listBaskets(20).then(setSavedBaskets).catch(() => {});
+    searchEvents("", 12).then(setEventResults).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -51,7 +62,8 @@ function TradingPageInner() {
       setBeliefSummary(JSON.parse(saved.belief_summary_json));
       setAnalysis(JSON.parse(saved.analysis_json));
       setBasket(JSON.parse(saved.basket_json));
-      setMode(saved.mode);
+      setMode(saved.mode === "manual" ? "thinking" : saved.mode);
+      setBuildPath(saved.mode === "manual" ? "manual" : "ai");
       setStage("done");
     }).catch(() => {});
   }, [basketId]);
@@ -79,6 +91,12 @@ function TradingPageInner() {
     setBasket(null);
     setBasketId(null);
     setScreenedCount(0);
+    setSelectedEvent(null);
+    setEventMarkets([]);
+    setManualHoldings([]);
+    setManualTitle("");
+    setManualSummary("");
+    setManualTimeframe("");
     setProgressLabel("");
     setError("");
     router.replace("/trading", { scroll: false });
@@ -129,6 +147,72 @@ function TradingPageInner() {
     }
   }
 
+  async function runEventSearch() {
+    setEventResults(await searchEvents(eventQuery, 24));
+  }
+
+  async function pickEvent(event: KalshiEvent) {
+    setSelectedEvent(event);
+    setEventMarkets(await getMarkets(event.event_ticker));
+  }
+
+  function addManualHolding(market: KalshiMarket) {
+    setManualHoldings((prev) => {
+      if (prev.some((holding) => holding.ticker === market.ticker)) return prev;
+      return [...prev, {
+        ticker: market.ticker,
+        event_ticker: market.event_ticker,
+        question: market.question,
+        market_price: market.mid_price,
+        close_date: market.close_date,
+        side: "YES",
+        role: "direct",
+        weight_dollars: 10,
+        rationale: "",
+        main_risk: "",
+        rules_summary: market.rules_primary,
+      }];
+    });
+  }
+
+  function updateManualHolding(ticker: string, patch: Partial<ManualBasketDraftHolding>) {
+    setManualHoldings((prev) => prev.map((holding) => holding.ticker === ticker ? { ...holding, ...patch } : holding));
+  }
+
+  function removeManualHolding(ticker: string) {
+    setManualHoldings((prev) => prev.filter((holding) => holding.ticker !== ticker));
+  }
+
+  async function saveManual() {
+    if (!manualTitle.trim() || !manualHoldings.length) {
+      setError("Add a basket title and at least one holding.");
+      setStage("error");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const result = await saveManualBasket({
+        title: manualTitle.trim(),
+        summary: manualSummary.trim() || manualTitle.trim(),
+        timeframe: manualTimeframe.trim(),
+        holdings: manualHoldings,
+      });
+      setBasket(JSON.parse(result.basket.basket_json));
+      setBeliefSummary(JSON.parse(result.basket.belief_summary_json));
+      setAnalysis(JSON.parse(result.basket.analysis_json));
+      setBasketId(result.basket_id);
+      setStage("done");
+      router.replace(`/trading?basket=${result.basket_id}`, { scroll: false });
+      listBaskets(20).then(setSavedBaskets).catch(() => {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save basket");
+      setStage("error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function onSubmitInitial() {
     if (!input.trim()) return;
     setStage("chatting");
@@ -149,12 +233,32 @@ function TradingPageInner() {
             <div>
               {stage === "idle" && (
                 <IdleComposer
+                  buildPath={buildPath}
+                  setBuildPath={setBuildPath}
                   mode={mode}
                   setMode={setMode}
                   input={input}
                   setInput={setInput}
                   stepLabel={stepLabel}
                   onSubmit={onSubmitInitial}
+                  eventQuery={eventQuery}
+                  setEventQuery={setEventQuery}
+                  eventResults={eventResults}
+                  selectedEvent={selectedEvent}
+                  eventMarkets={eventMarkets}
+                  manualTitle={manualTitle}
+                  setManualTitle={setManualTitle}
+                  manualSummary={manualSummary}
+                  setManualSummary={setManualSummary}
+                  manualTimeframe={manualTimeframe}
+                  setManualTimeframe={setManualTimeframe}
+                  manualHoldings={manualHoldings}
+                  onEventSearch={runEventSearch}
+                  onPickEvent={pickEvent}
+                  onAddHolding={addManualHolding}
+                  onUpdateHolding={updateManualHolding}
+                  onRemoveHolding={removeManualHolding}
+                  onSaveManual={saveManual}
                 />
               )}
 
@@ -265,14 +369,37 @@ function TradingPageInner() {
 }
 
 function IdleComposer({
-  mode, setMode, input, setInput, stepLabel, onSubmit,
+  buildPath, setBuildPath, mode, setMode, input, setInput, stepLabel, onSubmit,
+  eventQuery, setEventQuery, eventResults, selectedEvent, eventMarkets,
+  manualTitle, setManualTitle, manualSummary, setManualSummary, manualTimeframe, setManualTimeframe,
+  manualHoldings, onEventSearch, onPickEvent, onAddHolding, onUpdateHolding, onRemoveHolding, onSaveManual,
 }: {
+  buildPath: BuildPath;
+  setBuildPath: (value: BuildPath) => void;
   mode: Mode;
   setMode: (mode: Mode) => void;
   input: string;
   setInput: (value: string) => void;
   stepLabel: string;
   onSubmit: () => void;
+  eventQuery: string;
+  setEventQuery: (value: string) => void;
+  eventResults: KalshiEvent[];
+  selectedEvent: KalshiEvent | null;
+  eventMarkets: KalshiMarket[];
+  manualTitle: string;
+  setManualTitle: (value: string) => void;
+  manualSummary: string;
+  setManualSummary: (value: string) => void;
+  manualTimeframe: string;
+  setManualTimeframe: (value: string) => void;
+  manualHoldings: ManualBasketDraftHolding[];
+  onEventSearch: () => void;
+  onPickEvent: (event: KalshiEvent) => void;
+  onAddHolding: (market: KalshiMarket) => void;
+  onUpdateHolding: (ticker: string, patch: Partial<ManualBasketDraftHolding>) => void;
+  onRemoveHolding: (ticker: string) => void;
+  onSaveManual: () => void;
 }) {
   return (
     <div style={{ display: "grid", gap: 18 }}>
@@ -288,6 +415,27 @@ function IdleComposer({
         </p>
       </div>
       <Card>
+        <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+          {([
+            { key: "ai", label: "AI build" },
+            { key: "manual", label: "Manual build" },
+          ] as const).map((option) => (
+            <button
+              key={option.key}
+              onClick={() => setBuildPath(option.key)}
+              style={{
+                ...ghostButtonStyle,
+                borderColor: buildPath === option.key ? "rgba(227,100,56,0.6)" : "rgba(255,255,255,0.08)",
+                color: buildPath === option.key ? "#ede9e3" : "#8d857d",
+                background: buildPath === option.key ? "rgba(227,100,56,0.12)" : "transparent",
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        {buildPath === "ai" ? (
+          <>
         <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
           {(["instant", "thinking"] as Mode[]).map((value) => (
             <button
@@ -320,6 +468,119 @@ function IdleComposer({
           </div>
           <button onClick={onSubmit} style={primaryButtonStyle}>Build basket</button>
         </div>
+          </>
+        ) : (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ color: "#9e968f", fontSize: 13 }}>
+              Search the Kalshi catalog, choose contracts, set side and weights, and save your own $100 basket.
+            </div>
+            <input
+              value={manualTitle}
+              onChange={(e) => setManualTitle(e.target.value)}
+              placeholder="Basket title"
+              style={inputStyle}
+            />
+            <textarea
+              value={manualSummary}
+              onChange={(e) => setManualSummary(e.target.value)}
+              rows={3}
+              placeholder="Basket summary"
+              style={{ ...textareaStyle, minHeight: 100 }}
+            />
+            <input
+              value={manualTimeframe}
+              onChange={(e) => setManualTimeframe(e.target.value)}
+              placeholder="Timeframe (optional)"
+              style={inputStyle}
+            />
+
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10 }}>
+              <input
+                value={eventQuery}
+                onChange={(e) => setEventQuery(e.target.value)}
+                placeholder="Search events"
+                style={inputStyle}
+              />
+              <button onClick={onEventSearch} style={primaryButtonStyle}>Search</button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 14 }}>
+              <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, minHeight: 260 }}>
+                <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 10 }}>Events</div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {eventResults.slice(0, 10).map((event) => (
+                    <button
+                      key={event.event_ticker}
+                      onClick={() => onPickEvent(event)}
+                      style={{
+                        textAlign: "left",
+                        background: selectedEvent?.event_ticker === event.event_ticker ? "rgba(227,100,56,0.12)" : "rgba(255,255,255,0.02)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: 12,
+                        padding: 12,
+                        color: "#ede9e3",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>{event.title}</div>
+                      <div style={{ fontSize: 12, color: "#8f877e" }}>{event.category}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, minHeight: 260 }}>
+                <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 10 }}>Contracts</div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {eventMarkets.slice(0, 16).map((market) => (
+                    <div key={market.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.02)" }}>
+                      <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>{market.question}</div>
+                      <div style={{ color: "#8f877e", fontSize: 12, marginBottom: 8 }}>{Math.round(market.mid_price * 100)}% market odds</div>
+                      <button onClick={() => onAddHolding(market)} style={ghostButtonStyle}>Add to basket</button>
+                    </div>
+                  ))}
+                  {!eventMarkets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>Select an event to load contracts.</div>}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14 }}>
+              <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 10 }}>Manual holdings</div>
+              <div style={{ display: "grid", gap: 10 }}>
+                {manualHoldings.map((holding) => (
+                  <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.02)" }}>
+                    <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 10 }}>{holding.question}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr)) auto", gap: 8, marginBottom: 8 }}>
+                      <select value={holding.side} onChange={(e) => onUpdateHolding(holding.ticker, { side: e.target.value as "YES" | "NO" })} style={inputStyle}>
+                        <option value="YES">YES</option>
+                        <option value="NO">NO</option>
+                      </select>
+                      <select value={holding.role} onChange={(e) => onUpdateHolding(holding.ticker, { role: e.target.value as ManualBasketDraftHolding["role"] })} style={inputStyle}>
+                        <option value="direct">direct</option>
+                        <option value="mechanism">mechanism</option>
+                        <option value="indirect">indirect</option>
+                        <option value="hedge">hedge</option>
+                      </select>
+                      <input value={holding.weight_dollars} type="number" min={1} onChange={(e) => onUpdateHolding(holding.ticker, { weight_dollars: Number(e.target.value) })} style={inputStyle} />
+                      <input value={holding.market_price} disabled style={inputStyle} />
+                      <button onClick={() => onRemoveHolding(holding.ticker)} style={ghostButtonStyle}>Remove</button>
+                    </div>
+                    <input value={holding.rationale} onChange={(e) => onUpdateHolding(holding.ticker, { rationale: e.target.value })} placeholder="Why this belongs in the basket" style={{ ...inputStyle, marginBottom: 8 }} />
+                    <input value={holding.main_risk} onChange={(e) => onUpdateHolding(holding.ticker, { main_risk: e.target.value })} placeholder="Main risk" style={inputStyle} />
+                  </div>
+                ))}
+                {!manualHoldings.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No holdings yet.</div>}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ color: "#7f776f", fontSize: 13 }}>
+                Weights will be normalized to a $100 basket when you save.
+              </div>
+              <button onClick={onSaveManual} style={primaryButtonStyle}>Save manual basket</button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -491,6 +752,17 @@ const textareaStyle: React.CSSProperties = {
   lineHeight: 1.6,
   resize: "vertical",
   minHeight: 140,
+  outline: "none",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.09)",
+  borderRadius: 12,
+  padding: "12px 14px",
+  color: "#ede9e3",
+  fontSize: 14,
   outline: "none",
 };
 

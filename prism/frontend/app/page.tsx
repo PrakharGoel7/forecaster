@@ -8,7 +8,6 @@ import GridOverlay from "@/components/GridOverlay";
 export default function HomePage() {
   const router = useRouter();
   const [belief, setBelief] = useState("");
-  const [marketQuery, setMarketQuery] = useState("");
 
   return (
     <div style={{ minHeight: "100vh", background: "#080808", position: "relative" }}>
@@ -20,14 +19,14 @@ export default function HomePage() {
             Prism
           </div>
           <h1 style={{ color: "#ede9e3", fontSize: "clamp(38px, 6vw, 72px)", lineHeight: 0.98, letterSpacing: "-0.06em", margin: "0 0 14px" }}>
-            Build prediction market ETFs or inspect a single contract.
+            Build prediction market ETFs from your future theses.
           </h1>
           <p style={{ color: "#948c84", fontSize: 19, lineHeight: 1.65, margin: 0 }}>
-            Prism now centers on thematic baskets of Kalshi contracts. Start from a future belief, or drop straight into market-specific analysis.
+            Start from a belief about the future. Prism clarifies the theme, maps the implications, and builds a weighted basket of Kalshi contracts around it.
           </p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18 }}>
+        <div style={{ maxWidth: 760 }}>
           <section style={cardStyle}>
             <div style={eyebrowStyle}>Prediction Market ETFs</div>
             <div style={titleStyle}>Turn a thesis into a weighted basket</div>
@@ -48,30 +47,6 @@ export default function HomePage() {
                 style={primaryButtonStyle}
               >
                 Build basket
-              </button>
-            </div>
-          </section>
-
-          <section style={cardStyle}>
-            <div style={eyebrowStyle}>Intel</div>
-            <div style={titleStyle}>Analyze one market in depth</div>
-            <p style={bodyStyle}>
-              Already know the contract you care about? Jump into Prism’s forecast flow and compare the market’s price to Prism’s estimate.
-            </p>
-            <textarea
-              value={marketQuery}
-              onChange={(e) => setMarketQuery(e.target.value)}
-              rows={5}
-              placeholder="Search for a market or theme."
-              style={textareaStyle}
-            />
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
-              <div style={{ color: "#7e766d", fontSize: 13 }}>Search event and market pages from the cached Kalshi catalog.</div>
-              <button
-                onClick={() => router.push(marketQuery.trim() ? `/forecasts?q=${encodeURIComponent(marketQuery.trim())}` : "/forecasts")}
-                style={primaryButtonStyle}
-              >
-                Open Intel
               </button>
             </div>
           </section>
