@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import { getMarkets, getMarket, listForecasts, streamForecast } from "@/lib/api";
+import { addMarketToManualBasketDraft } from "@/lib/manualBasketDraft";
 import type {
   KalshiMarket,
   ForecastMemo,
@@ -72,6 +73,7 @@ export default function MarketPage() {
   const [savedEvCat, setSavedEvCat] = useState("");
   const [savedEvSub, setSavedEvSub] = useState("");
   const [categoryStats, setCategoryStats] = useState<{ edge: number; total: number; isCategory: boolean } | null>(null);
+  const [basketNotice, setBasketNotice] = useState("");
 
   useEffect(() => {
     if (savedId) return;
@@ -313,22 +315,57 @@ export default function MarketPage() {
                     </div>
                   </div>
 
-                  <div style={{
-                    flexShrink: 0,
-                    padding: "7px 11px",
-                    borderRadius: "999px",
-                    border: `1px solid ${isSelected ? "#e36438" : "#2a2a2a"}`,
-                    color: isSelected ? "#ff8b5f" : "#6f6963",
-                    background: isSelected ? "rgba(227,100,56,0.12)" : "transparent",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                  }}>
-                    {isSelected ? "Selected" : "Inspect"}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                    {fromManual && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const added = addMarketToManualBasketDraft(market);
+                          setBasketNotice(added ? "Added to basket." : "Already in basket.");
+                        }}
+                        style={{
+                          minWidth: 126,
+                          borderRadius: "999px",
+                          border: "1px solid rgba(227,100,56,0.25)",
+                          padding: "9px 12px",
+                          color: "#ede9e3",
+                          background: "rgba(227,100,56,0.08)",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Add to basket
+                      </button>
+                    )}
+                    <div style={{
+                      padding: "7px 11px",
+                      borderRadius: "999px",
+                      border: `1px solid ${isSelected ? "#e36438" : "#2a2a2a"}`,
+                      color: isSelected ? "#ff8b5f" : "#6f6963",
+                      background: isSelected ? "rgba(227,100,56,0.12)" : "transparent",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                    }}>
+                      {isSelected ? "Selected" : "Inspect"}
+                    </div>
                   </div>
                 </button>
               );
             })}
           </div>
+          {fromManual && basketNotice && (
+            <div style={{
+              marginTop: "14px",
+              borderRadius: "12px",
+              border: "1px solid rgba(227,100,56,0.18)",
+              background: "rgba(227,100,56,0.06)",
+              padding: "12px 14px",
+              color: "#c9beb2",
+              fontSize: "13px",
+            }}>
+              {basketNotice}
+            </div>
+          )}
         </section>
 
         {mkt && (

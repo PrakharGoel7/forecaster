@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import GridOverlay from "@/components/GridOverlay";
 import Header from "@/components/Header";
 import { getBasket, getMarkets, listBaskets, listEventCategories, saveManualBasket, searchEvents, streamTradingAnalysis, tradingChat } from "@/lib/api";
+import { clearManualBasketDraft, loadManualBasketDraft, saveManualBasketDraft } from "@/lib/manualBasketDraft";
 import type { BeliefAnalysis, BeliefSummary, KalshiEvent, KalshiMarket, ManualBasketDraftHolding, PredictionBasket, SavedBasket } from "@/lib/types";
 
 type Mode = "instant" | "thinking";
@@ -43,6 +44,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const [manualSummary, setManualSummary] = useState("");
   const [manualTimeframe, setManualTimeframe] = useState("");
   const [manualHoldings, setManualHoldings] = useState<ManualBasketDraftHolding[]>([]);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [screenedCount, setScreenedCount] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,6 +65,16 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     void runEventSearch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventCategory]);
+
+  useEffect(() => {
+    if (buildPath !== "manual") return;
+    setManualHoldings(loadManualBasketDraft());
+  }, [buildPath]);
+
+  useEffect(() => {
+    if (buildPath !== "manual") return;
+    saveManualBasketDraft(manualHoldings);
+  }, [buildPath, manualHoldings]);
 
   useEffect(() => {
     if (!basketId) return;
@@ -103,9 +115,11 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     setEventMarkets([]);
     setEventPage(1);
     setManualHoldings([]);
+    clearManualBasketDraft();
     setManualTitle("");
     setManualSummary("");
     setManualTimeframe("");
+    setSaveModalOpen(false);
     setProgressLabel("");
     setError("");
     router.replace(routeBase, { scroll: false });
@@ -177,25 +191,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     );
   }
 
-  function addManualHolding(market: KalshiMarket) {
-    setManualHoldings((prev) => {
-      if (prev.some((holding) => holding.ticker === market.ticker)) return prev;
-      return [...prev, {
-        ticker: market.ticker,
-        event_ticker: market.event_ticker,
-        question: market.question,
-        market_price: market.mid_price,
-        close_date: market.close_date,
-        side: "YES",
-        role: "direct",
-        weight_dollars: 10,
-        rationale: "",
-        main_risk: "",
-        rules_summary: market.rules_primary,
-      }];
-    });
-  }
-
   function updateManualHolding(ticker: string, patch: Partial<ManualBasketDraftHolding>) {
     setManualHoldings((prev) => prev.map((holding) => holding.ticker === ticker ? { ...holding, ...patch } : holding));
   }
@@ -207,7 +202,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   async function saveManual() {
     if (!manualTitle.trim() || !manualHoldings.length) {
       setError("Add a basket title and at least one holding.");
-      setStage("error");
       return;
     }
     setLoading(true);
@@ -224,6 +218,9 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       setAnalysis(JSON.parse(result.basket.analysis_json));
       setBasketId(result.basket_id);
       setStage("done");
+      clearManualBasketDraft();
+      setManualHoldings([]);
+      setSaveModalOpen(false);
       router.replace(`${routeBase}?basket=${result.basket_id}`, { scroll: false });
       listBaskets(20).then(setSavedBaskets).catch(() => {});
     } catch (err) {
@@ -339,16 +336,16 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
             <div style={{ display: "grid", gap: 18, alignSelf: "start", position: "sticky", top: 84 }}>
               {buildPath === "manual" && stage === "idle" ? (
                 <ManualBasketSidebar
-                  manualTitle={manualTitle}
-                  setManualTitle={setManualTitle}
-                  manualSummary={manualSummary}
-                  setManualSummary={setManualSummary}
-                  manualTimeframe={manualTimeframe}
-                  setManualTimeframe={setManualTimeframe}
                   manualHoldings={manualHoldings}
                   onUpdateHolding={updateManualHolding}
                   onRemoveHolding={removeManualHolding}
-                  onSaveManual={saveManual}
+                  onOpenSaveModal={() => {
+                    if (!manualHoldings.length) {
+                      setError("Add at least one holding before saving.");
+                      return;
+                    }
+                    setSaveModalOpen(true);
+                  }}
                   loading={loading}
                 />
               ) : (
@@ -358,6 +355,19 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
           </div>
         </div>
       </div>
+      {buildPath === "manual" && saveModalOpen && stage === "idle" && (
+        <SaveManualBasketModal
+          manualTitle={manualTitle}
+          setManualTitle={setManualTitle}
+          manualSummary={manualSummary}
+          setManualSummary={setManualSummary}
+          manualTimeframe={manualTimeframe}
+          setManualTimeframe={setManualTimeframe}
+          loading={loading}
+          onClose={() => setSaveModalOpen(false)}
+          onSave={saveManual}
+        />
+      )}
     </div>
   );
 }
@@ -433,7 +443,7 @@ function ManualBuildComposer(props: {
     eventQuery, setEventQuery, eventCategory, setEventCategory, eventCategories, eventPage, setEventPage, oddsFilter, setOddsFilter, eventResults, eventMarkets,
     onEventSearch,
   } = props;
-  const pageSize = 24;
+  const pageSize = 12;
   const normalizedQuery = eventQuery.trim().toLowerCase();
   const filteredEvents = eventResults.filter((event) => {
     if (eventCategory && event.category !== eventCategory) return false;
@@ -511,7 +521,7 @@ function ManualBuildComposer(props: {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div>
             <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>Event scopes</div>
-            <div style={{ color: "#7f776f", fontSize: 13 }}>Open an event to see its answer options and market details.</div>
+            <div style={{ color: "#7f776f", fontSize: 13 }}>Browse the event universe, then open one to inspect options and add the market you want.</div>
           </div>
           <div style={{ display: "grid", justifyItems: "end", gap: 2 }}>
             <div style={{ color: "#8f877e", fontSize: 12 }}>{browseEvents.length} events</div>
@@ -574,7 +584,7 @@ function EventScopeCard({ event, markets }: { event: KalshiEvent; markets: Kalsh
   const extraMarkets = Math.max(0, sortedMarkets.length - shownMarkets.length);
   const deadline = sortedMarkets[0]?.close_date || event.sub_title;
   return (
-    <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr auto", gap: 12, height: "100%" }}>
+    <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr auto", gap: 14, height: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 10 }}>
         <div style={{
           fontFamily: "var(--font-mono), monospace",
@@ -590,12 +600,12 @@ function EventScopeCard({ event, markets }: { event: KalshiEvent; markets: Kalsh
         }}>
           {event.category || "Event"}
         </div>
-        <div style={{ color: "#8f877e", fontSize: 12, textAlign: "right" }}>
+        <div style={{ color: "#8f877e", fontSize: 12, textAlign: "right", lineHeight: 1.4 }}>
           {deadline ? `Closes ${deadline}` : event.event_ticker}
         </div>
       </div>
 
-      <div style={{ color: "#ede9e3", fontWeight: 600, lineHeight: 1.4, fontSize: 17 }}>
+      <div style={{ color: "#ede9e3", fontWeight: 600, lineHeight: 1.35, fontSize: 18, letterSpacing: "-0.02em" }}>
         {event.title}
       </div>
 
@@ -635,8 +645,8 @@ function EventScopeCard({ event, markets }: { event: KalshiEvent; markets: Kalsh
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-        <div style={{ color: "#9f978f", fontSize: 12 }}>{event.event_ticker}</div>
-        <div style={{ ...ghostButtonStyle, minWidth: 124, textAlign: "center" }}>Open event</div>
+        <div style={{ color: "#9f978f", fontSize: 12 }}>{sortedMarkets.length ? `${sortedMarkets.length} options` : "Event details"}</div>
+        <div style={{ ...ghostButtonStyle, minWidth: 136, textAlign: "center" }}>Open and add</div>
       </div>
     </div>
   );
@@ -687,21 +697,14 @@ function priceColor(price: number): string {
 }
 
 function ManualBasketSidebar(props: {
-  manualTitle: string;
-  setManualTitle: (value: string) => void;
-  manualSummary: string;
-  setManualSummary: (value: string) => void;
-  manualTimeframe: string;
-  setManualTimeframe: (value: string) => void;
   manualHoldings: ManualBasketDraftHolding[];
   onUpdateHolding: (ticker: string, patch: Partial<ManualBasketDraftHolding>) => void;
   onRemoveHolding: (ticker: string) => void;
-  onSaveManual: () => void;
+  onOpenSaveModal: () => void;
   loading: boolean;
 }) {
   const {
-    manualTitle, setManualTitle, manualSummary, setManualSummary, manualTimeframe, setManualTimeframe,
-    manualHoldings, onUpdateHolding, onRemoveHolding, onSaveManual, loading,
+    manualHoldings, onUpdateHolding, onRemoveHolding, onOpenSaveModal, loading,
   } = props;
   return (
     <>
@@ -713,12 +716,7 @@ function ManualBasketSidebar(props: {
           Your basket
         </div>
         <div style={{ color: "#948c84", fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
-          Add contracts from the results list, then set your side, role, and dollar weight here.
-        </div>
-        <div style={{ display: "grid", gap: 10 }}>
-          <input value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} placeholder="Basket title" style={inputStyle} />
-          <textarea value={manualSummary} onChange={(e) => setManualSummary(e.target.value)} rows={3} placeholder="Basket summary" style={{ ...textareaStyle, minHeight: 100 }} />
-          <input value={manualTimeframe} onChange={(e) => setManualTimeframe(e.target.value)} placeholder="Timeframe (optional)" style={inputStyle} />
+          Open events, add the contracts you want, then name and describe the basket only when you are ready to save.
         </div>
       </Card>
 
@@ -743,11 +741,72 @@ function ManualBasketSidebar(props: {
         <div style={{ color: "#7f776f", fontSize: 13, lineHeight: 1.6, marginTop: 14, marginBottom: 14 }}>
           Weights will be normalized to a $100 basket when you save.
         </div>
-        <button onClick={onSaveManual} style={{ ...primaryButtonStyle, width: "100%", opacity: loading ? 0.7 : 1 }}>
-          {loading ? "Saving..." : "Save manual basket"}
+        <button onClick={onOpenSaveModal} style={{ ...primaryButtonStyle, width: "100%", opacity: loading ? 0.7 : 1 }}>
+          {loading ? "Saving..." : "Save basket"}
         </button>
       </Card>
     </>
+  );
+}
+
+function SaveManualBasketModal(props: {
+  manualTitle: string;
+  setManualTitle: (value: string) => void;
+  manualSummary: string;
+  setManualSummary: (value: string) => void;
+  manualTimeframe: string;
+  setManualTimeframe: (value: string) => void;
+  loading: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const {
+    manualTitle, setManualTitle, manualSummary, setManualSummary, manualTimeframe, setManualTimeframe,
+    loading, onClose, onSave,
+  } = props;
+  return (
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 120,
+      background: "rgba(4,4,4,0.78)",
+      backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    }}>
+      <div style={{
+        width: "min(100%, 560px)",
+        borderRadius: 24,
+        border: "1px solid rgba(255,255,255,0.08)",
+        background: "linear-gradient(180deg, rgba(17,17,17,0.98), rgba(10,10,10,0.99))",
+        boxShadow: "0 30px 90px rgba(0,0,0,0.55)",
+        padding: 24,
+      }}>
+        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+          Save Basket
+        </div>
+        <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
+          Finalize the basket details
+        </div>
+        <div style={{ color: "#948c84", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
+          Give this basket a name and short description before Prism saves it.
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          <input value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} placeholder="Basket title" style={inputStyle} />
+          <textarea value={manualSummary} onChange={(e) => setManualSummary(e.target.value)} rows={4} placeholder="What is this basket trying to express?" style={{ ...textareaStyle, minHeight: 120 }} />
+          <input value={manualTimeframe} onChange={(e) => setManualTimeframe(e.target.value)} placeholder="Timeframe (optional)" style={inputStyle} />
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
+          <button onClick={onClose} style={ghostButtonStyle}>Cancel</button>
+          <button onClick={onSave} style={{ ...primaryButtonStyle, opacity: loading ? 0.7 : 1 }}>
+            {loading ? "Saving..." : "Save basket"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
