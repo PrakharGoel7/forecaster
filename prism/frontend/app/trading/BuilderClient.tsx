@@ -23,6 +23,52 @@ interface ManualEventModalState {
   mode: "details" | "add";
 }
 
+const QUICK_CATEGORY_CHIPS = ["All", "Economics", "Politics", "Climate", "AI", "Crypto", "Sports"] as const;
+
+function resolveCategoryChip(chip: string, categories: string[]): string {
+  if (chip === "All") return "";
+  const normalizedChip = chip.toLowerCase();
+  const directMatch = categories.find((category) => category.toLowerCase() === normalizedChip);
+  if (directMatch) return directMatch;
+  if (chip === "AI") {
+    return categories.find((category) => {
+      const c = category.toLowerCase();
+      return c.includes("science") || c.includes("technology") || c.includes("tech") || c.includes("ai");
+    }) ?? "";
+  }
+  if (chip === "Climate") {
+    return categories.find((category) => {
+      const c = category.toLowerCase();
+      return c.includes("climate") || c.includes("weather");
+    }) ?? "";
+  }
+  if (chip === "Politics") {
+    return categories.find((category) => {
+      const c = category.toLowerCase();
+      return c.includes("polit") || c.includes("elect") || c.includes("govern");
+    }) ?? "";
+  }
+  if (chip === "Economics") {
+    return categories.find((category) => {
+      const c = category.toLowerCase();
+      return c.includes("econ") || c.includes("financial") || c.includes("fed") || c.includes("rate");
+    }) ?? "";
+  }
+  if (chip === "Crypto") {
+    return categories.find((category) => {
+      const c = category.toLowerCase();
+      return c.includes("crypto") || c.includes("bitcoin") || c.includes("eth");
+    }) ?? "";
+  }
+  if (chip === "Sports") {
+    return categories.find((category) => {
+      const c = category.toLowerCase();
+      return c.includes("sport") || c.includes("nba") || c.includes("nfl") || c.includes("mlb") || c.includes("soccer");
+    }) ?? "";
+  }
+  return categories.find((category) => category.toLowerCase().includes(normalizedChip)) ?? "";
+}
+
 export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -556,44 +602,72 @@ function ManualBuildComposer(props: {
     marketsByEvent.set(market.event_ticker, existing);
   }
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gap: 20 }}>
       <div>
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
-          Manual ETF Builder
+          Basket Studio
         </div>
-        <h1 style={{ color: "#ede9e3", fontSize: "clamp(24px, 2.6vw, 34px)", lineHeight: 1.05, letterSpacing: "-0.04em", margin: 0 }}>
-          Search events and open the ones you want to inspect.
+        <h1 style={{ color: "#ede9e3", fontSize: "clamp(28px, 3vw, 40px)", lineHeight: 1.04, letterSpacing: "-0.045em", margin: "0 0 10px" }}>
+          Build a basket around your market convictions.
         </h1>
+        <p style={{ color: "#9b938b", fontSize: 16, lineHeight: 1.7, margin: 0, maxWidth: 760 }}>
+          Search markets, choose contracts, size your exposure, and save a themed prediction-market basket.
+        </p>
       </div>
 
       <div style={{
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 18,
-        padding: 18,
-        background: "linear-gradient(180deg, rgba(16,16,16,0.98), rgba(10,10,10,0.98))",
-        boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        borderRadius: 24,
+        padding: 20,
+        background: "linear-gradient(180deg, rgba(18,18,18,0.96), rgba(11,11,11,0.98))",
+        boxShadow: "0 22px 56px rgba(0,0,0,0.34)",
+        display: "grid",
+        gap: 16,
       }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.9fr) minmax(0,0.9fr) auto", gap: 10, alignItems: "stretch" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          {QUICK_CATEGORY_CHIPS.map((chip) => {
+            const resolved = resolveCategoryChip(chip, eventCategories);
+            const isActive = chip === "All" ? !eventCategory : eventCategory === resolved;
+            return (
+              <button
+                key={chip}
+                onClick={() => setEventCategory(resolved)}
+                style={{
+                  borderRadius: 999,
+                  border: `1px solid ${isActive ? "rgba(227,100,56,0.42)" : "rgba(255,255,255,0.08)"}`,
+                  background: isActive ? "rgba(227,100,56,0.13)" : "rgba(255,255,255,0.02)",
+                  color: isActive ? "#f3e8df" : "#a79f97",
+                  padding: "9px 14px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {chip}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "stretch" }}>
           <input
             value={eventQuery}
             onChange={(e) => setEventQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") onEventSearch();
             }}
-            placeholder="Search themes, events, or keywords"
-            style={{ ...inputStyle, height: 50, fontSize: 15, borderRadius: 12 }}
+            placeholder="Search markets, themes, or events..."
+            style={{ ...inputStyle, height: 54, fontSize: 15, borderRadius: 16 }}
           />
-          <select value={eventCategory} onChange={(e) => setEventCategory(e.target.value)} style={{ ...inputStyle, height: 50, borderRadius: 12 }}>
-            <option value="">All categories</option>
-            {eventCategories.map((category) => <option key={category} value={category}>{category}</option>)}
-          </select>
-          <button onClick={onEventSearch} style={{ ...primaryButtonStyle, minWidth: 120, height: 50, borderRadius: 12 }}>Search</button>
+          <button onClick={onEventSearch} style={{ ...primaryButtonStyle, minWidth: 132, height: 54, borderRadius: 16 }}>Search</button>
         </div>
       </div>
 
       <Card>
-        <div style={{ color: "#8f877e", fontSize: 12, marginBottom: 12 }}>{browseEvents.length} events</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 16 }}>
+          <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600 }}>Browse markets</div>
+          <div style={{ color: "#8f877e", fontSize: 13 }}>{browseEvents.length} events</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 18 }}>
           {paginatedEvents.map((event) => {
             const eventMarketList = marketsByEvent.get(event.event_ticker) ?? [];
             return (
@@ -601,10 +675,11 @@ function ManualBuildComposer(props: {
                 key={event.event_ticker}
                 style={{
                   border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 18,
-                  padding: 18,
-                  minHeight: 250,
-                  background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
+                  borderRadius: 22,
+                  padding: 20,
+                  minHeight: 276,
+                  background: "linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015))",
+                  boxShadow: "0 18px 42px rgba(0,0,0,0.22)",
                 }}
               >
                 <EventScopeCard
@@ -661,7 +736,7 @@ function EventScopeCard({
   const extraMarkets = Math.max(0, sortedMarkets.length - shownMarkets.length);
   const deadline = sortedMarkets[0]?.close_date || event.sub_title;
   return (
-    <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr auto", gap: 14, height: "100%" }}>
+    <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr auto", gap: 16, height: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 10 }}>
         <div style={{
           fontFamily: "var(--font-mono), monospace",
@@ -687,16 +762,16 @@ function EventScopeCard({
       </div>
 
       <div style={{
-        border: "1px solid rgba(255,255,255,0.06)",
-        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.05)",
+        borderRadius: 16,
         padding: 14,
-        background: "rgba(8,8,8,0.34)",
+        background: "rgba(8,8,8,0.26)",
         display: "grid",
         alignContent: "start",
-        gap: 8,
+        gap: 10,
       }}>
         <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace" }}>
-          Options
+          Contract preview
         </div>
         {shownMarkets.length > 0 ? (
           isBinary ? (
@@ -728,11 +803,12 @@ function EventScopeCard({
           style={{
             ...primaryButtonStyle,
             width: "100%",
+            padding: "13px 16px",
             opacity: sortedMarkets.length ? 1 : 0.45,
             cursor: sortedMarkets.length ? "pointer" : "default",
           }}
         >
-          Add to basket
+          View contracts
         </button>
       </div>
     </div>
@@ -886,12 +962,10 @@ function ManualEventModal(props: {
             background: "rgba(255,255,255,0.02)",
           }}>
             <div style={{ color: "#ede9e3", fontSize: 21, fontWeight: 600, marginBottom: 8 }}>
-              Add to basket
+              Choose contract
             </div>
             <div style={{ color: "#8f877e", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
-              {isBinary
-                ? "This event has one binary market. Choose YES or NO."
-                : "This event has multiple outcome markets. Each row is the YES contract for that option."}
+              Pick the expression of this market conviction you want in your basket.
             </div>
 
             {loading ? (
@@ -903,7 +977,7 @@ function ManualEventModal(props: {
                 <ContractChoiceCard
                   title="Yes"
                   probability={leadMarket.mid_price}
-                  actionLabel="Add YES"
+                  actionLabel="Add to basket"
                   onChoose={() => onAddSelection(leadMarket, {
                     side: "YES",
                     label: leadMarket.question,
@@ -914,7 +988,7 @@ function ManualEventModal(props: {
                 <ContractChoiceCard
                   title="No"
                   probability={1 - leadMarket.mid_price}
-                  actionLabel="Add NO"
+                  actionLabel="Add to basket"
                   onChoose={() => onAddSelection(leadMarket, {
                     side: "NO",
                     label: leadMarket.question,
@@ -930,7 +1004,7 @@ function ManualEventModal(props: {
                     key={market.ticker}
                     title={market.yes_sub_title || market.question}
                     probability={market.mid_price}
-                    actionLabel="Add option"
+                    actionLabel="Add to basket"
                     onChoose={() => onAddSelection(market, {
                       side: "YES",
                       label: market.yes_sub_title || market.question,
@@ -1039,21 +1113,23 @@ function ManualBasketSidebar(props: {
     <>
       <Card>
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-          Basket Builder
+          Basket draft
         </div>
         <div style={{ color: "#ede9e3", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
           Your basket
         </div>
         <div style={{ color: "#948c84", fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
-          Open events, add the contracts you want, then name and describe the basket only when you are ready to save.
+          Curate positions, size your exposure, and save when the basket reflects your thesis.
         </div>
       </Card>
 
       <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ color: "#ede9e3", fontWeight: 600 }}>Selected holdings</div>
-          <div style={{ color: "#8f877e", fontSize: 12 }}>
-            {manualHoldings.reduce((sum, holding) => sum + (holding.weight_percent || 0), 0).toFixed(0)}% draft
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 14 }}>
+          <div>
+            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>Your Basket</div>
+            <div style={{ color: "#8f877e", fontSize: 13 }}>
+              {manualHoldings.length} {manualHoldings.length === 1 ? "position" : "positions"} · {manualHoldings.reduce((sum, holding) => sum + (holding.weight_percent || 0), 0).toFixed(0)}% drafted
+            </div>
           </div>
         </div>
         <div style={{ display: "grid", gap: 10, maxHeight: "calc(100vh - 360px)", overflowY: "auto", paddingRight: 4 }}>
@@ -1066,7 +1142,19 @@ function ManualBasketSidebar(props: {
               markets={holdingMarkets[holding.event_ticker] ?? []}
             />
           ))}
-          {!manualHoldings.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No holdings yet. Add them from the market cards.</div>}
+          {!manualHoldings.length && (
+            <div style={{
+              border: "1px dashed rgba(255,255,255,0.10)",
+              borderRadius: 18,
+              padding: 18,
+              color: "#8c847c",
+              fontSize: 14,
+              lineHeight: 1.6,
+              background: "rgba(255,255,255,0.015)",
+            }}>
+              No positions yet. Inspect a market and add a contract to start your basket.
+            </div>
+          )}
         </div>
         <button onClick={onOpenSaveModal} style={{ ...primaryButtonStyle, width: "100%", opacity: loading ? 0.7 : 1 }}>
           {loading ? "Saving..." : "Save basket"}
@@ -1116,14 +1204,14 @@ function SaveManualBasketModal(props: {
           Save Basket
         </div>
         <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
-          Finalize the basket details
+          Save your basket
         </div>
         <div style={{ color: "#948c84", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
-          Give this basket a name and short description before Prism saves it.
+          Give your basket a title and capture the thesis behind it before saving.
         </div>
         <div style={{ display: "grid", gap: 10 }}>
           <input value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} placeholder="Basket title" style={inputStyle} />
-          <textarea value={manualSummary} onChange={(e) => setManualSummary(e.target.value)} rows={4} placeholder="What is this basket trying to express?" style={{ ...textareaStyle, minHeight: 120 }} />
+          <textarea value={manualSummary} onChange={(e) => setManualSummary(e.target.value)} rows={4} placeholder="What bet on the future is this basket representing?" style={{ ...textareaStyle, minHeight: 120 }} />
           <input value={manualTimeframe} onChange={(e) => setManualTimeframe(e.target.value)} placeholder="Timeframe (optional)" style={inputStyle} />
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
@@ -1397,7 +1485,12 @@ function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
   return (
     <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 10 }}>
-        <div style={{ color: "#ede9e3", fontWeight: 600, lineHeight: 1.45 }}>{holding.event_title || holding.question}</div>
+        <div>
+          <div style={{ color: "#ede9e3", fontWeight: 600, lineHeight: 1.45, marginBottom: 4 }}>{holding.event_title || holding.question}</div>
+          <div style={{ color: "#8f877e", fontSize: 13 }}>
+            Current price {Math.round(holding.market_price * 100)}%
+          </div>
+        </div>
         <button
           onClick={onRemove}
           aria-label="Remove holding"
@@ -1417,7 +1510,7 @@ function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)", gap: 8, marginBottom: 8 }}>
         <div>
-          <div style={miniLabelStyle}>Selected contract</div>
+          <div style={miniLabelStyle}>Contract</div>
           <select
             value={selectedChoice}
             onChange={(e) => {
@@ -1433,14 +1526,14 @@ function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
           </select>
         </div>
         <div>
-          <div style={miniLabelStyle}>ETF allocation</div>
-        <input
-          value={holding.weight_percent}
-          type="number"
-          min={1}
-          onChange={(e) => onUpdate({ weight_percent: Number(e.target.value) })}
-          style={inputStyle}
-        />
+          <div style={miniLabelStyle}>% of basket</div>
+          <input
+            value={holding.weight_percent}
+            type="number"
+            min={1}
+            onChange={(e) => onUpdate({ weight_percent: Number(e.target.value) })}
+            style={inputStyle}
+          />
         </div>
       </div>
       <input
