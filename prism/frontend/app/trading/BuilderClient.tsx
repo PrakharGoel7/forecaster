@@ -851,32 +851,29 @@ function ManualEventModal(props: {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(340px,0.92fr)", gap: 20, alignItems: "start" }}>
-          <section style={{ display: "grid", gap: 20 }}>
-            <div style={{
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 22,
-              padding: 22,
-              background: "rgba(255,255,255,0.02)",
-            }}>
-              <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600, marginBottom: 12 }}>
-                Event details
-              </div>
-              <div style={{ display: "grid", gap: 12 }}>
-                <DetailRow label="Event" value={event.title} />
-                <DetailRow label="Category" value={event.category || "Uncategorized"} />
-                <DetailRow label="Deadline" value={closeLabel || "Not listed"} />
-                {leadMarket && <DetailRow label="Question" value={leadMarket.question} />}
-              </div>
+          <section style={{
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 22,
+            padding: 22,
+            background: "rgba(255,255,255,0.02)",
+            display: "grid",
+            gap: 18,
+          }}>
+            <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600 }}>
+              Event details
             </div>
-
+            <div style={{ display: "grid", gap: 12 }}>
+              <DetailRow label="Event" value={event.title} />
+              <DetailRow label="Category" value={event.category || "Uncategorized"} />
+              <DetailRow label="Deadline" value={closeLabel || "Not listed"} />
+              {leadMarket && <DetailRow label="Question" value={leadMarket.question} />}
+            </div>
             {leadMarket?.rules_primary && (
               <div style={{
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 22,
-                padding: 22,
-                background: "rgba(255,255,255,0.02)",
+                borderTop: "1px solid rgba(255,255,255,0.08)",
+                paddingTop: 18,
               }}>
-                <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600, marginBottom: 10 }}>
+                <div style={{ color: "#ede9e3", fontSize: 17, fontWeight: 600, marginBottom: 10 }}>
                   Resolution rule
                 </div>
                 <div style={{ color: "#9b938b", fontSize: 14, lineHeight: 1.75 }}>
@@ -893,7 +890,7 @@ function ManualEventModal(props: {
             background: "rgba(255,255,255,0.02)",
           }}>
             <div style={{ color: "#ede9e3", fontSize: 21, fontWeight: 600, marginBottom: 8 }}>
-              {mode === "add" ? "Choose a contract for your basket" : "Available contracts"}
+              Add to basket
             </div>
             <div style={{ color: "#8f877e", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
               {isBinary
@@ -981,21 +978,19 @@ function ContractChoiceCard({
     <div style={{
       border: "1px solid rgba(255,255,255,0.08)",
       borderRadius: 18,
-      padding: 18,
+      padding: "14px 16px",
       background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "start", marginBottom: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 14, alignItems: "center" }}>
         <div>
-          <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, lineHeight: 1.35, marginBottom: 6 }}>
+          <div style={{ color: "#ede9e3", fontSize: 17, fontWeight: 600, lineHeight: 1.3 }}>
             {title}
           </div>
         </div>
-        <div style={{ color: priceColor(probability), fontFamily: "var(--font-mono), monospace", fontSize: 20, fontWeight: 700 }}>
+        <div style={{ color: priceColor(probability), fontFamily: "var(--font-mono), monospace", fontSize: 18, fontWeight: 700, justifySelf: "end" }}>
           {(probability * 100).toFixed(0)}%
         </div>
-      </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
-        <button onClick={onChoose} style={primaryButtonStyle}>
+        <button onClick={onChoose} style={{ ...primaryButtonStyle, padding: "10px 14px", whiteSpace: "nowrap" }}>
           {actionLabel}
         </button>
       </div>
