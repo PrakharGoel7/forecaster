@@ -997,8 +997,12 @@ def _run_trading_pipeline(
     # with exposure-route analysis instead of the old domain map.
     _emit({"type": "analyst_done", "analysis": analysis})
 
-    _emit({"type": "progress", "label": "Retrieving candidate markets from the cache…"})
-    retrieval_result = retrieve_markets_for_exposures(exposure_result.get("exposures", []), belief_summary)
+    _emit({"type": "progress", "label": "Retrieving candidate markets from event search and cache…"})
+    retrieval_result = retrieve_markets_for_exposures(
+        exposure_result.get("exposures", []),
+        belief_summary,
+        live_market_fetcher=lambda event_tickers: _get_live_markets_for_events(_get_client(), event_tickers),
+    )
     if include_trace:
         retrieval_by_ring: dict[str, int] = {}
         for group in retrieval_result.get("exposure_candidates", []):

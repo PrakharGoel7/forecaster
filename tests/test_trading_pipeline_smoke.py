@@ -43,6 +43,63 @@ class RetrievalSmokeTests(unittest.TestCase):
         self.assertEqual(len(result["exposure_candidates"]), 1)
         self.assertEqual(result["exposure_candidates"][0]["candidates"][0]["ticker"], "BTC-250K")
 
+    @patch("trading_companion.retrieval.market_retrieval.get_all_markets")
+    @patch("trading_companion.retrieval.market_retrieval.get_markets_for_events")
+    @patch("trading_companion.retrieval.market_retrieval.search_events")
+    @patch("trading_companion.retrieval.market_retrieval.search_events_fts")
+    @patch("trading_companion.retrieval.market_retrieval.get_event_lookup")
+    def test_retrieval_uses_event_first_live_fallback(
+        self,
+        mock_event_lookup,
+        mock_search_events_fts,
+        mock_search_events,
+        mock_get_markets_for_events,
+        mock_all_markets,
+    ):
+        mock_event_lookup.return_value = {}
+        mock_search_events_fts.return_value = [{
+            "event_ticker": "EV1",
+            "series_ticker": "CLIMATE",
+            "title": "Will insured losses exceed $200B?",
+            "sub_title": "",
+            "category": "Climate and Weather",
+        }]
+        mock_search_events.return_value = []
+        mock_get_markets_for_events.return_value = []
+        mock_all_markets.return_value = []
+
+        class Market:
+            ticker = "INS-200B"
+            event_ticker = "EV1"
+            question = "Will insured climate losses exceed $200B in 2027?"
+            yes_sub_title = "Yes"
+            no_sub_title = "No"
+            yes_bid = None
+            yes_ask = None
+            last_price = None
+            mid_price = 0.34
+            volume = 1400
+            status = "open"
+            close_time = ""
+            close_date = "2027-12-31"
+            rules_primary = ""
+            rules_secondary = ""
+
+        result = retrieve_markets_for_exposures(
+            [{
+                "exposure_name": "Climate insurance stress",
+                "search_terms": ["insured losses", "climate", "insurance"],
+                "negative_search_terms": [],
+                "resolution_features": ["200b losses"],
+                "tier": "first_order_consequence",
+                "route_ring": "strong_proxy",
+            }],
+            {"timeframe_end": "2027-12-31"},
+            live_market_fetcher=lambda event_tickers: [Market()] if event_tickers == ["EV1"] else [],
+        )
+        self.assertEqual(result["market_source"], "live_event_fetch")
+        self.assertEqual(result["exposure_candidates"][0]["candidates"][0]["ticker"], "INS-200B")
+
 
 class ValidationSmokeTests(unittest.TestCase):
     def test_weight_normalization_hits_100(self):
