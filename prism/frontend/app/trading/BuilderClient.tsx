@@ -11,8 +11,7 @@ import type { BeliefAnalysis, BeliefSummary, DomainAnalysis, KalshiEvent, Kalshi
 
 type Mode = "instant" | "thinking";
 type BuildPath = "ai" | "manual";
-type Stage = "idle" | "chatting" | "review" | "analyzing" | "done" | "error";
-type BasketStyle = "balanced" | "high_conviction" | "hedged" | "contrarian";
+type Stage = "idle" | "chatting" | "analyzing" | "done" | "error";
 
 interface ChatMsg {
   role: "user" | "assistant";
@@ -50,7 +49,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const [basket, setBasket] = useState<PredictionBasket | null>(null);
   const [savedBaskets, setSavedBaskets] = useState<SavedBasket[]>([]);
   const [basketId, setBasketId] = useState<number | null>(basketParam ? Number(basketParam) : null);
-  const [basketStyle, setBasketStyle] = useState<BasketStyle>("balanced");
   const [eventQuery, setEventQuery] = useState("");
   const [eventCategory, setEventCategory] = useState("");
   const [eventCategories, setEventCategories] = useState<string[]>([]);
@@ -161,7 +159,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     setManualTitle("");
     setManualSummary("");
     setManualTimeframe("");
-    setBasketStyle("balanced");
     setSaveModalOpen(false);
     setManualEventModal(null);
     setManualEventModalMarkets([]);
@@ -203,7 +200,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       setApiHistory(result.history);
       if (result.status === "finalized" && result.belief_summary) {
         setBeliefSummary(result.belief_summary);
-        setStage("review");
+        startAnalysis(result.belief_summary);
       } else if (result.agent_message) {
         setChatMessages((prev) => [...prev, { role: "assistant", content: result.agent_message! }]);
       }
@@ -426,9 +423,17 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                           {stage === "chatting" && (
                             <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
                               <div style={{ color: "#8f877e", fontSize: 12, fontWeight: 600 }}>Answer to continue</div>
-                              <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={3} placeholder="Add the missing detail..." style={textareaStyle} />
-                              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                                <button onClick={onSubmitReply} style={primaryButtonStyle}>Continue</button>
+                              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "stretch" }}>
+                                <input
+                                  value={input}
+                                  onChange={(e) => setInput(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") onSubmitReply();
+                                  }}
+                                  placeholder="Add the missing detail..."
+                                  style={{ ...inputStyle, height: 50, borderRadius: 14 }}
+                                />
+                                <button onClick={onSubmitReply} style={{ ...primaryButtonStyle, minWidth: 108, borderRadius: 14 }}>Continue</button>
                               </div>
                             </div>
                           )}
@@ -436,15 +441,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                       )}
 
                       {beliefSummary && <BeliefBrief summary={beliefSummary} />}
-
-                      {beliefSummary && stage === "review" && (
-                        <ThesisControlPanel
-                          summary={beliefSummary}
-                          basketStyle={basketStyle}
-                          setBasketStyle={setBasketStyle}
-                          onBuild={() => startAnalysis(beliefSummary)}
-                        />
-                      )}
 
                       {analysis && <AnalysisSummary analysis={analysis} screenedCount={screenedCount} />}
                     </>
@@ -592,7 +588,18 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
         <div style={{ color: "#8f877e", fontSize: 13, lineHeight: 1.6 }}>
           {mode === "instant" ? "Fast basket from your take." : "More thesis sharpening and broader implication mapping."} {stepLabel}.
         </div>
-        <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={5} placeholder="Example: AI agents replace entry-level coding jobs over the next 3 years." style={{ ...textareaStyle, minHeight: 156, borderRadius: 16 }} />
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "stretch" }}>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSubmit();
+            }}
+            placeholder="Example: AI agents replace entry-level coding jobs over the next 3 years."
+            style={{ ...inputStyle, height: 54, fontSize: 15, borderRadius: 16 }}
+          />
+          <button onClick={onSubmit} style={{ ...primaryButtonStyle, minWidth: 132, borderRadius: 16 }}>Build basket</button>
+        </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           {AI_EXAMPLE_PROMPTS.map((example) => (
             <button
@@ -612,11 +619,8 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
             </button>
           ))}
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <div style={{ color: "#7f776f", fontSize: 13 }}>
-            Output: a weighted prediction-market basket built from your take.
-          </div>
-          <button onClick={onSubmit} style={primaryButtonStyle}>Build basket</button>
+        <div style={{ color: "#7f776f", fontSize: 13 }}>
+          Output: a weighted prediction-market basket built from your take.
         </div>
       </div>
     </div>
@@ -1409,71 +1413,6 @@ function BeliefBrief({ summary }: { summary: BeliefSummary }) {
           </div>
         </div>
       )}
-    </Card>
-  );
-}
-
-function ThesisControlPanel({
-  summary,
-  basketStyle,
-  setBasketStyle,
-  onBuild,
-}: {
-  summary: BeliefSummary;
-  basketStyle: BasketStyle;
-  setBasketStyle: (value: BasketStyle) => void;
-  onBuild: () => void;
-}) {
-  const options: { value: BasketStyle; label: string }[] = [
-    { value: "balanced", label: "Balanced" },
-    { value: "high_conviction", label: "High conviction" },
-    { value: "hedged", label: "Hedged" },
-    { value: "contrarian", label: "Contrarian" },
-  ];
-  return (
-    <Card>
-      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-        Thesis review
-      </div>
-      <div style={{ color: "#ede9e3", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
-        Prism understood your take as:
-      </div>
-      <div style={{ color: "#d8d0c8", fontSize: 18, lineHeight: 1.5, marginBottom: 16 }}>
-        {summary.core_belief}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18, marginBottom: 18 }}>
-        <EditorialField label="Core thesis" value={summary.core_belief} />
-        <EditorialField label="Time horizon" value={`${summary.timeframe_start || "Now"} → ${summary.timeframe_end || summary.time_horizon}`} />
-        <EditorialField label="Main mechanism" value={summary.mechanism || "Not specified"} />
-      </div>
-
-      <div style={{ color: "#d8d0c8", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Basket style</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
-        {options.map((option) => {
-          const active = basketStyle === option.value;
-          return (
-            <button
-              key={option.value}
-              onClick={() => setBasketStyle(option.value)}
-              style={{
-                ...ghostButtonStyle,
-                borderColor: active ? "rgba(227,100,56,0.45)" : "rgba(255,255,255,0.08)",
-                background: active ? "rgba(227,100,56,0.12)" : "transparent",
-                color: active ? "#f6ece5" : "#9a928a",
-              }}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ color: "#8d857d", fontSize: 13 }}>
-          Review the thesis framing before Prism chooses positions.
-        </div>
-        <button onClick={onBuild} style={primaryButtonStyle}>Looks right — build basket</button>
-      </div>
     </Card>
   );
 }
