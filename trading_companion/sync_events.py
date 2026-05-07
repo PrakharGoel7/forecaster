@@ -27,8 +27,6 @@ from event_cache_db import append_events_to_cache_db, init_event_cache_db
 
 CACHE_FILE = EVENTS_CACHE_FILE
 
-# Categories to skip — not useful for most beliefs
-SKIP_CATEGORIES = {"Sports", "Entertainment", "Mentions"}
 CHECKPOINT_EVERY_PAGES = 10
 BASE_DELAY_SECONDS = 0.1
 MAX_RETRIES = 8
@@ -91,8 +89,6 @@ def sync(verbose: bool = True) -> int:
         kept_batch: list[dict] = []
         for e in batch:
             cat = e.get("category", "")
-            if cat in SKIP_CATEGORIES:
-                continue
             kept_event = {
                 "event_ticker": e.get("event_ticker", ""),
                 "series_ticker": e.get("series_ticker", ""),

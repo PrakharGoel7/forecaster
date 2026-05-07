@@ -137,7 +137,7 @@ def _seconds_until_next_cache_refresh(now: datetime | None = None) -> float:
         daily_target += timedelta(days=1)
     targets.append(daily_target)
 
-    one_off_target = datetime(2026, 5, 6, 16, 42, tzinfo=_PACIFIC_TZ)
+    one_off_target = datetime(2026, 5, 7, 10, 42, tzinfo=_PACIFIC_TZ)
     if now < one_off_target:
         targets.append(one_off_target)
 
