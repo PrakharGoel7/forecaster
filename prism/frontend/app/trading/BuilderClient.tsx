@@ -843,11 +843,6 @@ function ManualEventModal(props: {
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "start", marginBottom: 20 }}>
           <div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
-              <Tag>{event.category || "Event"}</Tag>
-              {closeLabel && <Tag>Closes {closeLabel}</Tag>}
-              {sortedMarkets.length > 0 && <Tag>{sortedMarkets.length} option{sortedMarkets.length === 1 ? "" : "s"}</Tag>}
-            </div>
             <div style={{ color: "#ede9e3", fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.04em", maxWidth: 760 }}>
               {event.title}
             </div>
@@ -855,7 +850,42 @@ function ManualEventModal(props: {
           <button onClick={onClose} style={ghostButtonStyle}>Close</button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(320px,0.86fr)", gap: 20, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(340px,0.92fr)", gap: 20, alignItems: "start" }}>
+          <section style={{ display: "grid", gap: 20 }}>
+            <div style={{
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 22,
+              padding: 22,
+              background: "rgba(255,255,255,0.02)",
+            }}>
+              <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600, marginBottom: 12 }}>
+                Event details
+              </div>
+              <div style={{ display: "grid", gap: 12 }}>
+                <DetailRow label="Event" value={event.title} />
+                <DetailRow label="Category" value={event.category || "Uncategorized"} />
+                <DetailRow label="Deadline" value={closeLabel || "Not listed"} />
+                {leadMarket && <DetailRow label="Question" value={leadMarket.question} />}
+              </div>
+            </div>
+
+            {leadMarket?.rules_primary && (
+              <div style={{
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 22,
+                padding: 22,
+                background: "rgba(255,255,255,0.02)",
+              }}>
+                <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600, marginBottom: 10 }}>
+                  Resolution rule
+                </div>
+                <div style={{ color: "#9b938b", fontSize: 14, lineHeight: 1.75 }}>
+                  {leadMarket.rules_primary}
+                </div>
+              </div>
+            )}
+          </section>
+
           <section style={{
             border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 22,
@@ -879,9 +909,7 @@ function ManualEventModal(props: {
               <div style={{ display: "grid", gap: 12 }}>
                 <ContractChoiceCard
                   title="Yes"
-                  subtitle={leadMarket.question}
                   probability={leadMarket.mid_price}
-                  detail={`Volume ${Math.round(leadMarket.volume).toLocaleString()} · Closes ${leadMarket.close_date}`}
                   actionLabel="Add YES"
                   onChoose={() => onAddSelection(leadMarket, {
                     side: "YES",
@@ -891,9 +919,7 @@ function ManualEventModal(props: {
                 />
                 <ContractChoiceCard
                   title="No"
-                  subtitle={leadMarket.question}
                   probability={1 - leadMarket.mid_price}
-                  detail={`Volume ${Math.round(leadMarket.volume).toLocaleString()} · Closes ${leadMarket.close_date}`}
                   actionLabel="Add NO"
                   onChoose={() => onAddSelection(leadMarket, {
                     side: "NO",
@@ -908,9 +934,7 @@ function ManualEventModal(props: {
                   <ContractChoiceCard
                     key={market.ticker}
                     title={market.yes_sub_title || market.question}
-                    subtitle={market.question}
                     probability={market.mid_price}
-                    detail={`Volume ${Math.round(market.volume).toLocaleString()} · Closes ${market.close_date}`}
                     actionLabel="Add option"
                     onChoose={() => onAddSelection(market, {
                       side: "YES",
@@ -936,41 +960,6 @@ function ManualEventModal(props: {
               </div>
             )}
           </section>
-
-          <section style={{ display: "grid", gap: 20 }}>
-            {leadMarket?.rules_primary && (
-              <div style={{
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 22,
-                padding: 22,
-                background: "rgba(255,255,255,0.02)",
-              }}>
-                <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600, marginBottom: 10 }}>
-                  Resolution rule
-                </div>
-                <div style={{ color: "#9b938b", fontSize: 14, lineHeight: 1.75 }}>
-                  {leadMarket.rules_primary}
-                </div>
-              </div>
-            )}
-
-            <div style={{
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 22,
-              padding: 22,
-              background: "rgba(255,255,255,0.02)",
-            }}>
-              <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600, marginBottom: 12 }}>
-                Event details
-              </div>
-              <div style={{ display: "grid", gap: 12 }}>
-                <DetailRow label="Event" value={event.title} />
-                <DetailRow label="Category" value={event.category || "Uncategorized"} />
-                <DetailRow label="Deadline" value={closeLabel || "Not listed"} />
-                {leadMarket && <DetailRow label="Question" value={leadMarket.question} />}
-              </div>
-            </div>
-          </section>
         </div>
       </div>
     </div>
@@ -979,16 +968,12 @@ function ManualEventModal(props: {
 
 function ContractChoiceCard({
   title,
-  subtitle,
   probability,
-  detail,
   actionLabel,
   onChoose,
 }: {
   title: string;
-  subtitle: string;
   probability: number;
-  detail: string;
   actionLabel: string;
   onChoose: () => void;
 }) {
@@ -1004,18 +989,12 @@ function ContractChoiceCard({
           <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, lineHeight: 1.35, marginBottom: 6 }}>
             {title}
           </div>
-          <div style={{ color: "#8f877e", fontSize: 13, lineHeight: 1.5 }}>
-            {subtitle}
-          </div>
         </div>
         <div style={{ color: priceColor(probability), fontFamily: "var(--font-mono), monospace", fontSize: 20, fontWeight: 700 }}>
           {(probability * 100).toFixed(0)}%
         </div>
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <div style={{ color: "#706960", fontSize: 12 }}>
-          {detail}
-        </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
         <button onClick={onChoose} style={primaryButtonStyle}>
           {actionLabel}
         </button>
