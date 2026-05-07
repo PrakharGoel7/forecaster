@@ -7,9 +7,10 @@ import json
 import logging
 import os
 import sys
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Callable
 from zoneinfo import ZoneInfo
 
 # Repo root is three levels up from prism/api/main.py; forecaster package lives there
@@ -36,6 +37,7 @@ from pydantic import BaseModel, Field
 
 _SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
 _KALSHI_API_LOG_FILE = (_REPO_ROOT / os.environ.get("KALSHI_API_LOG_FILE", "runtime_logs/kalshi_api_log.csv")).resolve()
+_TRADING_PIPELINE_DEBUG_DIR = (_REPO_ROOT / os.environ.get("TRADING_PIPELINE_DEBUG_DIR", "runtime_logs/trading_pipeline_runs")).resolve()
 _PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
 _ENABLE_CACHE_REFRESH_SCHEDULER = os.environ.get("ENABLE_CACHE_REFRESH_SCHEDULER", "").lower() == "true"
 _cache_refresh_logger = logging.getLogger("prism.cache_refresh")
@@ -220,6 +222,63 @@ def _read_kalshi_log_rows(limit: int) -> list[dict[str, str]]:
     if limit <= 0:
         return rows
     return rows[-limit:]
+
+
+def _ensure_trading_pipeline_debug_dir() -> Path:
+    _TRADING_PIPELINE_DEBUG_DIR.mkdir(parents=True, exist_ok=True)
+    return _TRADING_PIPELINE_DEBUG_DIR
+
+
+def _trading_pipeline_debug_path(run_id: str) -> Path:
+    return _ensure_trading_pipeline_debug_dir() / f"{run_id}.json"
+
+
+def _save_trading_pipeline_debug_run(run_id: str, payload: dict[str, Any]) -> Path:
+    path = _trading_pipeline_debug_path(run_id)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+    return path
+
+
+def _load_trading_pipeline_debug_run(run_id: str) -> tuple[Path, dict[str, Any]]:
+    path = _trading_pipeline_debug_path(run_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Trading pipeline debug run not found")
+    with path.open("r", encoding="utf-8") as f:
+        return path, json.load(f)
+
+
+def _list_trading_pipeline_debug_runs(limit: int = 20) -> list[dict[str, Any]]:
+    debug_dir = _ensure_trading_pipeline_debug_dir()
+    runs: list[dict[str, Any]] = []
+    for path in sorted(debug_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:max(limit, 0)]:
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                payload = json.load(f)
+        except Exception:
+            continue
+        runs.append({
+            "run_id": payload.get("run_id", path.stem),
+            "created_at": payload.get("created_at"),
+            "label": payload.get("label", ""),
+            "mode": payload.get("mode", ""),
+            "example_count": payload.get("summary", {}).get("example_count", len(payload.get("examples", []))),
+            "completed_count": payload.get("summary", {}).get("completed_count", 0),
+            "error_count": payload.get("summary", {}).get("error_count", 0),
+            "path": str(path),
+        })
+    return runs
+
+
+def _default_trading_pipeline_examples() -> list[dict[str, Any]]:
+    return [
+        {"label": "AI labor shock", "message": "AI agents replace entry-level coding jobs over the next 3 years."},
+        {"label": "Taiwan conflict", "message": "China invades Taiwan before 2030."},
+        {"label": "GLP-1 adoption", "message": "GLP-1 drugs significantly reduce US obesity rates by the end of 2028."},
+        {"label": "Rates higher for longer", "message": "US interest rates stay higher for longer through 2027."},
+        {"label": "Bitcoin breakout", "message": "Bitcoin hits $250K before the end of 2028."},
+        {"label": "Climate insurance stress", "message": "Climate disasters strain US insurance markets over the next 2 years."},
+    ]
 
 
 @app.get("/api/me")
@@ -633,6 +692,23 @@ class TradingAnalyzeRequest(BaseModel):
     mode: str = "thinking"
 
 
+class TradingPipelineExampleRequest(BaseModel):
+    label: str = ""
+    message: str = ""
+    history: list[dict[str, Any]] = Field(default_factory=list)
+    follow_up_messages: list[str] = Field(default_factory=list)
+    belief_summary: dict[str, Any] | None = None
+    mode: str | None = None
+
+
+class TradingPipelineBatchRequest(BaseModel):
+    label: str = ""
+    mode: str = "thinking"
+    examples: list[TradingPipelineExampleRequest] = Field(default_factory=list)
+    save_baskets: bool = False
+    include_kalshi_log_tail: int = 0
+
+
 class ManualBasketHoldingRequest(BaseModel):
     ticker: str
     event_ticker: str
@@ -676,6 +752,285 @@ def _market_from_row(row: dict[str, Any]):
     })
 
 
+def _run_belief_chat_sequence(
+    *,
+    message: str,
+    history: list[dict[str, Any]] | None = None,
+    follow_up_messages: list[str] | None = None,
+    mode: str = "thinking",
+) -> dict[str, Any]:
+    from agents.belief_agent import BeliefAgent
+
+    agent = BeliefAgent()
+    current_history = list(history or [])
+    pending_messages = [message, *(follow_up_messages or [])]
+    turns: list[dict[str, Any]] = []
+    response: dict[str, Any] | None = None
+
+    while pending_messages:
+        current_message = pending_messages.pop(0)
+        request_payload = {
+            "history": current_history,
+            "message": current_message,
+            "mode": mode,
+        }
+        response = agent.step(current_history, current_message, mode=mode)
+        turns.append({
+            "request": request_payload,
+            "response": response,
+        })
+        current_history = response.get("history", current_history)
+        if response.get("status") == "finalized":
+            break
+
+    if response is None:
+        raise ValueError("Belief chat sequence received no user messages")
+
+    return {
+        "status": response.get("status", "error"),
+        "turns": turns,
+        "history": current_history,
+        "agent_message": response.get("agent_message"),
+        "belief_summary": response.get("belief_summary"),
+        "search_queries": response.get("search_queries", []),
+        "remaining_follow_ups": pending_messages,
+    }
+
+
+def _run_trading_pipeline(
+    *,
+    belief_summary: dict[str, Any],
+    mode: str,
+    request_user_id: str | None = None,
+    save_basket: bool = True,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    include_trace: bool = False,
+) -> dict[str, Any]:
+    from agents.basket_critic_agent import BasketCriticAgent
+    from agents.curator_agent import BasketBuilderAgent
+    from agents.exposure_agent import ExposureAgent
+    from agents.screener_agent import MarketScreenerAgent
+    from event_cache_db import get_event_lookup
+    from market_cache_db import get_markets_for_events
+    from retrieval.market_retrieval import retrieve_markets_for_exposures
+
+    trace: dict[str, Any] = {
+        "belief_summary": belief_summary,
+        "mode": mode,
+        "stream_messages": [],
+        "stages": {},
+    } if include_trace else {}
+
+    def _emit(msg: dict[str, Any]) -> None:
+        if include_trace:
+            trace["stream_messages"].append(msg)
+        if progress_callback:
+            progress_callback(msg)
+
+    _emit({"type": "progress", "label": "Mapping tradable exposure routes…"})
+    exposure_result = ExposureAgent().run(belief_summary)
+    analysis = _exposure_analysis_payload(exposure_result)
+    if include_trace:
+        trace["stages"]["exposure"] = {
+            "input": {"belief_summary": belief_summary},
+            "output": exposure_result,
+        }
+    # Preserve the legacy stream shape expected by the frontend, but back it
+    # with exposure-route analysis instead of the old domain map.
+    _emit({"type": "analyst_done", "analysis": analysis})
+
+    _emit({"type": "progress", "label": "Retrieving candidate markets from the cache…"})
+    retrieval_result = retrieve_markets_for_exposures(exposure_result.get("exposures", []), belief_summary)
+    if include_trace:
+        trace["stages"]["retrieval"] = {
+            "input": {
+                "exposures": exposure_result.get("exposures", []),
+                "belief_summary": belief_summary,
+            },
+            "output": retrieval_result,
+        }
+
+    _emit({"type": "progress", "label": "Scoring tradable market exposures…"})
+    screener_result = MarketScreenerAgent().run(
+        belief_summary,
+        exposure_result.get("exposures", []),
+        retrieval_result.get("exposure_candidates", []),
+    )
+    selected_markets = screener_result.get("selected_markets", [])
+    if include_trace:
+        trace["stages"]["screener"] = {
+            "input": {
+                "belief_summary": belief_summary,
+                "exposures": exposure_result.get("exposures", []),
+                "exposure_candidates": retrieval_result.get("exposure_candidates", []),
+            },
+            "output": screener_result,
+        }
+
+    if not selected_markets:
+        if include_trace:
+            trace["error"] = "No relevant markets found matching quality thresholds."
+        raise ValueError("No relevant markets found matching quality thresholds.")
+
+    event_tickers = list(dict.fromkeys(m["event_ticker"] for m in selected_markets))
+    screener_msg = {
+        "type": "screener_done",
+        "tickers": [m["ticker"] for m in selected_markets],
+        "count": len(selected_markets),
+        "selected_markets": selected_markets,
+    }
+    # Preserve legacy `screener_done` fields while attaching the richer
+    # contract-level selection payload for debugging and future UI use.
+    _emit(screener_msg)
+
+    _emit({"type": "progress", "label": f"Loading cached markets for {len(event_tickers)} events…"})
+    try:
+        cached_rows = get_markets_for_events(event_tickers)
+    except Exception:
+        cached_rows = []
+
+    selected_tickers = {m["ticker"] for m in selected_markets}
+    market_load_source = "cache"
+    if cached_rows:
+        markets = [_market_from_row(row) for row in cached_rows if row["ticker"] in selected_tickers]
+    else:
+        market_load_source = "live_fallback"
+        _emit({"type": "progress", "label": "Cached market DB is empty; fetching open markets live…"})
+        kalshi_client = _get_client()
+        markets = [m for m in _get_live_markets_for_events(kalshi_client, event_tickers) if m.ticker in selected_tickers]
+
+    if include_trace:
+        trace["stages"]["market_loading"] = {
+            "input": {"event_tickers": event_tickers, "selected_tickers": sorted(selected_tickers)},
+            "output": {
+                "source": market_load_source,
+                "market_count": len(markets),
+                "markets": [_market_dict(m) for m in markets],
+            },
+        }
+
+    if not markets:
+        if include_trace:
+            trace["error"] = "No open markets found for the shortlisted contracts."
+        raise ValueError("No open markets found for the shortlisted contracts.")
+
+    selected_by_ticker = {m["ticker"]: m for m in selected_markets}
+    markets.sort(key=lambda m: (-selected_by_ticker.get(m.ticker, {}).get("overall_score", 0), -float(getattr(m, "volume", 0.0))))
+
+    _emit({"type": "progress", "label": f"Building a $100 prediction market basket from {len(markets)} selected contracts…"})
+    basket = BasketBuilderAgent().run(
+        belief_summary,
+        markets,
+        exposures=exposure_result.get("exposures", []),
+        selected_markets=selected_markets,
+        mode=mode,
+    )
+    if include_trace:
+        trace["stages"]["basket_builder"] = {
+            "input": {
+                "belief_summary": belief_summary,
+                "exposures": exposure_result.get("exposures", []),
+                "selected_markets": selected_markets,
+                "markets": [_market_dict(m) for m in markets],
+                "mode": mode,
+            },
+            "output": basket,
+        }
+
+    critique = None
+    if mode != "instant" or _ENABLE_FAST_CRITIC:
+        _emit({"type": "progress", "label": "Critiquing basket coherence…"})
+        critique = BasketCriticAgent().run(
+            belief_summary,
+            exposure_result.get("exposures", []),
+            selected_markets,
+            basket,
+        )
+        _emit({"type": "critic_done", "critique": critique})
+        if include_trace:
+            trace["stages"]["critic"] = {
+                "input": {
+                    "belief_summary": belief_summary,
+                    "exposures": exposure_result.get("exposures", []),
+                    "selected_markets": selected_markets,
+                    "draft_basket": basket,
+                },
+                "output": critique,
+            }
+        if critique.get("verdict") == "needs_repair":
+            basket = _apply_critic_repairs(basket, selected_markets, critique)
+
+    selected_market_rows = {m.ticker: m for m in markets}
+    basket, validation_warnings = _validate_and_repair_basket(basket, selected_markets, selected_market_rows)
+    if validation_warnings:
+        notes = basket.get("construction_notes", "")
+        basket["construction_notes"] = (notes + ("\n\n" if notes else "") + "Validation notes: " + "; ".join(validation_warnings)).strip()
+
+    event_lookup = get_event_lookup([holding.get("event_ticker", "") for holding in basket.get("holdings", [])])
+    for holding in basket.get("holdings", []):
+        evt = event_lookup.get(holding.get("event_ticker", ""), {})
+        holding["event_title"] = evt.get("title", "")
+        holding["series_ticker"] = evt.get("series_ticker", "")
+        holding["category"] = evt.get("category", "")
+
+    basket_id: int | None = None
+    if save_basket:
+        try:
+            basket_id = db.save_basket(
+                title=basket.get("basket_title", belief_summary.get("core_belief", "Prediction Market ETF")),
+                summary=basket.get("basket_summary", ""),
+                core_belief=belief_summary.get("core_belief", ""),
+                mode=mode or belief_summary.get("mode_used", "thinking"),
+                time_horizon=belief_summary.get("time_horizon", ""),
+                timeframe_start=belief_summary.get("timeframe_start", ""),
+                timeframe_end=belief_summary.get("timeframe_end", belief_summary.get("time_horizon", "")),
+                resolution_target=belief_summary.get("resolution_target", ""),
+                mechanism=", ".join(belief_summary.get("mechanism", [])) if isinstance(belief_summary.get("mechanism"), list) else belief_summary.get("mechanism", ""),
+                scope=belief_summary.get("scope", ""),
+                key_drivers=belief_summary.get("key_drivers", []),
+                belief_summary=belief_summary,
+                analysis=analysis,
+                basket=basket,
+                total_notional=basket.get("total_notional", 100.0),
+                screened_count=len(selected_markets),
+                holdings=basket.get("holdings", []),
+                user_id=request_user_id,
+            )
+        except Exception as exc:
+            if include_trace:
+                trace.setdefault("save_warning", str(exc))
+
+    result = {
+        "analysis": analysis,
+        "exposure_result": exposure_result,
+        "retrieval_result": retrieval_result,
+        "screener_result": screener_result,
+        "selected_markets": selected_markets,
+        "basket": basket,
+        "basket_id": basket_id,
+        "critique": critique,
+        "validation_warnings": validation_warnings,
+    }
+    if include_trace:
+        trace["stages"]["validation"] = {
+            "input": {
+                "basket": basket,
+                "selected_markets": selected_markets,
+            },
+            "output": {
+                "warnings": validation_warnings,
+                "basket": basket,
+            },
+        }
+        trace["result"] = {
+            "basket_id": basket_id,
+            "selected_market_count": len(selected_markets),
+            "holding_count": len(basket.get("holdings", [])),
+        }
+        result["trace"] = trace
+    return result
+
+
 @app.post("/api/trading/analyze")
 async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
     if not _TC_AVAILABLE:
@@ -690,139 +1045,18 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
 
         def _run():
             try:
-                from agents.basket_critic_agent import BasketCriticAgent
-                from agents.curator_agent import BasketBuilderAgent
-                from agents.exposure_agent import ExposureAgent
-                from agents.screener_agent import MarketScreenerAgent
-                from retrieval.market_retrieval import retrieve_markets_for_exposures
+                def _progress(msg: dict[str, Any]) -> None:
+                    asyncio.run_coroutine_threadsafe(queue.put(msg), loop)
 
-                asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": "Mapping tradable exposure routes…"}), loop)
-                exposure_result = ExposureAgent().run(req.belief_summary)
-                analysis = _exposure_analysis_payload(exposure_result)
-                asyncio.run_coroutine_threadsafe(queue.put({"type": "analyst_done", "analysis": analysis}), loop)
-
-                asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": "Retrieving candidate markets from the cache…"}), loop)
-                retrieval_result = retrieve_markets_for_exposures(exposure_result.get("exposures", []), req.belief_summary)
-
-                asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": "Scoring tradable market exposures…"}), loop)
-                screener_result = MarketScreenerAgent().run(
-                    req.belief_summary,
-                    exposure_result.get("exposures", []),
-                    retrieval_result.get("exposure_candidates", []),
-                )
-                selected_markets = screener_result.get("selected_markets", [])
-
-                if not selected_markets:
-                    asyncio.run_coroutine_threadsafe(
-                        queue.put({"type": "error", "message": "No relevant markets found matching quality thresholds."}), loop
-                    )
-                    return
-
-                event_tickers = list(dict.fromkeys(m["event_ticker"] for m in selected_markets))
-                asyncio.run_coroutine_threadsafe(
-                    queue.put({
-                        "type": "screener_done",
-                        "tickers": [m["ticker"] for m in selected_markets],
-                        "count": len(selected_markets),
-                        "selected_markets": selected_markets,
-                    }),
-                    loop,
-                )
-
-                from event_cache_db import get_event_lookup
-                from market_cache_db import get_markets_for_events
-
-                asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "progress", "label": f"Loading cached markets for {len(event_tickers)} events…"}), loop
-                )
-
-                try:
-                    cached_rows = get_markets_for_events(event_tickers)
-                except Exception:
-                    cached_rows = []
-
-                selected_tickers = {m["ticker"] for m in selected_markets}
-                if cached_rows:
-                    markets = [_market_from_row(row) for row in cached_rows if row["ticker"] in selected_tickers]
-                else:
-                    asyncio.run_coroutine_threadsafe(
-                        queue.put({"type": "progress", "label": "Cached market DB is empty; fetching open markets live…"}), loop
-                    )
-                    kalshi_client = _get_client()
-                    markets = [m for m in _get_live_markets_for_events(kalshi_client, event_tickers) if m.ticker in selected_tickers]
-
-                if not markets:
-                    asyncio.run_coroutine_threadsafe(
-                        queue.put({"type": "error", "message": "No open markets found for the shortlisted contracts."}), loop
-                    )
-                    return
-
-                selected_by_ticker = {m["ticker"]: m for m in selected_markets}
-                markets.sort(key=lambda m: (-selected_by_ticker.get(m.ticker, {}).get("overall_score", 0), -float(getattr(m, "volume", 0.0))))
-
-                asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "progress", "label": f"Building a $100 prediction market basket from {len(markets)} selected contracts…"}), loop
-                )
-                basket = BasketBuilderAgent().run(
-                    req.belief_summary,
-                    markets,
-                    exposures=exposure_result.get("exposures", []),
-                    selected_markets=selected_markets,
+                result = _run_trading_pipeline(
+                    belief_summary=req.belief_summary,
                     mode=req.mode,
+                    request_user_id=_get_user_id(request),
+                    save_basket=True,
+                    progress_callback=_progress,
                 )
-
-                if req.mode != "instant" or _ENABLE_FAST_CRITIC:
-                    asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": "Critiquing basket coherence…"}), loop)
-                    critique = BasketCriticAgent().run(
-                        req.belief_summary,
-                        exposure_result.get("exposures", []),
-                        selected_markets,
-                        basket,
-                    )
-                    asyncio.run_coroutine_threadsafe(queue.put({"type": "critic_done", "critique": critique}), loop)
-                    if critique.get("verdict") == "needs_repair":
-                        basket = _apply_critic_repairs(basket, selected_markets, critique)
-
-                selected_market_rows = {m.ticker: m for m in markets}
-                basket, validation_warnings = _validate_and_repair_basket(basket, selected_markets, selected_market_rows)
-                if validation_warnings:
-                    notes = basket.get("construction_notes", "")
-                    basket["construction_notes"] = (notes + ("\n\n" if notes else "") + "Validation notes: " + "; ".join(validation_warnings)).strip()
-
-                event_lookup = get_event_lookup([holding.get("event_ticker", "") for holding in basket.get("holdings", [])])
-                for holding in basket.get("holdings", []):
-                    evt = event_lookup.get(holding.get("event_ticker", ""), {})
-                    holding["event_title"] = evt.get("title", "")
-                    holding["series_ticker"] = evt.get("series_ticker", "")
-                    holding["category"] = evt.get("category", "")
-
-                basket_id: int | None = None
-                try:
-                    basket_id = db.save_basket(
-                        title=basket.get("basket_title", req.belief_summary.get("core_belief", "Prediction Market ETF")),
-                        summary=basket.get("basket_summary", ""),
-                        core_belief=req.belief_summary.get("core_belief", ""),
-                        mode=req.mode or req.belief_summary.get("mode_used", "thinking"),
-                        time_horizon=req.belief_summary.get("time_horizon", ""),
-                        timeframe_start=req.belief_summary.get("timeframe_start", ""),
-                        timeframe_end=req.belief_summary.get("timeframe_end", req.belief_summary.get("time_horizon", "")),
-                        resolution_target=req.belief_summary.get("resolution_target", ""),
-                        mechanism=", ".join(req.belief_summary.get("mechanism", [])),
-                        scope=req.belief_summary.get("scope", ""),
-                        key_drivers=req.belief_summary.get("key_drivers", []),
-                        belief_summary=req.belief_summary,
-                        analysis=analysis,
-                        basket=basket,
-                        total_notional=basket.get("total_notional", 100.0),
-                        screened_count=len(selected_markets),
-                        holdings=basket.get("holdings", []),
-                        user_id=_get_user_id(request),
-                    )
-                except Exception:
-                    pass
-
                 asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "basket_done", "basket": basket, "basket_id": basket_id}), loop
+                    queue.put({"type": "basket_done", "basket": result["basket"], "basket_id": result.get("basket_id")}), loop
                 )
 
             except Exception as exc:
@@ -852,6 +1086,147 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.get("/api/debug/trading-pipeline-runs")
+async def list_trading_pipeline_runs(limit: int = 20):
+    runs = _list_trading_pipeline_debug_runs(limit)
+    return {
+        "path": str(_TRADING_PIPELINE_DEBUG_DIR),
+        "count": len(runs),
+        "runs": runs,
+    }
+
+
+@app.get("/api/debug/trading-pipeline-runs/{run_id}")
+async def get_trading_pipeline_run(run_id: str):
+    _, payload = _load_trading_pipeline_debug_run(run_id)
+    return payload
+
+
+@app.get("/api/debug/trading-pipeline-runs/{run_id}/download")
+async def download_trading_pipeline_run(run_id: str):
+    path, _ = _load_trading_pipeline_debug_run(run_id)
+    return FileResponse(
+        path=path,
+        media_type="application/json",
+        filename=path.name,
+    )
+
+
+@app.post("/api/debug/trading-pipeline-runs")
+async def run_trading_pipeline_batch(req: TradingPipelineBatchRequest):
+    if not _TC_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Trading companion not available")
+
+    loop = asyncio.get_event_loop()
+
+    def _run_batch() -> dict[str, Any]:
+        created_at = datetime.now(_PACIFIC_TZ).isoformat()
+        run_id = datetime.now(_PACIFIC_TZ).strftime("%Y%m%dT%H%M%S") + "_" + uuid.uuid4().hex[:8]
+        examples = req.examples or [TradingPipelineExampleRequest(**example) for example in _default_trading_pipeline_examples()]
+        mode = req.mode or "thinking"
+
+        run_payload: dict[str, Any] = {
+            "run_id": run_id,
+            "created_at": created_at,
+            "label": req.label or "Trading pipeline batch run",
+            "mode": mode,
+            "save_baskets": req.save_baskets,
+            "examples": [],
+            "kalshi_log_file": str(_KALSHI_API_LOG_FILE),
+        }
+
+        completed_count = 0
+        clarification_count = 0
+        error_count = 0
+
+        for idx, example in enumerate(examples, start=1):
+            example_mode = example.mode or mode
+            example_record: dict[str, Any] = {
+                "index": idx,
+                "label": example.label or f"Example {idx}",
+                "mode": example_mode,
+                "input": {
+                    "message": example.message,
+                    "history": example.history,
+                    "follow_up_messages": example.follow_up_messages,
+                    "belief_summary": example.belief_summary,
+                },
+            }
+            try:
+                if example.belief_summary:
+                    belief_trace = {
+                        "status": "finalized",
+                        "source": "provided_belief_summary",
+                        "belief_summary": example.belief_summary,
+                        "turns": [],
+                    }
+                    belief_summary = example.belief_summary
+                else:
+                    belief_trace = _run_belief_chat_sequence(
+                        message=example.message,
+                        history=example.history,
+                        follow_up_messages=example.follow_up_messages,
+                        mode=example_mode,
+                    )
+                    belief_summary = belief_trace.get("belief_summary")
+
+                example_record["belief_trace"] = belief_trace
+                if not belief_summary or belief_trace.get("status") != "finalized":
+                    clarification_count += 1
+                    example_record["status"] = "needs_clarification"
+                    example_record["error"] = "BeliefAgent did not finalize a tradable belief summary."
+                    run_payload["examples"].append(example_record)
+                    continue
+
+                result = _run_trading_pipeline(
+                    belief_summary=belief_summary,
+                    mode=example_mode,
+                    request_user_id=None,
+                    save_basket=req.save_baskets,
+                    progress_callback=None,
+                    include_trace=True,
+                )
+                completed_count += 1
+                example_record["status"] = "completed"
+                example_record["pipeline_trace"] = result.get("trace", {})
+                example_record["result"] = {
+                    "analysis": result["analysis"],
+                    "selected_market_count": len(result["selected_markets"]),
+                    "selected_markets": result["selected_markets"],
+                    "basket": result["basket"],
+                    "basket_id": result.get("basket_id"),
+                    "validation_warnings": result.get("validation_warnings", []),
+                    "critique": result.get("critique"),
+                }
+            except Exception as exc:
+                error_count += 1
+                example_record["status"] = "error"
+                example_record["error"] = str(exc)
+            run_payload["examples"].append(example_record)
+
+        if req.include_kalshi_log_tail > 0:
+            run_payload["kalshi_log_tail"] = _read_kalshi_log_rows(req.include_kalshi_log_tail)
+
+        run_payload["summary"] = {
+            "example_count": len(run_payload["examples"]),
+            "completed_count": completed_count,
+            "needs_clarification_count": clarification_count,
+            "error_count": error_count,
+        }
+
+        path = _save_trading_pipeline_debug_run(run_id, run_payload)
+        run_payload["download_url"] = f"/api/debug/trading-pipeline-runs/{run_id}/download"
+        run_payload["detail_url"] = f"/api/debug/trading-pipeline-runs/{run_id}"
+        run_payload["path"] = str(path)
+        _save_trading_pipeline_debug_run(run_id, run_payload)
+        return run_payload
+
+    try:
+        return await loop.run_in_executor(None, _run_batch)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.post("/api/baskets/manual")
