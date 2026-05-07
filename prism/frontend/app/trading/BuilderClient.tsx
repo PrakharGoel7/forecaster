@@ -57,6 +57,12 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   }, [buildPath]);
 
   useEffect(() => {
+    if (buildPath !== "manual") return;
+    void runEventSearch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventCategory]);
+
+  useEffect(() => {
     if (!basketId) return;
     getBasket(basketId).then((saved) => {
       setBeliefSummary(JSON.parse(saved.belief_summary_json));
@@ -252,8 +258,8 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       <Header />
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, paddingTop: 56 }}>
-        <div style={{ maxWidth: buildPath === "manual" ? 1440 : 1040, margin: "0 auto", padding: "40px 24px 80px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: buildPath === "manual" ? "minmax(0, 1fr) 380px" : "minmax(0, 1fr) 320px", gap: 24 }}>
+        <div style={{ maxWidth: buildPath === "manual" ? 1560 : 1040, margin: "0 auto", padding: buildPath === "manual" ? "24px 20px 72px" : "40px 24px 80px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: buildPath === "manual" ? "minmax(0, 1fr) 420px" : "minmax(0, 1fr) 320px", gap: buildPath === "manual" ? 20 : 24, alignItems: "start" }}>
             <div>
               {stage === "idle" && (
                 buildPath === "ai" ? (
@@ -436,56 +442,75 @@ function ManualBuildComposer(props: {
     eventQuery, setEventQuery, eventCategory, setEventCategory, oddsFilter, setOddsFilter, eventResults, selectedEvent, eventMarkets,
     onEventSearch, onPickEvent, onAddHolding,
   } = props;
+  const normalizedQuery = eventQuery.trim().toLowerCase();
   const categoryOptions = Array.from(new Set(eventResults.map((event) => event.category).filter(Boolean))).sort();
+  const filteredEvents = eventResults.filter((event) => {
+    if (eventCategory && event.category !== eventCategory) return false;
+    if (!normalizedQuery) return true;
+    const haystack = [event.title, event.category, event.event_ticker].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(normalizedQuery);
+  });
   const filteredMarkets = eventMarkets.filter((market) => {
+    if (eventCategory && market.category !== eventCategory) return false;
     if (selectedEvent && market.event_ticker !== selectedEvent.event_ticker) return false;
+    if (normalizedQuery) {
+      const haystack = [market.question, market.event_title, market.category, market.ticker].filter(Boolean).join(" ").toLowerCase();
+      if (!haystack.includes(normalizedQuery)) return false;
+    }
     const implied = market.mid_price * 100;
     if (oddsFilter === "low") return implied < 33;
     if (oddsFilter === "mid") return implied >= 33 && implied <= 66;
     if (oddsFilter === "high") return implied > 66;
     return true;
   });
+  const totalVolume = filteredMarkets.reduce((sum, market) => sum + (market.volume || 0), 0);
   return (
-    <div style={{ display: "grid", gap: 18 }}>
+    <div style={{ display: "grid", gap: 16 }}>
       <div>
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
           Manual ETF Builder
         </div>
-        <h1 style={{ color: "#ede9e3", fontSize: "clamp(34px, 5vw, 58px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 12px" }}>
-          Pick the markets yourself.
+        <h1 style={{ color: "#ede9e3", fontSize: "clamp(24px, 2.6vw, 34px)", lineHeight: 1.05, letterSpacing: "-0.04em", margin: 0 }}>
+          Search markets and add them to your basket.
         </h1>
-        <p style={{ color: "#948c84", fontSize: 18, lineHeight: 1.6, margin: 0, maxWidth: 700 }}>
-          Search the Kalshi catalog, select contracts, set sides and weights, and save a shareable $100 ETF.
-        </p>
       </div>
 
-      <Card>
-        <div style={{ color: "#9e968f", fontSize: 13, marginBottom: 14 }}>
-          Search the catalog, narrow the list with filters, and add contracts straight from the market cards.
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.5fr) repeat(2, minmax(0,0.7fr)) auto", gap: 10 }}>
-          <input value={eventQuery} onChange={(e) => setEventQuery(e.target.value)} placeholder="Search themes, events, or keywords" style={inputStyle} />
-          <select value={eventCategory} onChange={(e) => setEventCategory(e.target.value)} style={inputStyle}>
+      <div style={{
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 18,
+        padding: 18,
+        background: "linear-gradient(180deg, rgba(16,16,16,0.98), rgba(10,10,10,0.98))",
+        boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
+      }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.9fr) repeat(2, minmax(0,0.9fr)) auto", gap: 10, alignItems: "stretch" }}>
+          <input
+            value={eventQuery}
+            onChange={(e) => setEventQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onEventSearch();
+            }}
+            placeholder="Search themes, events, or keywords"
+            style={{ ...inputStyle, height: 50, fontSize: 15, borderRadius: 12 }}
+          />
+          <select value={eventCategory} onChange={(e) => setEventCategory(e.target.value)} style={{ ...inputStyle, height: 50, borderRadius: 12 }}>
             <option value="">All categories</option>
             {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
           </select>
-          <select value={oddsFilter} onChange={(e) => setOddsFilter(e.target.value as "all" | "low" | "mid" | "high")} style={inputStyle}>
+          <select value={oddsFilter} onChange={(e) => setOddsFilter(e.target.value as "all" | "low" | "mid" | "high")} style={{ ...inputStyle, height: 50, borderRadius: 12 }}>
             <option value="all">All odds</option>
             <option value="low">Below 33%</option>
             <option value="mid">33% to 66%</option>
             <option value="high">Above 66%</option>
           </select>
-          <button onClick={onEventSearch} style={primaryButtonStyle}>Search</button>
+          <button onClick={onEventSearch} style={{ ...primaryButtonStyle, minWidth: 120, height: 50, borderRadius: 12 }}>Search</button>
         </div>
-      </Card>
+      </div>
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 14 }}>
           <div>
             <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>Event scopes</div>
-            <div style={{ color: "#867e77", fontSize: 13 }}>
-              Pick an event to narrow the results, or browse across every loaded event.
-            </div>
+            <div style={{ color: "#867e77", fontSize: 13 }}>Narrow to one event or browse across the loaded set.</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -496,11 +521,12 @@ function ManualBuildComposer(props: {
               borderColor: !selectedEvent ? "rgba(227,100,56,0.4)" : "rgba(255,255,255,0.08)",
               background: !selectedEvent ? "rgba(227,100,56,0.12)" : "transparent",
               color: "#ede9e3",
+              padding: "11px 14px",
             }}
           >
             All loaded events
           </button>
-          {eventResults.slice(0, 12).map((event) => (
+          {filteredEvents.slice(0, 12).map((event) => (
             <button
               key={event.event_ticker}
               onClick={() => onPickEvent(event)}
@@ -512,7 +538,7 @@ function ManualBuildComposer(props: {
                 padding: 14,
                 color: "#ede9e3",
                 cursor: "pointer",
-                maxWidth: 260,
+                maxWidth: 280,
               }}
             >
               <div style={{ fontWeight: 600, marginBottom: 6, lineHeight: 1.35 }}>{event.title}</div>
@@ -520,22 +546,25 @@ function ManualBuildComposer(props: {
             </button>
           ))}
         </div>
-        {!eventResults.length && <div style={{ color: "#7d756d", fontSize: 13, marginTop: 12 }}>No events found for this search.</div>}
+        {!filteredEvents.length && <div style={{ color: "#7d756d", fontSize: 13, marginTop: 12 }}>No events found for this search.</div>}
       </Card>
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div>
-            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>Markets</div>
+            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>Results</div>
             <div style={{ color: "#7f776f", fontSize: 13 }}>
               {selectedEvent
                 ? `Scoped to ${selectedEvent.title}`
                 : "Showing markets from the loaded event set"}
             </div>
           </div>
-          <div style={{ color: "#8f877e", fontSize: 12 }}>{filteredMarkets.length} results</div>
+          <div style={{ display: "grid", justifyItems: "end", gap: 2 }}>
+            <div style={{ color: "#8f877e", fontSize: 12 }}>{filteredMarkets.length} results</div>
+            <div style={{ color: "#6f6861", fontSize: 12 }}>${Math.round(totalVolume).toLocaleString()} total vol</div>
+          </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gap: 12 }}>
           {filteredMarkets.slice(0, 36).map((market) => (
             <ManualMarketCard key={market.ticker} market={market} onAdd={() => onAddHolding(market)} />
           ))}
@@ -569,11 +598,11 @@ function ManualBasketSidebar(props: {
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           Basket Builder
         </div>
-        <div style={{ color: "#ede9e3", fontSize: 22, fontWeight: 600, marginBottom: 10 }}>
-          Build your ETF as you browse
+        <div style={{ color: "#ede9e3", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
+          Your basket
         </div>
         <div style={{ color: "#948c84", fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
-          Search and filter on the left. Add contracts to the tray here, then finalize the title, summary, and weights.
+          Add contracts from the results list, then set your side, role, and dollar weight here.
         </div>
         <div style={{ display: "grid", gap: 10 }}>
           <input value={manualTitle} onChange={(e) => setManualTitle(e.target.value)} placeholder="Basket title" style={inputStyle} />
@@ -796,21 +825,28 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
 function ManualMarketCard({ market, onAdd }: { market: KalshiMarket; onAdd: () => void }) {
   return (
     <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))" }}>
-      <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
-        {market.category || "Market"}{market.event_title ? ` · ${market.event_title}` : ""}
-      </div>
-      <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 8, lineHeight: 1.45 }}>{market.question}</div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-        <Tag>{Math.round(market.mid_price * 100)}% market odds</Tag>
-        <Tag>{market.close_date}</Tag>
-        <Tag>${Math.round(market.volume).toLocaleString()} vol</Tag>
-      </div>
-      {market.rules_primary && (
-        <div style={{ color: "#8c847c", fontSize: 13, lineHeight: 1.55, marginBottom: 12 }}>
-          {market.rules_primary.length > 140 ? `${market.rules_primary.slice(0, 140)}…` : market.rules_primary}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 16, alignItems: "start" }}>
+        <div>
+          <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+            {market.category || "Market"}{market.event_title ? ` · ${market.event_title}` : ""}
+          </div>
+          <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 8, lineHeight: 1.45, fontSize: 16 }}>{market.question}</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+            <Tag>{Math.round(market.mid_price * 100)}% market odds</Tag>
+            <Tag>{market.close_date}</Tag>
+            <Tag>${Math.round(market.volume).toLocaleString()} vol</Tag>
+          </div>
+          {market.rules_primary && (
+            <div style={{ color: "#8c847c", fontSize: 13, lineHeight: 1.55 }}>
+              {market.rules_primary.length > 180 ? `${market.rules_primary.slice(0, 180)}...` : market.rules_primary}
+            </div>
+          )}
         </div>
-      )}
-      <button onClick={onAdd} style={ghostButtonStyle}>Add to basket</button>
+        <div style={{ display: "grid", justifyItems: "end", gap: 10, minWidth: 132 }}>
+          <div style={{ color: "#9f978f", fontSize: 12 }}>Ticker {market.ticker}</div>
+          <button onClick={onAdd} style={{ ...ghostButtonStyle, minWidth: 132 }}>Add to basket</button>
+        </div>
+      </div>
     </div>
   );
 }
