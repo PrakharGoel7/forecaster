@@ -372,8 +372,8 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       <Header />
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, paddingTop: 56 }}>
-        <div style={{ maxWidth: buildPath === "manual" ? 1560 : 1260, margin: "0 auto", padding: buildPath === "manual" ? "24px 20px 72px" : "32px 24px 80px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: buildPath === "manual" ? "minmax(0, 1fr) 420px" : "minmax(0, 1fr) 340px", gap: buildPath === "manual" ? 20 : 28, alignItems: "start" }}>
+        <div style={{ maxWidth: buildPath === "manual" ? 1560 : 1480, margin: "0 auto", padding: buildPath === "manual" ? "24px 20px 72px" : "24px 20px 72px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: buildPath === "manual" ? "minmax(0, 1fr) 420px" : "minmax(0, 1fr) 380px", gap: buildPath === "manual" ? 20 : 20, alignItems: "start" }}>
             <div>
               {stage === "idle" && (
                 buildPath === "ai" ? (
@@ -577,26 +577,31 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
   onSubmit: () => void;
 }) {
   return (
-    <div style={{ display: "grid", gap: 22 }}>
+    <div style={{ display: "grid", gap: 20 }}>
       <div style={{ maxWidth: 760 }}>
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           AI Build
         </div>
-        <h1 style={{ color: "#ede9e3", fontSize: "clamp(32px, 4.4vw, 56px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 10px" }}>
+        <h1 style={{ color: "#ede9e3", fontSize: "clamp(28px, 3vw, 40px)", lineHeight: 1.04, letterSpacing: "-0.045em", margin: "0 0 10px" }}>
           Turn your take into a market basket.
         </h1>
-        <p style={{ color: "#948c84", fontSize: 18, lineHeight: 1.6, margin: 0, maxWidth: 700 }}>
+        <p style={{ color: "#9b938b", fontSize: 16, lineHeight: 1.7, margin: 0, maxWidth: 760 }}>
           Describe a future you believe in. Prism finds the prediction-market positions that express it.
         </p>
       </div>
-      <Card style={{ padding: 24 }}>
-        <div style={{ color: "#ede9e3", fontSize: 22, fontWeight: 600, letterSpacing: "-0.03em", marginBottom: 6 }}>
+      <div style={{
+        border: "1px solid rgba(255,255,255,0.07)",
+        borderRadius: 24,
+        padding: 20,
+        background: "linear-gradient(180deg, rgba(18,18,18,0.96), rgba(11,11,11,0.98))",
+        boxShadow: "0 22px 56px rgba(0,0,0,0.34)",
+        display: "grid",
+        gap: 16,
+      }}>
+        <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600, letterSpacing: "-0.03em" }}>
           What future are you betting on?
         </div>
-        <div style={{ color: "#8f877e", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
-          {mode === "instant" ? "Fast basket from your take." : "More thesis sharpening and broader implication mapping."} {stepLabel}.
-        </div>
-        <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {(["instant", "thinking"] as Mode[]).map((value) => (
             <button
               key={value}
@@ -612,8 +617,11 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
             </button>
           ))}
         </div>
-        <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={5} placeholder="Example: AI agents replace entry-level coding jobs over the next 3 years." style={{ ...textareaStyle, minHeight: 160 }} />
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
+        <div style={{ color: "#8f877e", fontSize: 13, lineHeight: 1.6 }}>
+          {mode === "instant" ? "Fast basket from your take." : "More thesis sharpening and broader implication mapping."} {stepLabel}.
+        </div>
+        <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={5} placeholder="Example: AI agents replace entry-level coding jobs over the next 3 years." style={{ ...textareaStyle, minHeight: 156, borderRadius: 16 }} />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           {AI_EXAMPLE_PROMPTS.map((example) => (
             <button
               key={example}
@@ -632,13 +640,13 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
             </button>
           ))}
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 18, gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <div style={{ color: "#7f776f", fontSize: 13 }}>
             Output: a weighted prediction-market basket built from your take.
           </div>
           <button onClick={onSubmit} style={primaryButtonStyle}>Build basket</button>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -650,10 +658,6 @@ function AIStageProgress({ current }: { current: number }) {
       display: "grid",
       gridTemplateColumns: "repeat(4, minmax(0,1fr))",
       gap: 10,
-      padding: 14,
-      borderRadius: 20,
-      border: "1px solid rgba(255,255,255,0.06)",
-      background: "rgba(255,255,255,0.02)",
     }}>
       {stages.map((stage, index) => {
         const step = index + 1;
@@ -663,10 +667,10 @@ function AIStageProgress({ current }: { current: number }) {
           <div
             key={stage}
             style={{
-              borderRadius: 14,
+              borderRadius: 16,
               padding: "12px 14px",
               background: active ? "rgba(227,100,56,0.12)" : done ? "rgba(255,255,255,0.04)" : "transparent",
-              border: `1px solid ${active ? "rgba(227,100,56,0.34)" : "rgba(255,255,255,0.05)"}`,
+              border: `1px solid ${active ? "rgba(227,100,56,0.34)" : "rgba(255,255,255,0.08)"}`,
             }}
           >
             <div style={{ color: done || active ? "#ede9e3" : "#7f776f", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
@@ -1208,7 +1212,7 @@ function EditorialField({ label, value }: { label: string; value: string }) {
 
 function InsightCard({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 14, background: "rgba(255,255,255,0.02)" }}>
+    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 14, background: "rgba(255,255,255,0.02)" }}>
       <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
         {label}
       </div>
@@ -1475,8 +1479,14 @@ function AIBuildSidebar({ stage, currentStep, savedBaskets }: { stage: Stage; cu
         </Card>
       ) : (
         <Card>
-          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
-            Build progress
+          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+            Basket progress
+          </div>
+          <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600, marginBottom: 6 }}>
+            AI build
+          </div>
+          <div style={{ color: "#8f877e", fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>
+            Prism is sharpening the thesis, finding markets, and shaping the final basket.
           </div>
           <div style={{ display: "grid", gap: 10 }}>
             {progressItems.map((item) => {
@@ -1529,8 +1539,8 @@ function AIBuildSidebar({ stage, currentStep, savedBaskets }: { stage: Stage; cu
               style={{
                 display: "block",
                 textDecoration: "none",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 16,
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 14,
                 padding: 14,
                 background: "rgba(255,255,255,0.02)",
               }}
@@ -1580,7 +1590,7 @@ function ChatThread({ messages }: { messages: ChatMsg[] }) {
 
 function BeliefBrief({ summary, onEdit }: { summary: BeliefSummary; onEdit?: () => void }) {
   return (
-    <Card style={{ padding: 24 }}>
+    <Card>
       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
         Thesis snapshot
       </div>
@@ -1630,7 +1640,7 @@ function ThesisControlPanel({
     { value: "contrarian", label: "Contrarian" },
   ];
   return (
-    <Card style={{ padding: 24 }}>
+    <Card>
       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
         Thesis review
       </div>
@@ -1701,7 +1711,7 @@ function consequenceLine(domain: DomainAnalysis): string {
 
 function BuildProgressCard({ label, thesis, implication }: { label: string; thesis: string; implication: string }) {
   return (
-    <Card style={{ padding: 24 }}>
+    <Card>
       <div style={{ color: "#e36438", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
         Build progress
       </div>
@@ -1745,7 +1755,7 @@ function HoldingGroup({ title, holdings }: { title: string; holdings: Prediction
       <div style={{ color: "#d8d0c8", fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{title}</div>
       <div style={{ display: "grid", gap: 10 }}>
         {holdings.map((holding) => (
-          <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 16, background: "rgba(255,255,255,0.02)" }}>
+          <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 16, background: "rgba(255,255,255,0.02)" }}>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 120px", gap: 16, alignItems: "start" }}>
               <div>
                 <div style={{ color: "#ede9e3", fontSize: 17, fontWeight: 600, marginBottom: 6 }}>
@@ -1778,7 +1788,7 @@ function HoldingGroup({ title, holdings }: { title: string; holdings: Prediction
 function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis; screenedCount: number }) {
   const topDomains = analysis.affected_domains.filter((d) => d.relevance !== "low").slice(0, 6);
   return (
-    <Card style={{ padding: 24 }}>
+    <Card>
       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
         If your thesis is right...
       </div>
@@ -1828,7 +1838,7 @@ function BasketView({ basket, basketId, basketStyle }: { basket: PredictionBaske
   }
 
   return (
-    <Card style={{ padding: 24 }}>
+    <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}>
         <div>
           <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
