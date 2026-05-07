@@ -875,7 +875,6 @@ function ManualEventModal(props: {
               <DetailRow label="Event" value={event.title} />
               <DetailRow label="Category" value={event.category || "Uncategorized"} />
               <DetailRow label="Deadline" value={closeLabel || "Not listed"} />
-              {leadMarket && <DetailRow label="Question" value={leadMarket.question} />}
             </div>
             {leadMarket?.rules_primary && (
               <div style={{
