@@ -11,7 +11,8 @@ import type { BeliefAnalysis, BeliefSummary, DomainAnalysis, KalshiEvent, Kalshi
 
 type Mode = "instant" | "thinking";
 type BuildPath = "ai" | "manual";
-type Stage = "idle" | "chatting" | "analyzing" | "done" | "error";
+type Stage = "idle" | "chatting" | "review" | "analyzing" | "done" | "error";
+type BasketStyle = "balanced" | "high_conviction" | "hedged" | "contrarian";
 
 interface ChatMsg {
   role: "user" | "assistant";
@@ -24,10 +25,14 @@ interface ManualEventModalState {
 }
 
 const AI_EXAMPLE_PROMPTS = [
-  "AGI replaces entry-level coding jobs",
+  "AI agents replace entry-level work",
   "China invades Taiwan before 2030",
-  "GLP-1 drugs significantly reduce obesity rates",
-  "Dating apps lose popularity among GenZ",
+  "Rates stay higher for longer",
+  "Bitcoin hits $250K",
+  "GLP-1 drugs reshape healthcare",
+  "India becomes a manufacturing hub",
+  "Nuclear energy makes a comeback",
+  "Climate disasters strain insurance markets",
 ] as const;
 
 export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
@@ -45,6 +50,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const [basket, setBasket] = useState<PredictionBasket | null>(null);
   const [savedBaskets, setSavedBaskets] = useState<SavedBasket[]>([]);
   const [basketId, setBasketId] = useState<number | null>(basketParam ? Number(basketParam) : null);
+  const [basketStyle, setBasketStyle] = useState<BasketStyle>("balanced");
   const [eventQuery, setEventQuery] = useState("");
   const [eventCategory, setEventCategory] = useState("");
   const [eventCategories, setEventCategories] = useState<string[]>([]);
@@ -130,10 +136,20 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     if (stage === "chatting") return "Sharpening your thesis";
     if (label.includes("screen")) return "Finding tradable markets";
     if (label.includes("anal")) return "Mapping consequences";
+    if (label.includes("direct") || label.includes("indirect")) return "Choosing direct and indirect positions";
     if (label.includes("basket")) return "Sizing the basket";
     if (label.includes("build")) return "Building basket";
     return progressLabel;
   }, [progressLabel, stage]);
+
+  const aiStageIndex = useMemo(() => {
+    if (stage === "idle") return 0;
+    if (stage === "chatting") return 1;
+    if (stage === "review") return 2;
+    if (stage === "analyzing" && !basket) return analysis ? 3 : 2;
+    if (stage === "done" || basket) return 4;
+    return 1;
+  }, [analysis, basket, stage]);
 
   const routeBase = buildPath === "manual" ? "/trading/manual" : "/trading";
 
@@ -154,6 +170,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     setManualTitle("");
     setManualSummary("");
     setManualTimeframe("");
+    setBasketStyle("balanced");
     setSaveModalOpen(false);
     setManualEventModal(null);
     setManualEventModalMarkets([]);
@@ -165,6 +182,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   }
 
   function startAnalysis(summary: BeliefSummary) {
+    setStage("analyzing");
     streamTradingAnalysis(summary, mode, (msg) => {
       if (msg.type === "progress") setProgressLabel(msg.label);
       else if (msg.type === "analyst_done") setAnalysis(msg.analysis);
@@ -194,8 +212,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       setApiHistory(result.history);
       if (result.status === "finalized" && result.belief_summary) {
         setBeliefSummary(result.belief_summary);
-        setStage("analyzing");
-        startAnalysis(result.belief_summary);
+        setStage("review");
       } else if (result.agent_message) {
         setChatMessages((prev) => [...prev, { role: "assistant", content: result.agent_message! }]);
       }
@@ -338,13 +355,25 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     void sendMessage(input, apiHistory);
   }
 
+  function onEditThesis() {
+    setStage("idle");
+    setInput(beliefSummary?.core_belief ?? input);
+    setChatMessages([]);
+    setApiHistory([]);
+    setAnalysis(null);
+    setBasket(null);
+    setProgressLabel("");
+    setError("");
+    router.replace(routeBase, { scroll: false });
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: "#080808", position: "relative" }}>
       <Header />
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, paddingTop: 56 }}>
-        <div style={{ maxWidth: buildPath === "manual" ? 1560 : 1040, margin: "0 auto", padding: buildPath === "manual" ? "24px 20px 72px" : "40px 24px 80px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: buildPath === "manual" ? "minmax(0, 1fr) 420px" : "minmax(0, 1fr) 320px", gap: buildPath === "manual" ? 20 : 24, alignItems: "start" }}>
+        <div style={{ maxWidth: buildPath === "manual" ? 1560 : 1260, margin: "0 auto", padding: buildPath === "manual" ? "24px 20px 72px" : "32px 24px 80px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: buildPath === "manual" ? "minmax(0, 1fr) 420px" : "minmax(0, 1fr) 340px", gap: buildPath === "manual" ? 20 : 28, alignItems: "start" }}>
             <div>
               {stage === "idle" && (
                 buildPath === "ai" ? (
@@ -375,49 +404,98 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
 
               {stage !== "idle" && (
                 <div style={{ display: "grid", gap: 18 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace" }}>
-                        Prediction Market Basket Builder
+                  {buildPath === "ai" ? (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+                        <div>
+                          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
+                            AI Build
+                          </div>
+                          <div style={{ color: "#ede9e3", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em" }}>
+                            Turn your take into a market basket.
+                          </div>
+                        </div>
+                        <button onClick={resetFlow} style={ghostButtonStyle}>New basket</button>
                       </div>
-                      <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.03em" }}>
-                        {buildPath === "ai" ? "Build with AI" : "Build manually"}
+                      <AIStageProgress current={aiStageIndex} />
+                    </>
+                  ) : (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace" }}>
+                          Prediction Market Basket Builder
+                        </div>
+                        <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.03em" }}>
+                          Build manually
+                        </div>
                       </div>
+                      <button onClick={resetFlow} style={ghostButtonStyle}>New basket</button>
                     </div>
-                    <button onClick={resetFlow} style={ghostButtonStyle}>New basket</button>
-                  </div>
+                  )}
 
                   {buildPath === "ai" && (
-                    <Card>
-                      <div style={{ color: "#8f877e", fontSize: 13, marginBottom: 10 }}>
-                        {stage === "chatting" ? "Sharpening your thesis" : `Mode: ${mode === "instant" ? "Quick Build" : "Deep Build"}`}
-                      </div>
-                      <ChatThread messages={chatMessages} />
-                      {stage === "chatting" && (
-                        <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-                          <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={3} placeholder="Answer the follow-up..." style={textareaStyle} />
-                          <button onClick={onSubmitReply} style={primaryButtonStyle}>Continue</button>
-                        </div>
+                    <>
+                      {chatMessages.length > 0 && (
+                        <Card>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, marginBottom: 14 }}>
+                            <div>
+                              <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Sharpening your thesis</div>
+                              <div style={{ color: "#8f877e", fontSize: 13 }}>
+                                {stage === "chatting" ? "Prism needs one detail" : `Built in ${mode === "instant" ? "Quick Build" : "Deep Build"} mode`}
+                              </div>
+                            </div>
+                            <Tag>{mode === "instant" ? "Quick Build" : "Deep Build"}</Tag>
+                          </div>
+                          <ChatThread messages={chatMessages} />
+                          {stage === "chatting" && (
+                            <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+                              <div style={{ color: "#8f877e", fontSize: 12, fontWeight: 600 }}>Answer to continue</div>
+                              <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={3} placeholder="Add the missing detail..." style={textareaStyle} />
+                              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                                <button onClick={onSubmitReply} style={primaryButtonStyle}>Continue</button>
+                              </div>
+                            </div>
+                          )}
+                        </Card>
                       )}
-                    </Card>
-                  )}
 
-                  {beliefSummary && <BeliefBrief summary={beliefSummary} />}
-                  {analysis && <AnalysisSummary analysis={analysis} screenedCount={screenedCount} />}
+                      {beliefSummary && <BeliefBrief summary={beliefSummary} onEdit={onEditThesis} />}
+
+                      {beliefSummary && stage === "review" && (
+                        <ThesisControlPanel
+                          summary={beliefSummary}
+                          basketStyle={basketStyle}
+                          setBasketStyle={setBasketStyle}
+                          onBuild={() => startAnalysis(beliefSummary)}
+                          onEdit={onEditThesis}
+                        />
+                      )}
+
+                      {analysis && <AnalysisSummary analysis={analysis} screenedCount={screenedCount} />}
+                    </>
+                  )}
 
                   {progressLabel && stage === "analyzing" && (
-                    <Card>
-                      <div style={{ color: "#e36438", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-                        Build progress
-                      </div>
-                      <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{progressCopy}</div>
-                      <div style={{ color: "#8f877e", fontSize: 14 }}>
-                        {buildPath === "ai" ? "Prism is turning your take into a polished market thesis." : "Saving your manual basket."}
-                      </div>
-                    </Card>
+                    buildPath === "ai" ? (
+                      <BuildProgressCard
+                        label={progressCopy}
+                        thesis={beliefSummary?.core_belief ?? ""}
+                        implication={analysis ? consequenceLabel(analysis.affected_domains[0]) : ""}
+                      />
+                    ) : (
+                      <Card>
+                        <div style={{ color: "#e36438", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+                          Build progress
+                        </div>
+                        <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{progressCopy}</div>
+                        <div style={{ color: "#8f877e", fontSize: 14 }}>
+                          Saving your manual basket.
+                        </div>
+                      </Card>
+                    )
                   )}
 
-                  {basket && <BasketView basket={basket} basketId={basketId} />}
+                  {basket && <BasketView basket={basket} basketId={basketId} basketStyle={basketStyle} />}
 
                   {error && (
                     <Card>
@@ -443,6 +521,12 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     setSaveModalOpen(true);
                   }}
                   loading={loading}
+                />
+              ) : buildPath === "ai" ? (
+                <AIBuildSidebar
+                  stage={stage}
+                  currentStep={aiStageIndex}
+                  savedBaskets={savedBaskets}
                 />
               ) : (
                 <HowItWorksSidebar buildPath={buildPath} savedBaskets={savedBaskets} />
@@ -493,20 +577,26 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
   onSubmit: () => void;
 }) {
   return (
-    <div style={{ display: "grid", gap: 18 }}>
-      <div>
-        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
+    <div style={{ display: "grid", gap: 22 }}>
+      <div style={{ maxWidth: 760 }}>
+        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           AI Build
         </div>
-        <h1 style={{ color: "#ede9e3", fontSize: "clamp(34px, 5vw, 58px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 12px" }}>
-          Start with a belief. Prism builds a prediction market basket you can invest in and share.
+        <h1 style={{ color: "#ede9e3", fontSize: "clamp(32px, 4.4vw, 56px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 10px" }}>
+          Turn your take into a market basket.
         </h1>
         <p style={{ color: "#948c84", fontSize: 18, lineHeight: 1.6, margin: 0, maxWidth: 700 }}>
-          Prism clarifies your take, maps the consequences, and builds a basket of prediction-market positions that express it.
+          Describe a future you believe in. Prism finds the prediction-market positions that express it.
         </p>
       </div>
-      <Card>
-        <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+      <Card style={{ padding: 24 }}>
+        <div style={{ color: "#ede9e3", fontSize: 22, fontWeight: 600, letterSpacing: "-0.03em", marginBottom: 6 }}>
+          What future are you betting on?
+        </div>
+        <div style={{ color: "#8f877e", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
+          {mode === "instant" ? "Fast basket from your take." : "More thesis sharpening and broader implication mapping."} {stepLabel}.
+        </div>
+        <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           {(["instant", "thinking"] as Mode[]).map((value) => (
             <button
               key={value}
@@ -522,11 +612,8 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
             </button>
           ))}
         </div>
-        <div style={{ color: "#9e968f", fontSize: 13, marginBottom: 12 }}>
-          {mode === "instant" ? "Fastest path from a take to a shareable basket." : "More thesis sharpening before Prism chooses positions."} {stepLabel}.
-        </div>
-        <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={6} placeholder="Example: I think renewed US-China export controls will reshape the AI hardware supply chain over the next 12 months." style={textareaStyle} />
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+        <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={5} placeholder="Example: AI agents replace entry-level coding jobs over the next 3 years." style={{ ...textareaStyle, minHeight: 160 }} />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
           {AI_EXAMPLE_PROMPTS.map((example) => (
             <button
               key={example}
@@ -545,13 +632,52 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
             </button>
           ))}
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 18, gap: 12 }}>
           <div style={{ color: "#7f776f", fontSize: 13 }}>
-            Output: a market thesis with selected positions, odds, and basket weights.
+            Output: a weighted prediction-market basket built from your take.
           </div>
           <button onClick={onSubmit} style={primaryButtonStyle}>Build basket</button>
         </div>
       </Card>
+    </div>
+  );
+}
+
+function AIStageProgress({ current }: { current: number }) {
+  const stages = ["Take", "Thesis", "Markets", "Basket"];
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(4, minmax(0,1fr))",
+      gap: 10,
+      padding: 14,
+      borderRadius: 20,
+      border: "1px solid rgba(255,255,255,0.06)",
+      background: "rgba(255,255,255,0.02)",
+    }}>
+      {stages.map((stage, index) => {
+        const step = index + 1;
+        const active = current === step;
+        const done = current > step;
+        return (
+          <div
+            key={stage}
+            style={{
+              borderRadius: 14,
+              padding: "12px 14px",
+              background: active ? "rgba(227,100,56,0.12)" : done ? "rgba(255,255,255,0.04)" : "transparent",
+              border: `1px solid ${active ? "rgba(227,100,56,0.34)" : "rgba(255,255,255,0.05)"}`,
+            }}
+          >
+            <div style={{ color: done || active ? "#ede9e3" : "#7f776f", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+              {step}
+            </div>
+            <div style={{ color: active ? "#fff2ec" : "#b1a9a1", fontSize: 13, fontWeight: 600 }}>
+              {stage}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1067,13 +1193,26 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MiniStatCard({ label, value }: { label: string; value: string }) {
+function EditorialField({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 14, background: "rgba(255,255,255,0.02)" }}>
+    <div>
       <div style={{ color: "#7b746d", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
         {label}
       </div>
-      <div style={{ color: "#e5dfd7", fontSize: 14, lineHeight: 1.6 }}>
+      <div style={{ color: "#e5dfd7", fontSize: 15, lineHeight: 1.7 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function InsightCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: 14, background: "rgba(255,255,255,0.02)" }}>
+      <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
+        {label}
+      </div>
+      <div style={{ color: "#e7e0d8", fontSize: 14, lineHeight: 1.6 }}>
         {value}
       </div>
     </div>
@@ -1251,14 +1390,14 @@ function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; 
               <li>Clarify the future theme.</li>
               <li>Map direct and indirect implications.</li>
               <li>Screen prediction markets.</li>
-              <li>Build a weighted $100 ETF.</li>
+              <li>Build a weighted prediction-market basket.</li>
             </>
           ) : (
             <>
               <li>Search the market catalog.</li>
               <li>Select the contracts you want.</li>
               <li>Choose contracts and portfolio weights.</li>
-              <li>Save a weighted $100 ETF.</li>
+              <li>Save a weighted prediction-market basket.</li>
             </>
           )}
         </ul>
@@ -1293,6 +1432,126 @@ function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; 
   );
 }
 
+function AIBuildSidebar({ stage, currentStep, savedBaskets }: { stage: Stage; currentStep: number; savedBaskets: SavedBasket[] }) {
+  const popularTheses = [
+    "AI labor shock",
+    "Sticky inflation",
+    "China-Taiwan risk",
+    "Nuclear comeback",
+    "Climate insurance crisis",
+  ];
+  const progressItems = [
+    { label: "Thesis", step: 1 },
+    { label: "Consequences", step: 2 },
+    { label: "Markets", step: 3 },
+    { label: "Basket", step: 4 },
+  ];
+
+  return (
+    <>
+      {stage === "idle" ? (
+        <Card>
+          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+            Popular theses
+          </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            {popularTheses.map((thesis) => (
+              <div
+                key={thesis}
+                style={{
+                  borderRadius: 16,
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  background: "rgba(255,255,255,0.02)",
+                  padding: "14px 16px",
+                  color: "#d9d2cb",
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                {thesis}
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : (
+        <Card>
+          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
+            Build progress
+          </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            {progressItems.map((item) => {
+              const active = currentStep === item.step;
+              const done = currentStep > item.step;
+              return (
+                <div
+                  key={item.label}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "28px minmax(0,1fr)",
+                    gap: 12,
+                    alignItems: "center",
+                    padding: "10px 0",
+                  }}
+                >
+                  <div style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 999,
+                    display: "grid",
+                    placeItems: "center",
+                    background: active ? "rgba(227,100,56,0.16)" : done ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${active ? "rgba(227,100,56,0.38)" : "rgba(255,255,255,0.08)"}`,
+                    color: active || done ? "#ede9e3" : "#7d756d",
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}>
+                    {item.step}
+                  </div>
+                  <div style={{ color: active ? "#ede9e3" : done ? "#c5bcb4" : "#8a827a", fontSize: 14, fontWeight: active ? 700 : 500 }}>
+                    {item.label}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      <Card>
+        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+          Saved baskets
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          {savedBaskets.slice(0, 8).map((saved) => (
+            <Link
+              key={saved.id}
+              href={`${saved.mode === "manual" ? "/trading/manual" : "/trading"}?basket=${saved.id}`}
+              style={{
+                display: "block",
+                textDecoration: "none",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 16,
+                padding: 14,
+                background: "rgba(255,255,255,0.02)",
+              }}
+            >
+              <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 6 }}>{saved.title}</div>
+              <div style={{ color: "#938b83", fontSize: 13, lineHeight: 1.5, marginBottom: 8 }}>
+                {saved.summary}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {saved.time_horizon && <Tag>{saved.time_horizon}</Tag>}
+                {saved.mode !== "manual" && <Tag>{saved.mode === "instant" ? "Quick Build" : "Deep Build"}</Tag>}
+              </div>
+            </Link>
+          ))}
+          {!savedBaskets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No saved baskets yet.</div>}
+        </div>
+      </Card>
+    </>
+  );
+}
+
 function ChatThread({ messages }: { messages: ChatMsg[] }) {
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -1300,47 +1559,123 @@ function ChatThread({ messages }: { messages: ChatMsg[] }) {
         <div
           key={index}
           style={{
-            padding: "14px 16px",
-            borderRadius: 16,
-            background: message.role === "user" ? "rgba(227,100,56,0.12)" : "rgba(255,255,255,0.03)",
-            border: message.role === "user" ? "1px solid rgba(227,100,56,0.26)" : "1px solid rgba(255,255,255,0.06)",
+            padding: "12px 14px",
+            borderRadius: 18,
+            background: message.role === "user" ? "rgba(227,100,56,0.1)" : "rgba(255,255,255,0.02)",
+            border: message.role === "user" ? "1px solid rgba(227,100,56,0.2)" : "1px solid rgba(255,255,255,0.05)",
             color: "#ede9e3",
+            maxWidth: message.role === "user" ? "92%" : "100%",
+            justifySelf: message.role === "user" ? "end" : "start",
           }}
         >
-          <div style={{ color: message.role === "user" ? "#e36438" : "#8b837c", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
-            {message.role === "user" ? "You" : "Prism"}
+          <div style={{ color: message.role === "user" ? "#f19977" : "#8b837c", fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
+            {message.role === "user" ? "Your answer" : "Prism"}
           </div>
-          <div style={{ lineHeight: 1.65 }}>{message.content}</div>
+          <div style={{ lineHeight: 1.6, color: "#ddd6ce" }}>{message.content}</div>
         </div>
       ))}
     </div>
   );
 }
 
-function BeliefBrief({ summary }: { summary: BeliefSummary }) {
+function BeliefBrief({ summary, onEdit }: { summary: BeliefSummary; onEdit?: () => void }) {
   return (
-    <Card>
+    <Card style={{ padding: 24 }}>
       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-        Thesis Snapshot
+        Thesis snapshot
       </div>
-      <div style={{ color: "#ede9e3", fontSize: 24, fontWeight: 600, letterSpacing: "-0.03em", marginBottom: 8 }}>
-        {summary.core_belief}
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "start", marginBottom: 12 }}>
+        <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", lineHeight: 1.12, maxWidth: 760 }}>
+          {summary.core_belief}
+        </div>
+        {onEdit && (
+          <button onClick={onEdit} style={ghostButtonStyle}>Edit thesis</button>
+        )}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 12 }}>
-        <MiniStatCard label="Core thesis" value={summary.core_belief} />
-        <MiniStatCard label="Time horizon" value={`${summary.timeframe_start || "now"} → ${summary.timeframe_end || summary.time_horizon}`} />
-        <MiniStatCard label="Key mechanism" value={summary.mechanism || "Not specified"} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18, marginBottom: 14 }}>
+        <EditorialField label="Time horizon" value={`${summary.timeframe_start || "Now"} → ${summary.timeframe_end || summary.time_horizon}`} />
+        <EditorialField label="Key mechanism" value={summary.mechanism || "Not specified"} />
       </div>
       {!!summary.key_drivers?.length && (
         <div>
           <div style={{ color: "#d8d0c8", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Likely consequences</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {summary.key_drivers.slice(0, 3).map((driver) => (
+            {summary.key_drivers.slice(0, 4).map((driver) => (
               <Tag key={driver}>{driver}</Tag>
             ))}
           </div>
         </div>
       )}
+    </Card>
+  );
+}
+
+function ThesisControlPanel({
+  summary,
+  basketStyle,
+  setBasketStyle,
+  onBuild,
+  onEdit,
+}: {
+  summary: BeliefSummary;
+  basketStyle: BasketStyle;
+  setBasketStyle: (value: BasketStyle) => void;
+  onBuild: () => void;
+  onEdit: () => void;
+}) {
+  const options: { value: BasketStyle; label: string }[] = [
+    { value: "balanced", label: "Balanced" },
+    { value: "high_conviction", label: "High conviction" },
+    { value: "hedged", label: "Hedged" },
+    { value: "contrarian", label: "Contrarian" },
+  ];
+  return (
+    <Card style={{ padding: 24 }}>
+      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+        Thesis review
+      </div>
+      <div style={{ color: "#ede9e3", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
+        Prism understood your take as:
+      </div>
+      <div style={{ color: "#d8d0c8", fontSize: 18, lineHeight: 1.5, marginBottom: 16 }}>
+        {summary.core_belief}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18, marginBottom: 18 }}>
+        <EditorialField label="Core thesis" value={summary.core_belief} />
+        <EditorialField label="Time horizon" value={`${summary.timeframe_start || "Now"} → ${summary.timeframe_end || summary.time_horizon}`} />
+        <EditorialField label="Main mechanism" value={summary.mechanism || "Not specified"} />
+      </div>
+
+      <div style={{ color: "#d8d0c8", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Basket style</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+        {options.map((option) => {
+          const active = basketStyle === option.value;
+          return (
+            <button
+              key={option.value}
+              onClick={() => setBasketStyle(option.value)}
+              style={{
+                ...ghostButtonStyle,
+                borderColor: active ? "rgba(227,100,56,0.45)" : "rgba(255,255,255,0.08)",
+                background: active ? "rgba(227,100,56,0.12)" : "transparent",
+                color: active ? "#f6ece5" : "#9a928a",
+              }}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ color: "#8d857d", fontSize: 13 }}>
+          Review the thesis framing before Prism chooses positions.
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onEdit} style={ghostButtonStyle}>Edit thesis</button>
+          <button onClick={onBuild} style={primaryButtonStyle}>Looks right — build basket</button>
+        </div>
+      </div>
     </Card>
   );
 }
@@ -1364,73 +1699,65 @@ function consequenceLine(domain: DomainAnalysis): string {
   return capped.length > 96 ? `${capped.slice(0, 93)}...` : capped;
 }
 
-function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis; screenedCount: number }) {
-  const topDomains = analysis.affected_domains.filter((d) => d.relevance !== "low").slice(0, 6);
+function BuildProgressCard({ label, thesis, implication }: { label: string; thesis: string; implication: string }) {
   return (
-    <Card>
-      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-        Consequence map
+    <Card style={{ padding: 24 }}>
+      <div style={{ color: "#e36438", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+        Build progress
+      </div>
+      <div style={{ color: "#ede9e3", fontSize: 24, fontWeight: 600, marginBottom: 8 }}>{label}</div>
+      <div style={{ color: "#8f877e", fontSize: 14, marginBottom: 16 }}>
+        Prism is turning your take into a polished market thesis.
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-        {topDomains.map((domain) => (
-          <div key={domain.domain} style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 14, background: "rgba(255,255,255,0.02)" }}>
-            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 8 }}>{consequenceLabel(domain)}</div>
-            <div style={{ color: "#928981", fontSize: 13, lineHeight: 1.55 }}>{consequenceLine(domain)}</div>
-          </div>
-        ))}
+        {thesis && <InsightCard label="Thesis detected" value={thesis} />}
+        {implication && <InsightCard label="Key implication" value={implication} />}
       </div>
-      {!!screenedCount && (
-        <div style={{ color: "#938b83", fontSize: 13, marginTop: 14 }}>
-          Prism scanned {screenedCount} relevant events to shape this basket.
-        </div>
-      )}
     </Card>
   );
 }
 
-function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: number | null }) {
-  return (
-    <Card>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}>
-        <div>
-          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-            Prediction Market Basket
-          </div>
-          <div style={{ color: "#ede9e3", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
-            {basket.basket_title}
-          </div>
-          <div style={{ color: "#958d86", fontSize: 15, lineHeight: 1.6, maxWidth: 700 }}>
-            {basket.basket_summary}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-            <Tag>Market thesis</Tag>
-            <Tag>Share-ready</Tag>
-            <Tag>${basket.total_notional.toFixed(0)} notional</Tag>
-          </div>
-        </div>
-        <div style={{ minWidth: 150, textAlign: "right" }}>
-          <div style={{ color: "#8b837b", fontSize: 12, marginBottom: 8 }}>Share</div>
-          {basketId && (
-            <Link href={`/baskets/${basketId}`} style={{ color: "#fff", background: "#e36438", fontSize: 13, textDecoration: "none", padding: "11px 14px", borderRadius: 12, fontWeight: 600, display: "inline-block" }}>
-              Open share page
-            </Link>
-          )}
-        </div>
-      </div>
+function holdingGroup(holding: PredictionBasket["holdings"][number]): "direct" | "consequence" | "hedge" {
+  if (holding.tier === "hedge_or_falsifier" || holding.role === "hedge") return "hedge";
+  if (holding.tier === "direct_thesis" || holding.role === "direct") return "direct";
+  return "consequence";
+}
 
-      <div style={{ color: "#d8d0c8", fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Markets Prism selected</div>
+function holdingTag(holding: PredictionBasket["holdings"][number]): string {
+  if (holding.tier === "hedge_or_falsifier" || holding.role === "hedge") return "Hedge";
+  if (holding.tier === "direct_thesis" || holding.role === "direct") return "Direct";
+  if (holding.tier === "first_order_consequence" || holding.role === "indirect") return "Consequence";
+  if (holding.role === "mechanism" || holding.tier === "mechanism") return "Consequence";
+  return "Contrarian";
+}
+
+function basketStyleLabel(style: BasketStyle): string {
+  if (style === "high_conviction") return "High conviction";
+  if (style === "hedged") return "Hedged";
+  if (style === "contrarian") return "Contrarian";
+  return "Balanced";
+}
+
+function HoldingGroup({ title, holdings }: { title: string; holdings: PredictionBasket["holdings"] }) {
+  if (!holdings.length) return null;
+  return (
+    <section>
+      <div style={{ color: "#d8d0c8", fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{title}</div>
       <div style={{ display: "grid", gap: 10 }}>
-        {basket.holdings.map((holding) => (
+        {holdings.map((holding) => (
           <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 16, background: "rgba(255,255,255,0.02)" }}>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 120px", gap: 16, alignItems: "start" }}>
               <div>
-                <div style={{ color: "#ede9e3", fontSize: 17, fontWeight: 600, marginBottom: 6 }}>{holding.question}</div>
+                <div style={{ color: "#ede9e3", fontSize: 17, fontWeight: 600, marginBottom: 6 }}>
+                  {holding.event_title || holding.question}
+                </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                   <Tag>{holding.side}</Tag>
                   <Tag>{Math.round(holding.market_price * 100)}% odds</Tag>
+                  <Tag>{holdingTag(holding)}</Tag>
                 </div>
                 <div style={{ color: "#9b938c", fontSize: 14, lineHeight: 1.6, marginBottom: 6 }}>
-                  <strong style={{ color: "#d8d0c8" }}>Why included:</strong> {holding.rationale || "Included as a direct expression of the thesis."}
+                  <strong style={{ color: "#d8d0c8" }}>Why it&apos;s here:</strong> {holding.rationale || "Included as a direct expression of the thesis."}
                 </div>
                 <div style={{ color: "#7f776f", fontSize: 13, lineHeight: 1.5 }}>
                   <strong style={{ color: "#c5bcb4" }}>Main risk:</strong> {holding.main_risk || "The thesis resolves differently than expected."}
@@ -1443,6 +1770,108 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
             </div>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis; screenedCount: number }) {
+  const topDomains = analysis.affected_domains.filter((d) => d.relevance !== "low").slice(0, 6);
+  return (
+    <Card style={{ padding: 24 }}>
+      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+        If your thesis is right...
+      </div>
+      <div style={{ display: "grid", gap: 12 }}>
+        {topDomains.slice(0, 4).map((domain) => (
+          <div key={domain.domain} style={{ borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 8 }}>
+              <span style={{ color: "#ede9e3", fontWeight: 600 }}>{consequenceLabel(domain)}</span>
+              <span style={{ color: "#6f6861" }}>→</span>
+              <span style={{ color: "#c1b8b0", fontSize: 14 }}>{consequenceLine(domain)}</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {(domain.market_signals || []).slice(0, 3).map((signal) => (
+                <Tag key={signal}>{signal}</Tag>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {!!screenedCount && (
+        <div style={{ color: "#938b83", fontSize: 13, marginTop: 14 }}>
+          Prism scanned {screenedCount} relevant events to shape this basket.
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function BasketView({ basket, basketId, basketStyle }: { basket: PredictionBasket; basketId: number | null; basketStyle: BasketStyle }) {
+  const [copied, setCopied] = useState(false);
+  const breakdown = basket.holdings.reduce((acc, holding) => {
+    const bucket = holdingGroup(holding);
+    acc[bucket] += holding.weight_dollars;
+    return acc;
+  }, { direct: 0, consequence: 0, hedge: 0 });
+  const grouped = {
+    direct: basket.holdings.filter((holding) => holdingGroup(holding) === "direct"),
+    consequence: basket.holdings.filter((holding) => holdingGroup(holding) === "consequence"),
+    hedge: basket.holdings.filter((holding) => holdingGroup(holding) === "hedge"),
+  };
+
+  async function copyLink() {
+    if (!basketId || typeof window === "undefined" || !navigator.clipboard) return;
+    await navigator.clipboard.writeText(`${window.location.origin}/baskets/${basketId}`);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  return (
+    <Card style={{ padding: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}>
+        <div>
+          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+            Prediction Market Basket
+          </div>
+          <div style={{ color: "#ede9e3", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
+            {basket.basket_title}
+          </div>
+          <div style={{ color: "#958d86", fontSize: 15, lineHeight: 1.6, maxWidth: 700 }}>
+            {basket.basket_summary}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+            <Tag>Share-ready</Tag>
+            <Tag>{basketStyleLabel(basketStyle)}</Tag>
+            <Tag>${basket.total_notional.toFixed(0)} notional</Tag>
+          </div>
+        </div>
+        <div style={{ minWidth: 180, display: "grid", gap: 10, justifyItems: "end" }}>
+          {basketId && (
+            <>
+              <Link href={`/baskets/${basketId}`} style={{ color: "#fff", background: "#e36438", fontSize: 13, textDecoration: "none", padding: "11px 14px", borderRadius: 12, fontWeight: 600, display: "inline-block" }}>
+                Open share page
+              </Link>
+              <button onClick={copyLink} style={ghostButtonStyle}>
+                {copied ? "Copied" : "Copy link"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+        <Tag>Time horizon: {basket.holdings.reduce((latest, holding) => latest || holding.close_date, "") || "Not specified"}</Tag>
+        <Tag>Basket style: {basketStyleLabel(basketStyle)}</Tag>
+        <Tag>Direct thesis bets: {Math.round((breakdown.direct / basket.total_notional) * 100 || 0)}%</Tag>
+        <Tag>Consequences: {Math.round((breakdown.consequence / basket.total_notional) * 100 || 0)}%</Tag>
+        <Tag>Hedges: {Math.round((breakdown.hedge / basket.total_notional) * 100 || 0)}%</Tag>
+      </div>
+
+      <div style={{ display: "grid", gap: 16 }}>
+        <HoldingGroup title="Direct bets" holdings={grouped.direct} />
+        <HoldingGroup title="First-order consequences" holdings={grouped.consequence} />
+        <HoldingGroup title="Hedge positions" holdings={grouped.hedge} />
       </div>
 
       <div style={{ marginTop: 18, color: "#8f877f", fontSize: 14, lineHeight: 1.6 }}>
@@ -1591,7 +2020,7 @@ function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
       background: "linear-gradient(180deg, rgba(18,18,18,0.97), rgba(12,12,12,0.98))",
@@ -1599,6 +2028,7 @@ function Card({ children }: { children: React.ReactNode }) {
       borderRadius: 22,
       padding: 22,
       boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
+      ...style,
     }}>
       {children}
     </div>
