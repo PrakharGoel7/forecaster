@@ -860,8 +860,7 @@ function ManualEventModal(props: {
             <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600 }}>
               Event details
             </div>
-            <div style={{ display: "grid", gap: 12 }}>
-              <DetailRow label="Event" value={event.title} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }}>
               <DetailRow label="Category" value={event.category || "Uncategorized"} />
               <DetailRow label="Deadline" value={closeLabel || "Not listed"} />
             </div>
