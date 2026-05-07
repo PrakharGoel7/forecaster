@@ -142,15 +142,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     return progressLabel;
   }, [progressLabel, stage]);
 
-  const aiStageIndex = useMemo(() => {
-    if (stage === "idle") return 0;
-    if (stage === "chatting") return 1;
-    if (stage === "review") return 2;
-    if (stage === "analyzing" && !basket) return analysis ? 3 : 2;
-    if (stage === "done" || basket) return 4;
-    return 1;
-  }, [analysis, basket, stage]);
-
   const routeBase = buildPath === "manual" ? "/trading/manual" : "/trading";
 
   function resetFlow() {
@@ -355,25 +346,13 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     void sendMessage(input, apiHistory);
   }
 
-  function onEditThesis() {
-    setStage("idle");
-    setInput(beliefSummary?.core_belief ?? input);
-    setChatMessages([]);
-    setApiHistory([]);
-    setAnalysis(null);
-    setBasket(null);
-    setProgressLabel("");
-    setError("");
-    router.replace(routeBase, { scroll: false });
-  }
-
   return (
     <div style={{ minHeight: "100vh", background: "#080808", position: "relative" }}>
       <Header />
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, paddingTop: 56 }}>
-        <div style={{ maxWidth: buildPath === "manual" ? 1560 : 1480, margin: "0 auto", padding: buildPath === "manual" ? "24px 20px 72px" : "24px 20px 72px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: buildPath === "manual" ? "minmax(0, 1fr) 420px" : "minmax(0, 1fr) 380px", gap: buildPath === "manual" ? 20 : 20, alignItems: "start" }}>
+        <div style={{ maxWidth: buildPath === "manual" ? 1560 : 1040, margin: "0 auto", padding: buildPath === "manual" ? "24px 20px 72px" : "24px 20px 72px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: buildPath === "manual" ? "minmax(0, 1fr) 420px" : "minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
             <div>
               {stage === "idle" && (
                 buildPath === "ai" ? (
@@ -405,20 +384,17 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
               {stage !== "idle" && (
                 <div style={{ display: "grid", gap: 18 }}>
                   {buildPath === "ai" ? (
-                    <>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-                        <div>
-                          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
-                            AI Build
-                          </div>
-                          <div style={{ color: "#ede9e3", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em" }}>
-                            Turn your take into a market basket.
-                          </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+                      <div>
+                        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
+                          AI Build
                         </div>
-                        <button onClick={resetFlow} style={ghostButtonStyle}>New basket</button>
+                        <div style={{ color: "#ede9e3", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em" }}>
+                          Turn your take into a market basket.
+                        </div>
                       </div>
-                      <AIStageProgress current={aiStageIndex} />
-                    </>
+                      <button onClick={resetFlow} style={ghostButtonStyle}>New basket</button>
+                    </div>
                   ) : (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
@@ -459,7 +435,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                         </Card>
                       )}
 
-                      {beliefSummary && <BeliefBrief summary={beliefSummary} onEdit={onEditThesis} />}
+                      {beliefSummary && <BeliefBrief summary={beliefSummary} />}
 
                       {beliefSummary && stage === "review" && (
                         <ThesisControlPanel
@@ -467,7 +443,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                           basketStyle={basketStyle}
                           setBasketStyle={setBasketStyle}
                           onBuild={() => startAnalysis(beliefSummary)}
-                          onEdit={onEditThesis}
                         />
                       )}
 
@@ -477,11 +452,12 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
 
                   {progressLabel && stage === "analyzing" && (
                     buildPath === "ai" ? (
-                      <BuildProgressCard
-                        label={progressCopy}
-                        thesis={beliefSummary?.core_belief ?? ""}
-                        implication={analysis ? consequenceLabel(analysis.affected_domains[0]) : ""}
-                      />
+                      <Card>
+                        <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, marginBottom: 6 }}>Building your basket</div>
+                        <div style={{ color: "#8f877e", fontSize: 14 }}>
+                          Prism is turning your take into selected market positions.
+                        </div>
+                      </Card>
                     ) : (
                       <Card>
                         <div style={{ color: "#e36438", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
@@ -495,7 +471,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     )
                   )}
 
-                  {basket && <BasketView basket={basket} basketId={basketId} basketStyle={basketStyle} />}
+                  {basket && <BasketView basket={basket} basketId={basketId} />}
 
                   {error && (
                     <Card>
@@ -507,8 +483,9 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
               )}
             </div>
 
+            {buildPath === "manual" && (
             <div style={{ display: "grid", gap: 18, alignSelf: "start", position: "sticky", top: 84 }}>
-              {buildPath === "manual" && stage === "idle" ? (
+              {stage === "idle" ? (
                 <ManualBasketSidebar
                   manualHoldings={manualHoldings}
                   onUpdateHolding={updateManualHolding}
@@ -522,16 +499,11 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                   }}
                   loading={loading}
                 />
-              ) : buildPath === "ai" ? (
-                <AIBuildSidebar
-                  stage={stage}
-                  currentStep={aiStageIndex}
-                  savedBaskets={savedBaskets}
-                />
               ) : (
                 <HowItWorksSidebar buildPath={buildPath} savedBaskets={savedBaskets} />
               )}
             </div>
+            )}
           </div>
         </div>
       </div>
@@ -647,41 +619,6 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
           <button onClick={onSubmit} style={primaryButtonStyle}>Build basket</button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function AIStageProgress({ current }: { current: number }) {
-  const stages = ["Take", "Thesis", "Markets", "Basket"];
-  return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-      gap: 10,
-    }}>
-      {stages.map((stage, index) => {
-        const step = index + 1;
-        const active = current === step;
-        const done = current > step;
-        return (
-          <div
-            key={stage}
-            style={{
-              borderRadius: 16,
-              padding: "12px 14px",
-              background: active ? "rgba(227,100,56,0.12)" : done ? "rgba(255,255,255,0.04)" : "transparent",
-              border: `1px solid ${active ? "rgba(227,100,56,0.34)" : "rgba(255,255,255,0.08)"}`,
-            }}
-          >
-            <div style={{ color: done || active ? "#ede9e3" : "#7f776f", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-              {step}
-            </div>
-            <div style={{ color: active ? "#fff2ec" : "#b1a9a1", fontSize: 13, fontWeight: 600 }}>
-              {stage}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -1210,19 +1147,6 @@ function EditorialField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function InsightCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 14, background: "rgba(255,255,255,0.02)" }}>
-      <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
-        {label}
-      </div>
-      <div style={{ color: "#e7e0d8", fontSize: 14, lineHeight: 1.6 }}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
 function ManualBasketSidebar(props: {
   manualHoldings: ManualBasketDraftHolding[];
   onUpdateHolding: (ticker: string, patch: Partial<ManualBasketDraftHolding>) => void;
@@ -1436,132 +1360,6 @@ function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; 
   );
 }
 
-function AIBuildSidebar({ stage, currentStep, savedBaskets }: { stage: Stage; currentStep: number; savedBaskets: SavedBasket[] }) {
-  const popularTheses = [
-    "AI labor shock",
-    "Sticky inflation",
-    "China-Taiwan risk",
-    "Nuclear comeback",
-    "Climate insurance crisis",
-  ];
-  const progressItems = [
-    { label: "Thesis", step: 1 },
-    { label: "Consequences", step: 2 },
-    { label: "Markets", step: 3 },
-    { label: "Basket", step: 4 },
-  ];
-
-  return (
-    <>
-      {stage === "idle" ? (
-        <Card>
-          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-            Popular theses
-          </div>
-          <div style={{ display: "grid", gap: 10 }}>
-            {popularTheses.map((thesis) => (
-              <div
-                key={thesis}
-                style={{
-                  borderRadius: 16,
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  background: "rgba(255,255,255,0.02)",
-                  padding: "14px 16px",
-                  color: "#d9d2cb",
-                  fontSize: 14,
-                  fontWeight: 600,
-                }}
-              >
-                {thesis}
-              </div>
-            ))}
-          </div>
-        </Card>
-      ) : (
-        <Card>
-          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-            Basket progress
-          </div>
-          <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600, marginBottom: 6 }}>
-            AI build
-          </div>
-          <div style={{ color: "#8f877e", fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>
-            Prism is sharpening the thesis, finding markets, and shaping the final basket.
-          </div>
-          <div style={{ display: "grid", gap: 10 }}>
-            {progressItems.map((item) => {
-              const active = currentStep === item.step;
-              const done = currentStep > item.step;
-              return (
-                <div
-                  key={item.label}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "28px minmax(0,1fr)",
-                    gap: 12,
-                    alignItems: "center",
-                    padding: "10px 0",
-                  }}
-                >
-                  <div style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 999,
-                    display: "grid",
-                    placeItems: "center",
-                    background: active ? "rgba(227,100,56,0.16)" : done ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${active ? "rgba(227,100,56,0.38)" : "rgba(255,255,255,0.08)"}`,
-                    color: active || done ? "#ede9e3" : "#7d756d",
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}>
-                    {item.step}
-                  </div>
-                  <div style={{ color: active ? "#ede9e3" : done ? "#c5bcb4" : "#8a827a", fontSize: 14, fontWeight: active ? 700 : 500 }}>
-                    {item.label}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
-
-      <Card>
-        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-          Saved baskets
-        </div>
-        <div style={{ display: "grid", gap: 10 }}>
-          {savedBaskets.slice(0, 8).map((saved) => (
-            <Link
-              key={saved.id}
-              href={`${saved.mode === "manual" ? "/trading/manual" : "/trading"}?basket=${saved.id}`}
-              style={{
-                display: "block",
-                textDecoration: "none",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 14,
-                padding: 14,
-                background: "rgba(255,255,255,0.02)",
-              }}
-            >
-              <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 6 }}>{saved.title}</div>
-              <div style={{ color: "#938b83", fontSize: 13, lineHeight: 1.5, marginBottom: 8 }}>
-                {saved.summary}
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {saved.time_horizon && <Tag>{saved.time_horizon}</Tag>}
-                {saved.mode !== "manual" && <Tag>{saved.mode === "instant" ? "Quick Build" : "Deep Build"}</Tag>}
-              </div>
-            </Link>
-          ))}
-          {!savedBaskets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No saved baskets yet.</div>}
-        </div>
-      </Card>
-    </>
-  );
-}
-
 function ChatThread({ messages }: { messages: ChatMsg[] }) {
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -1588,19 +1386,14 @@ function ChatThread({ messages }: { messages: ChatMsg[] }) {
   );
 }
 
-function BeliefBrief({ summary, onEdit }: { summary: BeliefSummary; onEdit?: () => void }) {
+function BeliefBrief({ summary }: { summary: BeliefSummary }) {
   return (
     <Card>
       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
         Thesis snapshot
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "start", marginBottom: 12 }}>
-        <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", lineHeight: 1.12, maxWidth: 760 }}>
-          {summary.core_belief}
-        </div>
-        {onEdit && (
-          <button onClick={onEdit} style={ghostButtonStyle}>Edit thesis</button>
-        )}
+      <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", lineHeight: 1.12, maxWidth: 760, marginBottom: 12 }}>
+        {summary.core_belief}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18, marginBottom: 14 }}>
         <EditorialField label="Time horizon" value={`${summary.timeframe_start || "Now"} → ${summary.timeframe_end || summary.time_horizon}`} />
@@ -1625,13 +1418,11 @@ function ThesisControlPanel({
   basketStyle,
   setBasketStyle,
   onBuild,
-  onEdit,
 }: {
   summary: BeliefSummary;
   basketStyle: BasketStyle;
   setBasketStyle: (value: BasketStyle) => void;
   onBuild: () => void;
-  onEdit: () => void;
 }) {
   const options: { value: BasketStyle; label: string }[] = [
     { value: "balanced", label: "Balanced" },
@@ -1681,10 +1472,7 @@ function ThesisControlPanel({
         <div style={{ color: "#8d857d", fontSize: 13 }}>
           Review the thesis framing before Prism chooses positions.
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={onEdit} style={ghostButtonStyle}>Edit thesis</button>
-          <button onClick={onBuild} style={primaryButtonStyle}>Looks right — build basket</button>
-        </div>
+        <button onClick={onBuild} style={primaryButtonStyle}>Looks right — build basket</button>
       </div>
     </Card>
   );
@@ -1704,27 +1492,12 @@ function consequenceLabel(domain: DomainAnalysis): string {
 
 function consequenceLine(domain: DomainAnalysis): string {
   const text = domain.mechanism.trim();
-  if (!text) return "This consequence group helps express the thesis through tradable markets.";
-  const capped = text.endsWith(".") ? text : `${text}.`;
-  return capped.length > 96 ? `${capped.slice(0, 93)}...` : capped;
-}
-
-function BuildProgressCard({ label, thesis, implication }: { label: string; thesis: string; implication: string }) {
-  return (
-    <Card>
-      <div style={{ color: "#e36438", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-        Build progress
-      </div>
-      <div style={{ color: "#ede9e3", fontSize: 24, fontWeight: 600, marginBottom: 8 }}>{label}</div>
-      <div style={{ color: "#8f877e", fontSize: 14, marginBottom: 16 }}>
-        Prism is turning your take into a polished market thesis.
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-        {thesis && <InsightCard label="Thesis detected" value={thesis} />}
-        {implication && <InsightCard label="Key implication" value={implication} />}
-      </div>
-    </Card>
-  );
+  if (!text) return "Potential repricing";
+  const firstClause = text
+    .replace(/\s+/g, " ")
+    .split(/[.;]/)[0]
+    ?.trim() || text;
+  return firstClause.length > 54 ? `${firstClause.slice(0, 51)}...` : firstClause;
 }
 
 function holdingGroup(holding: PredictionBasket["holdings"][number]): "direct" | "consequence" | "hedge" {
@@ -1739,13 +1512,6 @@ function holdingTag(holding: PredictionBasket["holdings"][number]): string {
   if (holding.tier === "first_order_consequence" || holding.role === "indirect") return "Consequence";
   if (holding.role === "mechanism" || holding.tier === "mechanism") return "Consequence";
   return "Contrarian";
-}
-
-function basketStyleLabel(style: BasketStyle): string {
-  if (style === "high_conviction") return "High conviction";
-  if (style === "hedged") return "Hedged";
-  if (style === "contrarian") return "Contrarian";
-  return "Balanced";
 }
 
 function HoldingGroup({ title, holdings }: { title: string; holdings: PredictionBasket["holdings"] }) {
@@ -1792,13 +1558,14 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
         If your thesis is right...
       </div>
-      <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "grid", gap: 10 }}>
         {topDomains.slice(0, 4).map((domain) => (
-          <div key={domain.domain} style={{ borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 8 }}>
-              <span style={{ color: "#ede9e3", fontWeight: 600 }}>{consequenceLabel(domain)}</span>
-              <span style={{ color: "#6f6861" }}>→</span>
-              <span style={{ color: "#c1b8b0", fontSize: 14 }}>{consequenceLine(domain)}</span>
+          <div key={domain.domain} style={{ borderRadius: 16, padding: 14, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 6 }}>
+              {consequenceLabel(domain)}
+            </div>
+            <div style={{ color: "#a79f97", fontSize: 13, marginBottom: 8 }}>
+              {consequenceLine(domain)}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {(domain.market_signals || []).slice(0, 3).map((signal) => (
@@ -1817,13 +1584,8 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
   );
 }
 
-function BasketView({ basket, basketId, basketStyle }: { basket: PredictionBasket; basketId: number | null; basketStyle: BasketStyle }) {
+function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: number | null }) {
   const [copied, setCopied] = useState(false);
-  const breakdown = basket.holdings.reduce((acc, holding) => {
-    const bucket = holdingGroup(holding);
-    acc[bucket] += holding.weight_dollars;
-    return acc;
-  }, { direct: 0, consequence: 0, hedge: 0 });
   const grouped = {
     direct: basket.holdings.filter((holding) => holdingGroup(holding) === "direct"),
     consequence: basket.holdings.filter((holding) => holdingGroup(holding) === "consequence"),
@@ -1852,7 +1614,6 @@ function BasketView({ basket, basketId, basketStyle }: { basket: PredictionBaske
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
             <Tag>Share-ready</Tag>
-            <Tag>{basketStyleLabel(basketStyle)}</Tag>
             <Tag>${basket.total_notional.toFixed(0)} notional</Tag>
           </div>
         </div>
@@ -1868,14 +1629,6 @@ function BasketView({ basket, basketId, basketStyle }: { basket: PredictionBaske
             </>
           )}
         </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
-        <Tag>Time horizon: {basket.holdings.reduce((latest, holding) => latest || holding.close_date, "") || "Not specified"}</Tag>
-        <Tag>Basket style: {basketStyleLabel(basketStyle)}</Tag>
-        <Tag>Direct thesis bets: {Math.round((breakdown.direct / basket.total_notional) * 100 || 0)}%</Tag>
-        <Tag>Consequences: {Math.round((breakdown.consequence / basket.total_notional) * 100 || 0)}%</Tag>
-        <Tag>Hedges: {Math.round((breakdown.hedge / basket.total_notional) * 100 || 0)}%</Tag>
       </div>
 
       <div style={{ display: "grid", gap: 16 }}>
