@@ -23,6 +23,7 @@ export function loadManualBasketDraft(): ManualBasketDraftHolding[] {
     return Array.isArray(parsed)
       ? parsed.map((holding) => ({
         ...holding,
+        event_title: holding.event_title ?? holding.question,
         contract_label: holding.contract_label ?? (holding.side === "NO" ? "No" : "Yes"),
         weight_percent: holding.weight_percent ?? holding.weight_dollars ?? 10,
       }))
@@ -51,6 +52,7 @@ export function addMarketToManualBasketDraft(
     question?: string;
     marketPrice?: number;
     contractLabel?: string;
+    eventTitle?: string;
   },
 ) {
   const holdings = loadManualBasketDraft();
@@ -58,14 +60,17 @@ export function addMarketToManualBasketDraft(
   const question = options?.question ?? market.question;
   const marketPrice = options?.marketPrice ?? (side === "NO" ? 1 - market.mid_price : market.mid_price);
   const contractLabel = options?.contractLabel ?? (side === "NO" ? "No" : market.yes_sub_title || "Yes");
-  const existingIndex = holdings.findIndex((holding) => holding.ticker === market.ticker);
+  const eventTitle = options?.eventTitle ?? market.event_title;
+  const existingIndex = holdings.findIndex((holding) => holding.event_ticker === market.event_ticker);
 
   if (existingIndex >= 0) {
     holdings[existingIndex] = {
       ...holdings[existingIndex],
+      ticker: market.ticker,
       question,
       market_price: marketPrice,
       side,
+      event_title: eventTitle,
       contract_label: contractLabel,
       rules_summary: market.rules_primary,
       close_date: market.close_date,
@@ -77,6 +82,7 @@ export function addMarketToManualBasketDraft(
   holdings.push({
     ticker: market.ticker,
     event_ticker: market.event_ticker,
+    event_title: eventTitle,
     question,
     market_price: marketPrice,
     close_date: market.close_date,

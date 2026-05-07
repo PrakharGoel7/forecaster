@@ -175,6 +175,7 @@ export interface SavedBasket {
 export interface ManualBasketDraftHolding {
   ticker: string;
   event_ticker: string;
+  event_title?: string;
   question: string;
   market_price: number;
   close_date: string;

@@ -254,6 +254,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       question: selection.label ?? market.question,
       marketPrice: selection.price,
       contractLabel: selection.contractLabel,
+      eventTitle: market.event_title,
     });
     setManualHoldings(loadManualBasketDraft());
     setManualEventModal(null);
@@ -1018,6 +1019,35 @@ function ManualBasketSidebar(props: {
   const {
     manualHoldings, onUpdateHolding, onRemoveHolding, onOpenSaveModal, loading,
   } = props;
+  const [holdingMarkets, setHoldingMarkets] = useState<Record<string, KalshiMarket[]>>({});
+
+  useEffect(() => {
+    const missingEventTickers = [...new Set(manualHoldings.map((holding) => holding.event_ticker))]
+      .filter((eventTicker) => !holdingMarkets[eventTicker]);
+    if (!missingEventTickers.length) return;
+
+    let cancelled = false;
+    void Promise.all(missingEventTickers.map(async (eventTicker) => {
+      const markets = await getMarkets(eventTicker);
+      return [eventTicker, markets] as const;
+    }))
+      .then((entries) => {
+        if (cancelled) return;
+        setHoldingMarkets((prev) => {
+          const next = { ...prev };
+          for (const [eventTicker, markets] of entries) {
+            next[eventTicker] = markets;
+          }
+          return next;
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [manualHoldings, holdingMarkets]);
+
   return (
     <>
       <Card>
@@ -1042,16 +1072,14 @@ function ManualBasketSidebar(props: {
         <div style={{ display: "grid", gap: 10, maxHeight: "calc(100vh - 360px)", overflowY: "auto", paddingRight: 4 }}>
           {manualHoldings.map((holding) => (
             <ManualHoldingCard
-              key={holding.ticker}
+              key={holding.event_ticker}
               holding={holding}
               onUpdate={(patch) => onUpdateHolding(holding.ticker, patch)}
               onRemove={() => onRemoveHolding(holding.ticker)}
+              markets={holdingMarkets[holding.event_ticker] ?? []}
             />
           ))}
           {!manualHoldings.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No holdings yet. Add them from the market cards.</div>}
-        </div>
-        <div style={{ color: "#7f776f", fontSize: 13, lineHeight: 1.6, marginTop: 14, marginBottom: 14 }}>
-          Portfolio composition will be normalized to a 100% basket when you save.
         </div>
         <button onClick={onOpenSaveModal} style={{ ...primaryButtonStyle, width: "100%", opacity: loading ? 0.7 : 1 }}>
           {loading ? "Saving..." : "Save basket"}
@@ -1144,7 +1172,7 @@ function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; 
             <>
               <li>Search the market catalog.</li>
               <li>Select the contracts you want.</li>
-              <li>Choose sides, roles, and weights.</li>
+              <li>Choose contracts and portfolio weights.</li>
               <li>Save a weighted $100 ETF.</li>
             </>
           )}
@@ -1333,15 +1361,56 @@ function ManualMarketCard({ market, onAdd }: { market: KalshiMarket; onAdd: () =
   );
 }
 
-function ManualHoldingCard({ holding, onUpdate, onRemove }: {
+function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
   holding: ManualBasketDraftHolding;
   onUpdate: (patch: Partial<ManualBasketDraftHolding>) => void;
   onRemove: () => void;
+  markets: KalshiMarket[];
 }) {
+  const sortedMarkets = [...markets].sort((a, b) => b.mid_price - a.mid_price);
+  const isBinary = sortedMarkets.length === 1;
+  const optionChoices = isBinary && sortedMarkets[0]
+    ? [
+      {
+        value: `${sortedMarkets[0].ticker}:YES`,
+        label: "Yes",
+        patch: {
+          ticker: sortedMarkets[0].ticker,
+          side: "YES" as const,
+          contract_label: "Yes",
+          question: sortedMarkets[0].question,
+          market_price: sortedMarkets[0].mid_price,
+        },
+      },
+      {
+        value: `${sortedMarkets[0].ticker}:NO`,
+        label: "No",
+        patch: {
+          ticker: sortedMarkets[0].ticker,
+          side: "NO" as const,
+          contract_label: "No",
+          question: sortedMarkets[0].question,
+          market_price: 1 - sortedMarkets[0].mid_price,
+        },
+      },
+    ]
+    : sortedMarkets.map((market) => ({
+      value: `${market.ticker}:YES`,
+      label: market.yes_sub_title || market.question,
+      patch: {
+        ticker: market.ticker,
+        side: "YES" as const,
+        contract_label: market.yes_sub_title || market.question,
+        question: market.yes_sub_title || market.question,
+        market_price: market.mid_price,
+      },
+    }));
+  const selectedChoice = `${holding.ticker}:${holding.side}`;
+
   return (
     <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 10 }}>
-        <div style={{ color: "#ede9e3", fontWeight: 600, lineHeight: 1.45 }}>{holding.question}</div>
+        <div style={{ color: "#ede9e3", fontWeight: 600, lineHeight: 1.45 }}>{holding.event_title || holding.question}</div>
         <button
           onClick={onRemove}
           aria-label="Remove holding"
@@ -1360,7 +1429,24 @@ function ManualHoldingCard({ holding, onUpdate, onRemove }: {
         </button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)", gap: 8, marginBottom: 8 }}>
-        <input value={holding.contract_label || (holding.side === "NO" ? "No" : "Yes")} disabled style={inputStyle} />
+        <div>
+          <div style={miniLabelStyle}>Selected contract</div>
+          <select
+            value={selectedChoice}
+            onChange={(e) => {
+              const next = optionChoices.find((choice) => choice.value === e.target.value);
+              if (!next) return;
+              onUpdate(next.patch);
+            }}
+            style={inputStyle}
+          >
+            {optionChoices.map((choice) => (
+              <option key={choice.value} value={choice.value}>{choice.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <div style={miniLabelStyle}>ETF allocation</div>
         <input
           value={holding.weight_percent}
           type="number"
@@ -1368,6 +1454,7 @@ function ManualHoldingCard({ holding, onUpdate, onRemove }: {
           onChange={(e) => onUpdate({ weight_percent: Number(e.target.value) })}
           style={inputStyle}
         />
+        </div>
       </div>
       <input
         value={holding.rationale}
@@ -1433,6 +1520,15 @@ const inputStyle: React.CSSProperties = {
   color: "#ede9e3",
   fontSize: 14,
   outline: "none",
+};
+
+const miniLabelStyle: React.CSSProperties = {
+  color: "#7b746d",
+  fontSize: 11,
+  textTransform: "uppercase",
+  letterSpacing: "0.12em",
+  fontFamily: "var(--font-mono), monospace",
+  marginBottom: 6,
 };
 
 const primaryButtonStyle: React.CSSProperties = {
