@@ -249,13 +249,16 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     market: KalshiMarket,
     selection: { side: "YES" | "NO"; label?: string; price?: number },
   ) {
-    const status = addMarketToManualBasketDraft(market, {
+    addMarketToManualBasketDraft(market, {
       side: selection.side,
       question: selection.label ?? market.question,
       marketPrice: selection.price,
     });
     setManualHoldings(loadManualBasketDraft());
-    setManualEventModalNotice(status === "added" ? "Added to basket." : "Updated existing basket entry.");
+    setManualEventModal(null);
+    setManualEventModalMarkets([]);
+    setManualEventModalLoading(false);
+    setManualEventModalNotice("");
   }
 
   function updateManualHolding(ticker: string, patch: Partial<ManualBasketDraftHolding>) {
@@ -809,7 +812,7 @@ function ManualEventModal(props: {
       alignItems: "center",
       justifyContent: "center",
       padding: 24,
-    }}>
+    }} onClick={onClose}>
       <div style={{
         width: "min(100%, 1120px)",
         maxHeight: "calc(100vh - 48px)",
@@ -819,14 +822,30 @@ function ManualEventModal(props: {
         background: "linear-gradient(180deg, rgba(18,18,18,0.98), rgba(9,9,9,0.99))",
         boxShadow: "0 36px 110px rgba(0,0,0,0.56)",
         padding: 28,
-      }}>
+      }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "start", marginBottom: 20 }}>
           <div>
             <div style={{ color: "#ede9e3", fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.04em", maxWidth: 760 }}>
               {event.title}
             </div>
           </div>
-          <button onClick={onClose} style={ghostButtonStyle}>Close</button>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              background: "transparent",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "#9b938b",
+              width: 38,
+              height: 38,
+              borderRadius: 999,
+              fontSize: 18,
+              lineHeight: 1,
+              cursor: "pointer",
+            }}
+          >
+            ×
+          </button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(340px,0.92fr)", gap: 20, alignItems: "start" }}>
@@ -919,20 +938,6 @@ function ManualEventModal(props: {
                     })}
                   />
                 ))}
-              </div>
-            )}
-
-            {notice && (
-              <div style={{
-                marginTop: 14,
-                borderRadius: 12,
-                border: "1px solid rgba(227,100,56,0.2)",
-                background: "rgba(227,100,56,0.08)",
-                padding: "12px 14px",
-                color: "#d6cbc0",
-                fontSize: 13,
-              }}>
-                {notice}
               </div>
             )}
           </section>
@@ -1322,24 +1327,39 @@ function ManualHoldingCard({ holding, onUpdate, onRemove }: {
 }) {
   return (
     <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))" }}>
-      <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 10, lineHeight: 1.45 }}>{holding.question}</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr)) auto", gap: 8, marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 10 }}>
+        <div style={{ color: "#ede9e3", fontWeight: 600, lineHeight: 1.45 }}>{holding.question}</div>
+        <button
+          onClick={onRemove}
+          aria-label="Remove holding"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#8f877e",
+            fontSize: 18,
+            lineHeight: 1,
+            cursor: "pointer",
+            padding: 0,
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8, marginBottom: 8 }}>
         <select value={holding.side} onChange={(e) => onUpdate({ side: e.target.value as "YES" | "NO" })} style={inputStyle}>
           <option value="YES">YES</option>
           <option value="NO">NO</option>
         </select>
-        <select value={holding.role} onChange={(e) => onUpdate({ role: e.target.value as ManualBasketDraftHolding["role"] })} style={inputStyle}>
-          <option value="direct">direct</option>
-          <option value="mechanism">mechanism</option>
-          <option value="indirect">indirect</option>
-          <option value="hedge">hedge</option>
-        </select>
         <input value={holding.weight_dollars} type="number" min={1} onChange={(e) => onUpdate({ weight_dollars: Number(e.target.value) })} style={inputStyle} />
         <input value={`${Math.round(holding.market_price * 100)}%`} disabled style={inputStyle} />
-        <button onClick={onRemove} style={ghostButtonStyle}>Remove</button>
       </div>
-      <input value={holding.rationale} onChange={(e) => onUpdate({ rationale: e.target.value })} placeholder="Why this belongs in the basket" style={{ ...inputStyle, marginBottom: 8 }} />
-      <input value={holding.main_risk} onChange={(e) => onUpdate({ main_risk: e.target.value })} placeholder="Main risk" style={inputStyle} />
+      <input
+        value={holding.rationale}
+        onChange={(e) => onUpdate({ rationale: e.target.value, main_risk: "" })}
+        placeholder="Notes (optional)"
+        style={inputStyle}
+      />
     </div>
   );
 }
