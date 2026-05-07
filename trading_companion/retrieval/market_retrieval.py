@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
+import json
 import math
 import re
 from typing import Any
 
 try:
+    from ..cache_paths import MARKETS_CACHE_FILE
     from ..event_cache_db import get_event_lookup
     from ..market_cache_db import get_all_markets
 except ImportError:
+    from cache_paths import MARKETS_CACHE_FILE
     from event_cache_db import get_event_lookup
     from market_cache_db import get_all_markets
 
@@ -23,6 +26,21 @@ class RetrievalConfig:
     per_early_signal_limit: int = 10
     global_limit: int = 240
     per_event_limit: int = 3
+
+
+def _load_markets_from_json_cache(status: str = "open") -> list[dict[str, Any]]:
+    if not MARKETS_CACHE_FILE.exists():
+        return []
+    try:
+        payload = json.loads(MARKETS_CACHE_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    markets = payload.get("markets", [])
+    if not isinstance(markets, list):
+        return []
+    if status:
+        markets = [market for market in markets if market.get("status") == status]
+    return [market for market in markets if isinstance(market, dict)]
 
 
 def _tokenize(text: str) -> set[str]:
@@ -132,7 +150,14 @@ def retrieve_markets_for_exposures(
 ) -> dict[str, list[dict[str, Any]]]:
     config = config or RetrievalConfig()
     event_lookup = get_event_lookup()
-    market_rows = get_all_markets(status="open")
+    market_source = "db"
+    try:
+        market_rows = get_all_markets(status="open")
+    except Exception:
+        market_rows = []
+    if not market_rows:
+        market_rows = _load_markets_from_json_cache(status="open")
+        market_source = "json_cache" if market_rows else "empty"
     start, end = _days_from_timeframe(belief_summary)
     global_candidates = 0
     grouped: list[dict[str, Any]] = []
@@ -252,4 +277,4 @@ def retrieve_markets_for_exposures(
             "candidates": candidates,
         })
 
-    return {"exposure_candidates": grouped}
+    return {"exposure_candidates": grouped, "market_source": market_source, "market_count": len(market_rows)}

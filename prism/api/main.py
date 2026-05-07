@@ -847,6 +847,12 @@ class TradingPipelineBatchRequest(BaseModel):
     include_kalshi_log_tail: int = 0
 
 
+class TradingPipelineTraceError(Exception):
+    def __init__(self, message: str, trace: dict[str, Any] | None = None):
+        super().__init__(message)
+        self.trace = trace or {}
+
+
 class ManualBasketHoldingRequest(BaseModel):
     ticker: str
     event_ticker: str
@@ -1006,6 +1012,8 @@ def _run_trading_pipeline(
             "output": retrieval_result,
             "observability": {
                 "candidates_by_ring": retrieval_by_ring,
+                "market_source": retrieval_result.get("market_source"),
+                "market_count": retrieval_result.get("market_count"),
             },
         }
 
@@ -1034,7 +1042,7 @@ def _run_trading_pipeline(
     if not selected_markets:
         if include_trace:
             trace["error"] = "No relevant markets found matching quality thresholds."
-        raise ValueError("No relevant markets found matching quality thresholds.")
+        raise TradingPipelineTraceError("No relevant markets found matching quality thresholds.", trace)
 
     event_tickers = list(dict.fromkeys(m["event_ticker"] for m in selected_markets))
     screener_msg = {
@@ -1077,7 +1085,7 @@ def _run_trading_pipeline(
     if not markets:
         if include_trace:
             trace["error"] = "No open markets found for the shortlisted contracts."
-        raise ValueError("No open markets found for the shortlisted contracts.")
+        raise TradingPipelineTraceError("No open markets found for the shortlisted contracts.", trace)
 
     selected_by_ticker = {m["ticker"]: m for m in selected_markets}
     markets.sort(key=lambda m: (-selected_by_ticker.get(m.ticker, {}).get("overall_score", 0), -float(getattr(m, "volume", 0.0))))
@@ -1374,6 +1382,12 @@ async def run_trading_pipeline_batch(req: TradingPipelineBatchRequest):
                     "validation_warnings": result.get("validation_warnings", []),
                     "critique": result.get("critique"),
                 }
+            except TradingPipelineTraceError as exc:
+                error_count += 1
+                example_record["status"] = "error"
+                example_record["error"] = str(exc)
+                if exc.trace:
+                    example_record["pipeline_trace"] = exc.trace
             except Exception as exc:
                 error_count += 1
                 example_record["status"] = "error"
