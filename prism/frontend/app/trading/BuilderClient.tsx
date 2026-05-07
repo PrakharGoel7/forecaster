@@ -7,7 +7,7 @@ import GridOverlay from "@/components/GridOverlay";
 import Header from "@/components/Header";
 import { getBasket, getMarkets, listBaskets, listEventCategories, saveManualBasket, searchEvents, streamTradingAnalysis, tradingChat } from "@/lib/api";
 import { addMarketToManualBasketDraft, clearManualBasketDraft, loadManualBasketDraft, saveManualBasketDraft } from "@/lib/manualBasketDraft";
-import type { BeliefAnalysis, BeliefSummary, KalshiEvent, KalshiMarket, ManualBasketDraftHolding, PredictionBasket, SavedBasket } from "@/lib/types";
+import type { BeliefAnalysis, BeliefSummary, DomainAnalysis, KalshiEvent, KalshiMarket, ManualBasketDraftHolding, PredictionBasket, SavedBasket } from "@/lib/types";
 
 type Mode = "instant" | "thinking";
 type BuildPath = "ai" | "manual";
@@ -22,6 +22,13 @@ interface ManualEventModalState {
   event: KalshiEvent;
   mode: "details" | "add";
 }
+
+const AI_EXAMPLE_PROMPTS = [
+  "AGI replaces entry-level coding jobs",
+  "China invades Taiwan before 2030",
+  "GLP-1 drugs significantly reduce obesity rates",
+  "Dating apps lose popularity among GenZ",
+] as const;
 
 export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const router = useRouter();
@@ -117,6 +124,16 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const stepLabel = useMemo(() => (
     mode === "instant" ? "1 follow-up max" : "up to 3 follow-ups"
   ), [mode]);
+
+  const progressCopy = useMemo(() => {
+    const label = progressLabel.toLowerCase();
+    if (stage === "chatting") return "Sharpening your thesis";
+    if (label.includes("screen")) return "Finding tradable markets";
+    if (label.includes("anal")) return "Mapping consequences";
+    if (label.includes("basket")) return "Sizing the basket";
+    if (label.includes("build")) return "Building basket";
+    return progressLabel;
+  }, [progressLabel, stage]);
 
   const routeBase = buildPath === "manual" ? "/trading/manual" : "/trading";
 
@@ -361,7 +378,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace" }}>
-                        Prediction Market ETF Builder
+                        Prediction Market Basket Builder
                       </div>
                       <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.03em" }}>
                         {buildPath === "ai" ? "Build with AI" : "Build manually"}
@@ -373,7 +390,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                   {buildPath === "ai" && (
                     <Card>
                       <div style={{ color: "#8f877e", fontSize: 13, marginBottom: 10 }}>
-                        Mode: <span style={{ color: "#ede9e3" }}>{mode === "instant" ? "Instant" : "Thinking"}</span>
+                        {stage === "chatting" ? "Sharpening your thesis" : `Mode: ${mode === "instant" ? "Quick Build" : "Deep Build"}`}
                       </div>
                       <ChatThread messages={chatMessages} />
                       {stage === "chatting" && (
@@ -391,11 +408,11 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                   {progressLabel && stage === "analyzing" && (
                     <Card>
                       <div style={{ color: "#e36438", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-                        Building Basket
+                        Build progress
                       </div>
-                      <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{progressLabel}</div>
+                      <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{progressCopy}</div>
                       <div style={{ color: "#8f877e", fontSize: 14 }}>
-                        {buildPath === "ai" ? "Prism is mapping the theme, screening markets, and allocating a $100 basket." : "Saving your manual basket."}
+                        {buildPath === "ai" ? "Prism is turning your take into a polished market thesis." : "Saving your manual basket."}
                       </div>
                     </Card>
                   )}
@@ -479,13 +496,13 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
     <div style={{ display: "grid", gap: 18 }}>
       <div>
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
-          AI ETF Builder
+          AI Build
         </div>
         <h1 style={{ color: "#ede9e3", fontSize: "clamp(34px, 5vw, 58px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 12px" }}>
-          Explain the future. Prism builds the basket.
+          Start with a belief. Prism builds a prediction market basket you can invest in and share.
         </h1>
         <p style={{ color: "#948c84", fontSize: 18, lineHeight: 1.6, margin: 0, maxWidth: 700 }}>
-          Describe a belief about the future. Prism will clarify it, map the implications, find tradable contracts, and build a shareable $100 thematic ETF.
+          Prism clarifies your take, maps the consequences, and builds a basket of prediction-market positions that express it.
         </p>
       </div>
       <Card>
@@ -501,17 +518,36 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
                 background: mode === value ? "rgba(227,100,56,0.12)" : "transparent",
               }}
             >
-              {value === "instant" ? "Instant" : "Thinking"}
+              {value === "instant" ? "Quick Build" : "Deep Build"}
             </button>
           ))}
         </div>
         <div style={{ color: "#9e968f", fontSize: 13, marginBottom: 12 }}>
-          {mode === "instant" ? "Fastest path to a tradable basket." : "More clarification before Prism allocates the basket."} {stepLabel}.
+          {mode === "instant" ? "Fastest path from a take to a shareable basket." : "More thesis sharpening before Prism chooses positions."} {stepLabel}.
         </div>
         <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={6} placeholder="Example: I think renewed US-China export controls will reshape the AI hardware supply chain over the next 12 months." style={textareaStyle} />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+          {AI_EXAMPLE_PROMPTS.map((example) => (
+            <button
+              key={example}
+              onClick={() => setInput(example)}
+              style={{
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.02)",
+                color: "#b8b0a8",
+                padding: "9px 13px",
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              {example}
+            </button>
+          ))}
+        </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
           <div style={{ color: "#7f776f", fontSize: 13 }}>
-            Output: a weighted basket with direct exposure, indirect implications, and optional hedge positions.
+            Output: a market thesis with selected positions, odds, and basket weights.
           </div>
           <button onClick={onSubmit} style={primaryButtonStyle}>Build basket</button>
         </div>
@@ -1031,6 +1067,19 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function MiniStatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 14, background: "rgba(255,255,255,0.02)" }}>
+      <div style={{ color: "#7b746d", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
+        {label}
+      </div>
+      <div style={{ color: "#e5dfd7", fontSize: 14, lineHeight: 1.6 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 function ManualBasketSidebar(props: {
   manualHoldings: ManualBasketDraftHolding[];
   onUpdateHolding: (ticker: string, patch: Partial<ManualBasketDraftHolding>) => void;
@@ -1217,7 +1266,7 @@ function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; 
 
       <Card>
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-          Saved ETFs
+          Saved baskets
         </div>
         <div style={{ display: "grid", gap: 10 }}>
           {savedBaskets.slice(0, 8).map((saved) => (
@@ -1272,18 +1321,47 @@ function BeliefBrief({ summary }: { summary: BeliefSummary }) {
   return (
     <Card>
       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-        Basket Thesis
+        Thesis Snapshot
       </div>
       <div style={{ color: "#ede9e3", fontSize: 24, fontWeight: 600, letterSpacing: "-0.03em", marginBottom: 8 }}>
         {summary.core_belief}
       </div>
-      <div style={{ color: "#9c948b", fontSize: 14, lineHeight: 1.7 }}>
-        <strong style={{ color: "#d8d0c8" }}>Resolution target:</strong> {summary.resolution_target || "Not specified"}<br />
-        <strong style={{ color: "#d8d0c8" }}>Time horizon:</strong> {summary.timeframe_start || "now"} → {summary.timeframe_end || summary.time_horizon}<br />
-        <strong style={{ color: "#d8d0c8" }}>Mechanism:</strong> {summary.mechanism || "Not specified"}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 12 }}>
+        <MiniStatCard label="Core thesis" value={summary.core_belief} />
+        <MiniStatCard label="Time horizon" value={`${summary.timeframe_start || "now"} → ${summary.timeframe_end || summary.time_horizon}`} />
+        <MiniStatCard label="Key mechanism" value={summary.mechanism || "Not specified"} />
       </div>
+      {!!summary.key_drivers?.length && (
+        <div>
+          <div style={{ color: "#d8d0c8", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Likely consequences</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {summary.key_drivers.slice(0, 3).map((driver) => (
+              <Tag key={driver}>{driver}</Tag>
+            ))}
+          </div>
+        </div>
+      )}
     </Card>
   );
+}
+
+function consequenceLabel(domain: DomainAnalysis): string {
+  const d = domain.domain.toLowerCase();
+  if (d.includes("energy") || d.includes("oil") || d.includes("commodity")) return "Oil and energy pressure";
+  if (d.includes("volatility") || d.includes("equity") || d.includes("market")) return "Market volatility";
+  if (d.includes("defense") || d.includes("geopolit") || d.includes("security")) return "Defense and geopolitics";
+  if (d.includes("inflation") || d.includes("rate") || d.includes("monetary")) return "Inflation pressure";
+  if (d.includes("election") || d.includes("policy") || d.includes("government")) return "Election and policy effects";
+  if (d.includes("ai") || d.includes("compute") || d.includes("semiconductor") || d.includes("tech")) return "AI infrastructure costs";
+  if (d.includes("consumer") || d.includes("retail") || d.includes("household")) return "Consumer spending impact";
+  return domain.domain;
+}
+
+function consequenceLine(domain: DomainAnalysis): string {
+  const text = domain.mechanism.trim();
+  if (!text) return "This consequence group helps express the thesis through tradable markets.";
+  const capped = text.endsWith(".") ? text : `${text}.`;
+  return capped.length > 96 ? `${capped.slice(0, 93)}...` : capped;
 }
 
 function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis; screenedCount: number }) {
@@ -1291,19 +1369,19 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
   return (
     <Card>
       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-        Exposure Map
+        Consequence map
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         {topDomains.map((domain) => (
           <div key={domain.domain} style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: 14, background: "rgba(255,255,255,0.02)" }}>
-            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 8 }}>{domain.domain}</div>
-            <div style={{ color: "#928981", fontSize: 13, lineHeight: 1.55 }}>{domain.mechanism}</div>
+            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 8 }}>{consequenceLabel(domain)}</div>
+            <div style={{ color: "#928981", fontSize: 13, lineHeight: 1.55 }}>{consequenceLine(domain)}</div>
           </div>
         ))}
       </div>
       {!!screenedCount && (
         <div style={{ color: "#938b83", fontSize: 13, marginTop: 14 }}>
-          {screenedCount} relevant events screened from the Kalshi catalog.
+          Prism scanned {screenedCount} relevant events to shape this basket.
         </div>
       )}
     </Card>
@@ -1316,7 +1394,7 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}>
         <div>
           <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-            Prediction Market ETF
+            Prediction Market Basket
           </div>
           <div style={{ color: "#ede9e3", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
             {basket.basket_title}
@@ -1324,18 +1402,23 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
           <div style={{ color: "#958d86", fontSize: 15, lineHeight: 1.6, maxWidth: 700 }}>
             {basket.basket_summary}
           </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+            <Tag>Market thesis</Tag>
+            <Tag>Share-ready</Tag>
+            <Tag>${basket.total_notional.toFixed(0)} notional</Tag>
+          </div>
         </div>
         <div style={{ minWidth: 150, textAlign: "right" }}>
-          <div style={{ color: "#8b837b", fontSize: 12, marginBottom: 4 }}>Total notional</div>
-          <div style={{ color: "#ede9e3", fontSize: 34, fontWeight: 600 }}>${basket.total_notional.toFixed(0)}</div>
+          <div style={{ color: "#8b837b", fontSize: 12, marginBottom: 8 }}>Share</div>
           {basketId && (
-            <Link href={`/baskets/${basketId}`} style={{ color: "#e36438", fontSize: 13, textDecoration: "none" }}>
+            <Link href={`/baskets/${basketId}`} style={{ color: "#fff", background: "#e36438", fontSize: 13, textDecoration: "none", padding: "11px 14px", borderRadius: 12, fontWeight: 600, display: "inline-block" }}>
               Open share page
             </Link>
           )}
         </div>
       </div>
 
+      <div style={{ color: "#d8d0c8", fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Markets Prism selected</div>
       <div style={{ display: "grid", gap: 10 }}>
         {basket.holdings.map((holding) => (
           <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 16, background: "rgba(255,255,255,0.02)" }}>
@@ -1344,12 +1427,13 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
                 <div style={{ color: "#ede9e3", fontSize: 17, fontWeight: 600, marginBottom: 6 }}>{holding.question}</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                   <Tag>{holding.side}</Tag>
-                  <Tag>{holding.role}</Tag>
-                  <Tag>{Math.round(holding.market_price * 100)}% market odds</Tag>
+                  <Tag>{Math.round(holding.market_price * 100)}% odds</Tag>
                 </div>
-                <div style={{ color: "#9b938c", fontSize: 14, lineHeight: 1.6, marginBottom: 6 }}>{holding.rationale}</div>
+                <div style={{ color: "#9b938c", fontSize: 14, lineHeight: 1.6, marginBottom: 6 }}>
+                  <strong style={{ color: "#d8d0c8" }}>Why included:</strong> {holding.rationale || "Included as a direct expression of the thesis."}
+                </div>
                 <div style={{ color: "#7f776f", fontSize: 13, lineHeight: 1.5 }}>
-                  Risk: {holding.main_risk}
+                  <strong style={{ color: "#c5bcb4" }}>Main risk:</strong> {holding.main_risk || "The thesis resolves differently than expected."}
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
