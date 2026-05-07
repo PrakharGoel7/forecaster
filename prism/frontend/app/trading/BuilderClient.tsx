@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import GridOverlay from "@/components/GridOverlay";
 import Header from "@/components/Header";
 import { getBasket, getMarkets, listBaskets, listEventCategories, saveManualBasket, searchEvents, streamTradingAnalysis, tradingChat } from "@/lib/api";
-import { clearManualBasketDraft, loadManualBasketDraft, saveManualBasketDraft } from "@/lib/manualBasketDraft";
+import { addMarketToManualBasketDraft, clearManualBasketDraft, loadManualBasketDraft, saveManualBasketDraft } from "@/lib/manualBasketDraft";
 import type { BeliefAnalysis, BeliefSummary, KalshiEvent, KalshiMarket, ManualBasketDraftHolding, PredictionBasket, SavedBasket } from "@/lib/types";
 
 type Mode = "instant" | "thinking";
@@ -65,6 +65,16 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     void runEventSearch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventCategory]);
+
+  useEffect(() => {
+    if (buildPath !== "manual") return;
+    if (!eventResults.length) {
+      setEventMarkets([]);
+      return;
+    }
+    void loadVisiblePageMarkets();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildPath, eventResults, eventPage]);
 
   useEffect(() => {
     if (buildPath !== "manual") return;
@@ -176,7 +186,13 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       setEventMarkets([]);
       return;
     }
-    const marketsByEvent = await Promise.all(events.map(async (event) => ({
+  }
+
+  async function loadVisiblePageMarkets() {
+    const pageSize = 12;
+    const start = (eventPage - 1) * pageSize;
+    const visibleEvents = eventResults.slice(start, start + pageSize);
+    const marketsByEvent = await Promise.all(visibleEvents.map(async (event) => ({
       event,
       markets: await getMarkets(event.event_ticker),
     })));
@@ -273,6 +289,10 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     eventResults={eventResults}
                     eventMarkets={eventMarkets}
                     onEventSearch={runEventSearch}
+                    onAddMarket={(market) => {
+                      addMarketToManualBasketDraft(market);
+                      setManualHoldings(loadManualBasketDraft());
+                    }}
                   />
                 )
               )}
@@ -438,10 +458,12 @@ function ManualBuildComposer(props: {
   eventResults: KalshiEvent[];
   eventMarkets: KalshiMarket[];
   onEventSearch: () => void;
+  onAddMarket: (market: KalshiMarket) => void;
 }) {
+  const router = useRouter();
   const {
     eventQuery, setEventQuery, eventCategory, setEventCategory, eventCategories, eventPage, setEventPage, oddsFilter, setOddsFilter, eventResults, eventMarkets,
-    onEventSearch,
+    onEventSearch, onAddMarket,
   } = props;
   const pageSize = 12;
   const normalizedQuery = eventQuery.trim().toLowerCase();
@@ -529,23 +551,33 @@ function ManualBuildComposer(props: {
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
-          {paginatedEvents.map((event) => (
-            <Link
-              key={event.event_ticker}
-              href={`/market/${event.event_ticker}?title=${encodeURIComponent(event.title)}&cat=${encodeURIComponent(event.category)}&sub=${encodeURIComponent(event.sub_title)}&from=manual`}
-              style={{
-                display: "block",
-                textDecoration: "none",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 18,
-                padding: 18,
-                minHeight: 250,
-                background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
-              }}
-            >
-              <EventScopeCard event={event} markets={marketsByEvent.get(event.event_ticker) ?? []} />
-            </Link>
-          ))}
+          {paginatedEvents.map((event) => {
+            const eventHref = `/market/${event.event_ticker}?title=${encodeURIComponent(event.title)}&cat=${encodeURIComponent(event.category)}&sub=${encodeURIComponent(event.sub_title)}&from=manual`;
+            const eventMarketList = marketsByEvent.get(event.event_ticker) ?? [];
+            return (
+              <div
+                key={event.event_ticker}
+                style={{
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 18,
+                  padding: 18,
+                  minHeight: 250,
+                  background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
+                }}
+              >
+                <EventScopeCard
+                  event={event}
+                  markets={eventMarketList}
+                  onMoreDetails={() => router.push(eventHref)}
+                  onAddToBasket={() => {
+                    const primaryMarket = [...eventMarketList].sort((a, b) => b.mid_price - a.mid_price)[0];
+                    if (!primaryMarket) return;
+                    onAddMarket(primaryMarket);
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
         {browseEvents.length > pageSize && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 16 }}>
@@ -576,7 +608,17 @@ function ManualBuildComposer(props: {
   );
 }
 
-function EventScopeCard({ event, markets }: { event: KalshiEvent; markets: KalshiMarket[] }) {
+function EventScopeCard({
+  event,
+  markets,
+  onMoreDetails,
+  onAddToBasket,
+}: {
+  event: KalshiEvent;
+  markets: KalshiMarket[];
+  onMoreDetails: () => void;
+  onAddToBasket: () => void;
+}) {
   const accent = categoryAccent(event.category || "");
   const sortedMarkets = [...markets].sort((a, b) => b.mid_price - a.mid_price);
   const isBinary = sortedMarkets.length === 1;
@@ -644,9 +686,32 @@ function EventScopeCard({ event, markets }: { event: KalshiEvent; markets: Kalsh
         )}
       </div>
 
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <button
+          onClick={onMoreDetails}
+          style={{ ...ghostButtonStyle, width: "100%", textAlign: "center" }}
+        >
+          More details
+        </button>
+        <button
+          onClick={onAddToBasket}
+          disabled={!sortedMarkets.length}
+          style={{
+            ...primaryButtonStyle,
+            width: "100%",
+            opacity: sortedMarkets.length ? 1 : 0.45,
+            cursor: sortedMarkets.length ? "pointer" : "default",
+          }}
+        >
+          Add to basket
+        </button>
+      </div>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
         <div style={{ color: "#9f978f", fontSize: 12 }}>{sortedMarkets.length ? `${sortedMarkets.length} options` : "Event details"}</div>
-        <div style={{ ...ghostButtonStyle, minWidth: 136, textAlign: "center" }}>Open and add</div>
+        <div style={{ color: "#706960", fontSize: 12 }}>
+          {sortedMarkets.length ? "Adds the top option from this event" : "No markets loaded yet"}
+        </div>
       </div>
     </div>
   );
