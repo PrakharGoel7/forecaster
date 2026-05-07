@@ -540,7 +540,6 @@ function ManualBuildComposer(props: {
   const totalPages = Math.max(1, Math.ceil(browseEvents.length / pageSize));
   const currentPage = Math.min(eventPage, totalPages);
   const paginatedEvents = browseEvents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const visibleCardCount = paginatedEvents.length;
   const marketsByEvent = new Map<string, KalshiMarket[]>();
   for (const market of eventMarkets) {
     const existing = marketsByEvent.get(market.event_ticker) ?? [];
@@ -590,18 +589,7 @@ function ManualBuildComposer(props: {
       </div>
 
       <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div>
-            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>Event scopes</div>
-            <div style={{ color: "#7f776f", fontSize: 13 }}>Browse the event universe, then open one to inspect options and add the market you want.</div>
-          </div>
-          <div style={{ display: "grid", justifyItems: "end", gap: 2 }}>
-            <div style={{ color: "#8f877e", fontSize: 12 }}>{browseEvents.length} events</div>
-            <div style={{ color: "#6f6861", fontSize: 12 }}>
-              {oddsFilter === "all" ? "Option previews load per page" : `Odds filter applies to the ${visibleCardCount} visible cards`}
-            </div>
-          </div>
-        </div>
+        <div style={{ color: "#8f877e", fontSize: 12, marginBottom: 12 }}>{browseEvents.length} events</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
           {paginatedEvents.map((event) => {
             const eventMarketList = marketsByEvent.get(event.event_ticker) ?? [];
@@ -619,7 +607,6 @@ function ManualBuildComposer(props: {
                 <EventScopeCard
                   event={event}
                   markets={eventMarketList}
-                  onMoreDetails={() => onOpenEvent(event, "details", eventMarketList)}
                   onAddToBasket={() => onOpenEvent(event, "add", eventMarketList)}
                 />
               </div>
@@ -658,12 +645,10 @@ function ManualBuildComposer(props: {
 function EventScopeCard({
   event,
   markets,
-  onMoreDetails,
   onAddToBasket,
 }: {
   event: KalshiEvent;
   markets: KalshiMarket[];
-  onMoreDetails: () => void;
   onAddToBasket: () => void;
 }) {
   const accent = categoryAccent(event.category || "");
@@ -733,13 +718,7 @@ function EventScopeCard({
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <button
-          onClick={onMoreDetails}
-          style={{ ...ghostButtonStyle, width: "100%", textAlign: "center" }}
-        >
-          More details
-        </button>
+      <div>
         <button
           onClick={onAddToBasket}
           disabled={!sortedMarkets.length}
