@@ -66,6 +66,13 @@ from forecaster import db
 # Oracle agents (from trading_companion) — imported lazily inside endpoints
 # so a missing trading_companion path doesn't break the rest of the API.
 _TC_AVAILABLE = _TC_PATH.exists()
+if _TC_AVAILABLE:
+    from pipeline_utils import (
+        apply_critic_repairs as _apply_critic_repairs,
+        exposure_analysis_payload as _exposure_analysis_payload,
+        normalize_weights as _normalize_weights,
+        validate_and_repair_basket as _validate_and_repair_basket,
+    )
 
 app = FastAPI(title="Prism API")
 logging.getLogger("prism.kalshi").setLevel(logging.INFO)
@@ -648,6 +655,27 @@ class ManualBasketRequest(BaseModel):
     is_public: bool = True
 
 
+_ENABLE_FAST_CRITIC = os.environ.get("ENABLE_FAST_BASKET_CRITIC", "").lower() == "true"
+
+
+def _market_from_row(row: dict[str, Any]):
+    from forecaster.kalshi import KalshiMarket
+    return KalshiMarket(**{
+        "ticker": row["ticker"],
+        "event_ticker": row["event_ticker"],
+        "yes_sub_title": row.get("yes_sub_title", ""),
+        "no_sub_title": row.get("no_sub_title", ""),
+        "yes_bid": row.get("yes_bid", 0.0),
+        "yes_ask": row.get("yes_ask", 0.0),
+        "last_price": row.get("last_price", 0.0),
+        "volume": row.get("volume", 0.0),
+        "rules_primary": row.get("rules_primary", ""),
+        "rules_secondary": row.get("rules_secondary", ""),
+        "close_time": row.get("close_time", ""),
+        "status": row.get("status", "open"),
+    })
+
+
 @app.post("/api/trading/analyze")
 async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
     if not _TC_AVAILABLE:
@@ -662,64 +690,43 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
 
         def _run():
             try:
-                from agents.analyst_agent import AnalystAgent
-                from agents.screener_agent import ScreenerAgent
+                from agents.basket_critic_agent import BasketCriticAgent
                 from agents.curator_agent import BasketBuilderAgent
+                from agents.exposure_agent import ExposureAgent
+                from agents.screener_agent import MarketScreenerAgent
+                from retrieval.market_retrieval import retrieve_markets_for_exposures
 
-                asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "progress", "label": "Mapping the thesis across key domains…"}), loop
+                asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": "Mapping tradable exposure routes…"}), loop)
+                exposure_result = ExposureAgent().run(req.belief_summary)
+                analysis = _exposure_analysis_payload(exposure_result)
+                asyncio.run_coroutine_threadsafe(queue.put({"type": "analyst_done", "analysis": analysis}), loop)
+
+                asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": "Retrieving candidate markets from the cache…"}), loop)
+                retrieval_result = retrieve_markets_for_exposures(exposure_result.get("exposures", []), req.belief_summary)
+
+                asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": "Scoring tradable market exposures…"}), loop)
+                screener_result = MarketScreenerAgent().run(
+                    req.belief_summary,
+                    exposure_result.get("exposures", []),
+                    retrieval_result.get("exposure_candidates", []),
                 )
-                analysis = AnalystAgent().run(req.belief_summary)
-                asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "analyst_done", "analysis": analysis}), loop
-                )
+                selected_markets = screener_result.get("selected_markets", [])
 
-                asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "progress", "label": "Screening Kalshi event catalog…"}), loop
-                )
-                screener_result = ScreenerAgent().run(req.belief_summary, analysis)
-                all_candidates = screener_result["candidates"]
-                rejected_patterns = screener_result.get("rejected_patterns", [])
-
-                # Debug logging
-                print(f"\n[COMPASS] Belief: {req.belief_summary.get('core_belief', '')}")
-                print(f"[COMPASS] Resolution target: {req.belief_summary.get('resolution_target', 'not set')}")
-                print(f"[COMPASS] Mechanism: {req.belief_summary.get('mechanism', 'not set')}")
-                print(f"[COMPASS] Timeframe: {req.belief_summary.get('timeframe_start', '?')} → {req.belief_summary.get('timeframe_end', req.belief_summary.get('time_horizon', '?'))}")
-                if analysis:
-                    kept_domains = [d for d in analysis.get("affected_domains", []) if d.get("keep_for_market_search")]
-                    print(f"[COMPASS] Domains kept for search ({len(kept_domains)}):")
-                    for d in kept_domains:
-                        print(f"  [{d.get('causal_distance','?')}] {d['domain']} | expr={d.get('expressiveness_score')} purity={d.get('causal_purity_score')} time={d.get('timeframe_alignment_score')}")
-                print(f"[COMPASS] Screener raw candidates: {len(all_candidates)}")
-                tier_groups: dict = {}
-                for c in all_candidates:
-                    t = c.get("tier", "unknown")
-                    tier_groups.setdefault(t, []).append(c)
-                for tier, cs in tier_groups.items():
-                    print(f"  [{tier}] {len(cs)} events: {', '.join(c['event_ticker'] for c in cs)}")
-                print(f"[COMPASS] Rejected patterns: {rejected_patterns}")
-
-                # Relevance filter
-                TIER_PRIORITY = {"direct_thesis": 0, "mechanism": 1, "first_order_consequence": 2, "hedge_or_falsifier": 3}
-                filtered_candidates = [
-                    c for c in all_candidates
-                    if c.get("overall_score", 0) >= 3.0
-                    and c.get("expressiveness_score", 0) >= 3
-                    and c.get("timeframe_alignment_score", 0) >= 2
-                    and not (c.get("tier") == "first_order_consequence" and c.get("causal_purity_score", 0) < 3)
-                ]
-                print(f"[COMPASS] After filter: {len(filtered_candidates)} candidates")
-
-                if not filtered_candidates:
+                if not selected_markets:
                     asyncio.run_coroutine_threadsafe(
                         queue.put({"type": "error", "message": "No relevant markets found matching quality thresholds."}), loop
                     )
                     return
 
-                event_tickers = [c["event_ticker"] for c in filtered_candidates]
+                event_tickers = list(dict.fromkeys(m["event_ticker"] for m in selected_markets))
                 asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "screener_done", "tickers": event_tickers, "count": len(event_tickers)}), loop
+                    queue.put({
+                        "type": "screener_done",
+                        "tickers": [m["ticker"] for m in selected_markets],
+                        "count": len(selected_markets),
+                        "selected_markets": selected_markets,
+                    }),
+                    loop,
                 )
 
                 from event_cache_db import get_event_lookup
@@ -729,64 +736,58 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
                     queue.put({"type": "progress", "label": f"Loading cached markets for {len(event_tickers)} events…"}), loop
                 )
 
-                candidate_by_event: dict = {c["event_ticker"]: c for c in filtered_candidates}
                 try:
                     cached_rows = get_markets_for_events(event_tickers)
                 except Exception:
                     cached_rows = []
 
+                selected_tickers = {m["ticker"] for m in selected_markets}
                 if cached_rows:
-                    from forecaster.kalshi import KalshiMarket
-
-                    markets = [
-                        KalshiMarket(**{
-                            "ticker": row["ticker"],
-                            "event_ticker": row["event_ticker"],
-                            "yes_sub_title": row["yes_sub_title"],
-                            "no_sub_title": row["no_sub_title"],
-                            "yes_bid": row["yes_bid"],
-                            "yes_ask": row["yes_ask"],
-                            "last_price": row["last_price"],
-                            "volume": row["volume"],
-                            "rules_primary": row["rules_primary"],
-                            "rules_secondary": row["rules_secondary"],
-                            "close_time": row["close_time"],
-                            "status": row["status"],
-                        })
-                        for row in cached_rows
-                    ]
+                    markets = [_market_from_row(row) for row in cached_rows if row["ticker"] in selected_tickers]
                 else:
                     asyncio.run_coroutine_threadsafe(
                         queue.put({"type": "progress", "label": "Cached market DB is empty; fetching open markets live…"}), loop
                     )
                     kalshi_client = _get_client()
-                    markets = _get_live_markets_for_events(kalshi_client, event_tickers)
+                    markets = [m for m in _get_live_markets_for_events(kalshi_client, event_tickers) if m.ticker in selected_tickers]
 
                 if not markets:
                     asyncio.run_coroutine_threadsafe(
-                        queue.put({"type": "error", "message": "No open markets found for the shortlisted events."}), loop
+                        queue.put({"type": "error", "message": "No open markets found for the shortlisted contracts."}), loop
                     )
                     return
 
-                # Sort markets: screener score desc → tier priority → volume desc
-                def _market_sort_key(m):
-                    c = candidate_by_event.get(m.event_ticker, {})
-                    score = c.get("overall_score", 0)
-                    tier_rank = TIER_PRIORITY.get(c.get("tier", ""), 99)
-                    return (-score, tier_rank, -m.volume)
-
-                markets.sort(key=_market_sort_key)
+                selected_by_ticker = {m["ticker"]: m for m in selected_markets}
+                markets.sort(key=lambda m: (-selected_by_ticker.get(m.ticker, {}).get("overall_score", 0), -float(getattr(m, "volume", 0.0))))
 
                 asyncio.run_coroutine_threadsafe(
-                    queue.put({"type": "progress", "label": f"Building a $100 prediction market ETF from {len(markets)} candidate markets…"}), loop
+                    queue.put({"type": "progress", "label": f"Building a $100 prediction market basket from {len(markets)} selected contracts…"}), loop
                 )
-                basket = BasketBuilderAgent().run(req.belief_summary, markets, analysis,
-                                                  screener_candidates=filtered_candidates)
+                basket = BasketBuilderAgent().run(
+                    req.belief_summary,
+                    markets,
+                    exposures=exposure_result.get("exposures", []),
+                    selected_markets=selected_markets,
+                    mode=req.mode,
+                )
 
-                # Debug: final basket
-                print(f"[COMPASS] Final basket ({len(basket.get('holdings', []))} holdings):")
-                for holding in basket.get("holdings", []):
-                    print(f"  [{holding.get('role','?')}] {holding['ticker']} | {holding['side']} | ${holding['weight_dollars']}")
+                if req.mode != "instant" or _ENABLE_FAST_CRITIC:
+                    asyncio.run_coroutine_threadsafe(queue.put({"type": "progress", "label": "Critiquing basket coherence…"}), loop)
+                    critique = BasketCriticAgent().run(
+                        req.belief_summary,
+                        exposure_result.get("exposures", []),
+                        selected_markets,
+                        basket,
+                    )
+                    asyncio.run_coroutine_threadsafe(queue.put({"type": "critic_done", "critique": critique}), loop)
+                    if critique.get("verdict") == "needs_repair":
+                        basket = _apply_critic_repairs(basket, selected_markets, critique)
+
+                selected_market_rows = {m.ticker: m for m in markets}
+                basket, validation_warnings = _validate_and_repair_basket(basket, selected_markets, selected_market_rows)
+                if validation_warnings:
+                    notes = basket.get("construction_notes", "")
+                    basket["construction_notes"] = (notes + ("\n\n" if notes else "") + "Validation notes: " + "; ".join(validation_warnings)).strip()
 
                 event_lookup = get_event_lookup([holding.get("event_ticker", "") for holding in basket.get("holdings", [])])
                 for holding in basket.get("holdings", []):
@@ -806,14 +807,14 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
                         timeframe_start=req.belief_summary.get("timeframe_start", ""),
                         timeframe_end=req.belief_summary.get("timeframe_end", req.belief_summary.get("time_horizon", "")),
                         resolution_target=req.belief_summary.get("resolution_target", ""),
-                        mechanism=req.belief_summary.get("mechanism", ""),
+                        mechanism=", ".join(req.belief_summary.get("mechanism", [])),
                         scope=req.belief_summary.get("scope", ""),
                         key_drivers=req.belief_summary.get("key_drivers", []),
                         belief_summary=req.belief_summary,
                         analysis=analysis,
                         basket=basket,
                         total_notional=basket.get("total_notional", 100.0),
-                        screened_count=len(filtered_candidates),
+                        screened_count=len(selected_markets),
                         holdings=basket.get("holdings", []),
                         user_id=_get_user_id(request),
                     )

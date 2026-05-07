@@ -225,3 +225,150 @@ class ScreenerAgent:
         rejected_patterns = result.get("rejected_patterns", [])
         print(f"  Screener: {len(validated_candidates)} candidates, {len(rejected_patterns)} rejected patterns")
         return {"candidates": validated_candidates, "rejected_patterns": rejected_patterns}
+
+
+MARKET_SCREENER_PROMPT = """You are evaluating retrieved contract-level candidate markets.
+
+Your job is not to search. Your job is to reject weak proxies, select clean expressions of the thesis, choose the correct YES/NO side, and score resolution fit, expressiveness, causal purity, timeframe alignment, and liquidity usability.
+
+Rules:
+- Never select a market below 3.0 overall_score.
+- Prefer direct_thesis and mechanism markets.
+- Include first_order_consequence markets only if causal_purity_score >= 3.
+- Include hedge_or_falsifier markets sparingly.
+- Do not select broad macro, election, crypto, or index markets unless the belief is a primary driver.
+- Do not select markets that are only thematically adjacent.
+- Recommended side must profit if the user's belief is true.
+- Return 12–25 selected markets if enough strong candidates exist.
+- Return fewer if quality is low rather than padding with weak markets.
+
+Scoring formula:
+overall_score =
+0.35 * expressiveness_score +
+0.25 * resolution_fit_score +
+0.20 * causal_purity_score +
+0.15 * timeframe_alignment_score +
+0.05 * liquidity_usability_score"""
+
+_MARKET_SCREEN_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "select_markets",
+        "description": "Select the strongest contract-level markets for the user's belief.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "selected_markets": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "ticker": {"type": "string"},
+                            "event_ticker": {"type": "string"},
+                            "question": {"type": "string"},
+                            "linked_exposure_name": {"type": "string"},
+                            "tier": {
+                                "type": "string",
+                                "enum": ["direct_thesis", "mechanism", "first_order_consequence", "hedge_or_falsifier"],
+                            },
+                            "recommended_side": {"type": "string", "enum": ["YES", "NO"]},
+                            "alignment": {"type": "string", "enum": ["YES", "NO"]},
+                            "expressiveness_score": {"type": "number"},
+                            "resolution_fit_score": {"type": "number"},
+                            "causal_purity_score": {"type": "number"},
+                            "timeframe_alignment_score": {"type": "number"},
+                            "liquidity_usability_score": {"type": "number"},
+                            "overall_score": {"type": "number"},
+                            "rationale": {"type": "string"},
+                            "main_confounder": {"type": "string"},
+                        },
+                        "required": [
+                            "ticker", "event_ticker", "question", "linked_exposure_name", "tier",
+                            "recommended_side", "alignment", "expressiveness_score",
+                            "resolution_fit_score", "causal_purity_score", "timeframe_alignment_score",
+                            "liquidity_usability_score", "overall_score", "rationale", "main_confounder",
+                        ],
+                    },
+                },
+            },
+            "required": ["selected_markets"],
+        },
+    },
+}
+
+
+class MarketScreenerAgent:
+    def __init__(self, api_key: str | None = None, model: str = "openai/gpt-4o"):
+        self._client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key or os.environ["OPENROUTER_API_KEY"],
+        )
+        self._model = model
+
+    def run(self, belief_summary: dict, exposures: list[dict], exposure_candidates: list[dict]) -> dict:
+        exposure_lines = []
+        for exposure in exposures:
+            exposure_lines.append(
+                f"- {exposure.get('exposure_name')} | tier={exposure.get('tier')} | dir={exposure.get('direction_if_belief_true')} | "
+                f"purity={exposure.get('causal_purity_score')} | expr={exposure.get('expressiveness_score')} | "
+                f"path={exposure.get('causal_path')}"
+            )
+
+        candidate_lines: list[str] = []
+        for group in exposure_candidates:
+            candidate_lines.append(f"\nExposure: {group.get('exposure_name')}")
+            for cand in group.get("candidates", []):
+                candidate_lines.append(
+                    f"[{cand.get('ticker')}] {cand.get('question')} | event={cand.get('event_ticker')} | "
+                    f"title={cand.get('event_title')} | category={cand.get('category')} | "
+                    f"yes={cand.get('yes_price')} | no={cand.get('no_price')} | vol={cand.get('volume')} | "
+                    f"retrieval={cand.get('retrieval_score')} | reasons={'; '.join(cand.get('retrieval_reasons', [])[:3])}"
+                )
+
+        prompt = (
+            f"Belief: {belief_summary.get('core_belief', '')}\n"
+            f"Resolution target: {belief_summary.get('resolution_target', '')}\n"
+            f"Belief direction: {belief_summary.get('belief_direction', '')}\n"
+            f"Desired exposure: {belief_summary.get('desired_exposure', '')}\n"
+            f"Timeframe: {belief_summary.get('timeframe_start', '')} → {belief_summary.get('timeframe_end', belief_summary.get('time_horizon', ''))}\n"
+            f"Mechanism: {', '.join(belief_summary.get('mechanism', []))}\n"
+            f"Falsifiers: {'; '.join(belief_summary.get('falsifiers', []))}\n\n"
+            f"Exposure routes:\n" + "\n".join(exposure_lines) + "\n\n"
+            f"Retrieved candidate markets:\n" + "\n".join(candidate_lines)
+        )
+
+        response = self._client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {"role": "system", "content": MARKET_SCREENER_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            tools=[_MARKET_SCREEN_TOOL],
+            tool_choice={"type": "function", "function": {"name": "select_markets"}},
+            max_tokens=2400,
+        )
+
+        tc = response.choices[0].message.tool_calls[0]
+        result = json.loads(tc.function.arguments)
+        validated: list[dict] = []
+        valid_candidates = {
+            cand["ticker"]: cand
+            for group in exposure_candidates
+            for cand in group.get("candidates", [])
+        }
+        for selected in result.get("selected_markets", []):
+            source = valid_candidates.get(selected["ticker"])
+            if not source:
+                continue
+            selected["overall_score"] = round(
+                0.35 * float(selected.get("expressiveness_score", 0)) +
+                0.25 * float(selected.get("resolution_fit_score", 0)) +
+                0.20 * float(selected.get("causal_purity_score", 0)) +
+                0.15 * float(selected.get("timeframe_alignment_score", 0)) +
+                0.05 * float(selected.get("liquidity_usability_score", 0)),
+                2,
+            )
+            if selected["overall_score"] < 3.0:
+                continue
+            validated.append(selected)
+        return {"selected_markets": validated}

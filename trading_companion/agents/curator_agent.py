@@ -1,7 +1,4 @@
-"""Agent 4 — Basket Builder.
-
-Builds a weighted $100 prediction-market ETF from the shortlisted markets.
-"""
+"""Agent 4 — Basket Builder."""
 from __future__ import annotations
 
 import json
@@ -9,49 +6,23 @@ import os
 
 from openai import OpenAI
 
-SYSTEM_PROMPT = """You are a prediction market basket builder.
+SYSTEM_PROMPT = """You are building a coherent $100 thematic prediction-market basket.
 
-The user has a belief about the future. Your job is to turn that belief into a shareable $100 thematic basket of prediction market contracts.
+Think in exposure buckets first, holdings second. Avoid duplicated exposure. The result should feel like an investable retail product, not a list of related markets.
 
-Your output must be a coherent portfolio, not a list of loosely related recommendations.
-
-Objectives:
-1. Maximize thematic purity to the user's thesis.
-2. Prefer direct_thesis and mechanism markets when available.
-3. Use indirect and hedge/falsifier markets sparingly and intentionally.
-4. Avoid duplicated exposure.
-5. Produce a basket that feels investable, explainable, and balanced.
-
-Portfolio construction rules:
-- Total notional must equal exactly $100.
-- Include 5 to 10 holdings.
-- At least 50% of notional should be in direct_thesis + mechanism markets if available.
-- Maximum single holding weight: $35.
-- Include at most 1 holding per event_ticker.
-- Include at most 2 first_order_consequence holdings.
-- Include at most 1 hedge_or_falsifier unless the user's falsifiers clearly justify it.
-- Use price only after thematic fit is established.
-
-Role definitions:
-- direct: the market most directly expresses the belief's resolution target
-- mechanism: tests the causal path the user thinks will drive the thesis
-- indirect: captures a meaningful first-order consequence of the thesis
-- hedge: weakens or falsifies the thesis
-
-For each holding, decide:
-- ticker
-- side (YES/NO)
-- weight_dollars
-- role
-- rationale
-- main_risk
-
-Also provide:
-- basket_title
-- basket_summary
-- construction_notes
-
-Make the basket easy to explain to a normal user."""
+Rules:
+- Total weight must equal exactly $100.
+- Include 5 to 10 holdings when enough quality exists.
+- At least 50% of notional should be direct_thesis + mechanism if available.
+- Max single holding: $35.
+- At most 1 holding per exact market ticker.
+- At most 1 holding per event_ticker unless intentionally using a threshold ladder.
+- At most 2 first_order_consequence holdings.
+- At most 1 hedge_or_falsifier unless strongly justified.
+- Avoid duplicated exposure.
+- Use price only after thematic fit.
+- If not enough high-quality markets exist, build a smaller basket and state the limitation in construction_notes.
+"""
 
 _BUILD_TOOL = {
     "type": "function",
@@ -64,6 +35,21 @@ _BUILD_TOOL = {
                 "basket_title": {"type": "string"},
                 "basket_summary": {"type": "string"},
                 "construction_notes": {"type": "string"},
+                "exposure_allocations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "bucket": {
+                                "type": "string",
+                                "enum": ["direct_thesis", "mechanism", "first_order_consequence", "hedge_or_falsifier"],
+                            },
+                            "weight_dollars": {"type": "number"},
+                            "reason": {"type": "string"},
+                        },
+                        "required": ["bucket", "weight_dollars", "reason"],
+                    },
+                },
                 "holdings": {
                     "type": "array",
                     "items": {
@@ -73,14 +59,15 @@ _BUILD_TOOL = {
                             "side": {"type": "string", "enum": ["YES", "NO"]},
                             "weight_dollars": {"type": "number"},
                             "role": {"type": "string", "enum": ["direct", "mechanism", "indirect", "hedge"]},
+                            "linked_exposure_name": {"type": "string"},
                             "rationale": {"type": "string"},
                             "main_risk": {"type": "string"},
                         },
-                        "required": ["ticker", "side", "weight_dollars", "role", "rationale", "main_risk"],
+                        "required": ["ticker", "side", "weight_dollars", "role", "linked_exposure_name", "rationale", "main_risk"],
                     },
                 },
             },
-            "required": ["basket_title", "basket_summary", "construction_notes", "holdings"],
+            "required": ["basket_title", "basket_summary", "construction_notes", "exposure_allocations", "holdings"],
         },
     },
 }
@@ -94,47 +81,42 @@ class BasketBuilderAgent:
         )
         self._model = model
 
-    def run(self, belief_summary: dict, markets: list, analysis: dict | None = None,
-            screener_candidates: list | None = None) -> dict:
-        candidate_map: dict[str, dict] = {}
-        if screener_candidates:
-            for candidate in screener_candidates:
-                candidate_map[candidate["event_ticker"]] = candidate
+    def run(self, belief_summary: dict, markets: list, exposures: list[dict] | None = None,
+            selected_markets: list[dict] | None = None, mode: str = "thinking") -> dict:
+        selected_market_map: dict[str, dict] = {}
+        if selected_markets:
+            for market in selected_markets:
+                selected_market_map[market["ticker"]] = market
 
         top_markets = markets[:60]
         market_lines = "\n".join(
             f"[{m.ticker}] {m.question}"
             f" | event={m.event_ticker}"
-            f" | tier={candidate_map.get(m.event_ticker, {}).get('tier', 'unknown')}"
-            f" | alignment={candidate_map.get(m.event_ticker, {}).get('alignment', '?')}"
+            f" | tier={selected_market_map.get(m.ticker, {}).get('tier', 'unknown')}"
+            f" | side={selected_market_map.get(m.ticker, {}).get('recommended_side', '?')}"
             f" | YES={m.mid_price:.0%}"
             f" | closes={m.close_date}"
             for m in top_markets
         )
 
-        kept_domains = []
-        if analysis:
-            kept_domains = [
-                d for d in analysis["affected_domains"]
-                if d.get("keep_for_market_search") or d.get("relevance") in ("high", "medium")
-            ]
-        domain_text = "\n".join(
-            f"- [{d.get('causal_distance','?')}] {d['domain']}: {d['mechanism']}"
-            for d in kept_domains
+        exposure_text = "\n".join(
+            f"- [{e.get('tier')}] {e.get('exposure_name')}: {e.get('causal_path')}"
+            for e in (exposures or [])
         )
 
         prompt = (
             f"Core belief: {belief_summary['core_belief']}\n"
-            f"Mode: {belief_summary.get('mode_used', 'thinking')}\n"
+            f"Mode: {mode or belief_summary.get('mode_used', 'thinking')}\n"
             f"Resolution target: {belief_summary.get('resolution_target', '')}\n"
             f"Timeframe: {belief_summary.get('timeframe_start', '')} → {belief_summary.get('timeframe_end', belief_summary.get('time_horizon', ''))}\n"
-            f"Mechanism: {belief_summary.get('mechanism', '')}\n"
+            f"Desired exposure: {belief_summary.get('desired_exposure', '')}\n"
+            f"Mechanism: {', '.join(belief_summary.get('mechanism', []))}\n"
             f"Key drivers: {', '.join(belief_summary.get('key_drivers', []))}\n"
             f"Falsifiers: {'; '.join(belief_summary.get('falsifiers', []))}\n"
             f"Scope: {belief_summary.get('scope', '')}\n"
             f"Current context: {belief_summary.get('current_context', '')}\n"
-            f"Domain map:\n{domain_text or '- none'}\n\n"
-            f"Candidate markets ({len(top_markets)} shown):\n{market_lines}"
+            f"Exposure routes:\n{exposure_text or '- none'}\n\n"
+            f"Selected candidate markets ({len(top_markets)} shown):\n{market_lines}"
         )
 
         response = self._client.chat.completions.create(
@@ -159,6 +141,7 @@ class BasketBuilderAgent:
             if not market or market.event_ticker in seen_events:
                 continue
             seen_events.add(market.event_ticker)
+            selected_meta = selected_market_map.get(market.ticker, {})
             holdings.append({
                 "ticker": market.ticker,
                 "event_ticker": market.event_ticker,
@@ -168,9 +151,10 @@ class BasketBuilderAgent:
                 "side": raw["side"],
                 "role": raw["role"],
                 "weight_dollars": float(raw["weight_dollars"]),
+                "linked_exposure_name": raw.get("linked_exposure_name", selected_meta.get("linked_exposure_name", "")),
                 "rationale": raw["rationale"],
                 "main_risk": raw["main_risk"],
-                "tier": candidate_map.get(market.event_ticker, {}).get("tier"),
+                "tier": selected_meta.get("tier"),
                 "rules_summary": market.rules_summary,
             })
 
@@ -179,6 +163,7 @@ class BasketBuilderAgent:
                 "basket_title": result.get("basket_title", belief_summary["core_belief"]),
                 "basket_summary": result.get("basket_summary", ""),
                 "construction_notes": result.get("construction_notes", ""),
+                "exposure_allocations": result.get("exposure_allocations", []),
                 "holdings": [],
                 "total_notional": 0.0,
             }
@@ -202,6 +187,7 @@ class BasketBuilderAgent:
             "basket_title": result.get("basket_title", belief_summary["core_belief"]),
             "basket_summary": result.get("basket_summary", ""),
             "construction_notes": result.get("construction_notes", ""),
+            "exposure_allocations": result.get("exposure_allocations", []),
             "holdings": normalized,
             "total_notional": round(sum(h["weight_dollars"] for h in normalized), 2),
         }

@@ -3,7 +3,10 @@ from __future__ import annotations
 import re
 import sqlite3
 
-from cache_paths import EVENTS_CACHE_DB_FILE
+try:
+    from .cache_paths import EVENTS_CACHE_DB_FILE
+except ImportError:
+    from cache_paths import EVENTS_CACHE_DB_FILE
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9]{3,}")
 

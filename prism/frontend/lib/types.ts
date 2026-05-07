@@ -89,18 +89,43 @@ export type StreamMessage =
 export interface BeliefSummary {
   core_belief: string;
   time_horizon: string;
+  belief_direction?: "happen" | "not_happen" | "increase" | "decrease" | "outperform" | "underperform";
+  desired_exposure?: string;
   key_drivers: string[];
   scope: string;
   confidence_level: "low" | "medium" | "high";
+  confidence_style?: "strong_directional" | "speculative" | "hedge" | "exploratory";
   supporting_reasoning: string;
   current_context: string;
   resolution_target?: string;
   resolution_type?: string;
   timeframe_start?: string;
   timeframe_end?: string;
-  mechanism?: string;
+  mechanism?: string[] | string;
   falsifiers?: string[];
+  timeframe_inferred?: boolean;
   mode_used?: "instant" | "thinking";
+}
+
+export interface ExposureRoute {
+  exposure_name: string;
+  tier: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
+  direction_if_belief_true: "YES" | "NO" | "UP" | "DOWN";
+  causal_distance: "direct" | "precursor" | "first_order" | "second_order" | "speculative";
+  causal_path: string;
+  why_this_is_clean_exposure: string;
+  main_confounders: string[];
+  timeframe_fit: "strong" | "partial" | "weak";
+  search_terms: string[];
+  negative_search_terms: string[];
+  resolution_features: string[];
+  causal_purity_score: number;
+  expressiveness_score: number;
+}
+
+export interface RejectedRoute {
+  route: string;
+  reason: string;
 }
 
 export interface DomainAnalysis {
@@ -113,6 +138,55 @@ export interface DomainAnalysis {
 export interface BeliefAnalysis {
   affected_domains: DomainAnalysis[];
   most_surprising_connection: string;
+  exposures?: ExposureRoute[];
+  rejected_routes?: RejectedRoute[];
+}
+
+export interface RetrievedCandidate {
+  event_ticker: string;
+  ticker: string;
+  question: string;
+  event_title: string;
+  category: string;
+  close_date: string;
+  yes_price: number | null;
+  no_price: number | null;
+  volume: number | null;
+  retrieval_score: number;
+  retrieval_reasons: string[];
+}
+
+export interface ScreenedMarket {
+  ticker: string;
+  event_ticker: string;
+  question: string;
+  linked_exposure_name: string;
+  tier: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
+  recommended_side: "YES" | "NO";
+  alignment: "YES" | "NO";
+  expressiveness_score: number;
+  resolution_fit_score: number;
+  causal_purity_score: number;
+  timeframe_alignment_score: number;
+  liquidity_usability_score: number;
+  overall_score: number;
+  rationale: string;
+  main_confounder: string;
+}
+
+export interface BasketCritiqueIssue {
+  severity: "low" | "medium" | "high";
+  holding_ticker: string | null;
+  issue: string;
+  suggested_fix: string;
+}
+
+export interface BasketCritique {
+  verdict: "pass" | "needs_repair" | "fail";
+  issues: BasketCritiqueIssue[];
+  suggested_removals: string[];
+  suggested_replacements: { remove_ticker: string; add_ticker: string; reason: string }[];
+  final_notes: string;
 }
 
 export interface BasketHolding {
@@ -124,6 +198,7 @@ export interface BasketHolding {
   side: "YES" | "NO";
   role: "direct" | "mechanism" | "indirect" | "hedge";
   weight_dollars: number;
+  linked_exposure_name?: string;
   rationale: string;
   main_risk: string;
   tier?: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
@@ -137,6 +212,11 @@ export interface PredictionBasket {
   basket_title: string;
   basket_summary: string;
   construction_notes: string;
+  exposure_allocations?: {
+    bucket: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
+    weight_dollars: number;
+    reason: string;
+  }[];
   holdings: BasketHolding[];
   total_notional: number;
 }
@@ -230,6 +310,7 @@ export interface OracleRecommendation {
 export type TradingStreamMessage =
   | { type: "progress"; label: string }
   | { type: "analyst_done"; analysis: BeliefAnalysis }
-  | { type: "screener_done"; tickers: string[]; count: number }
+  | { type: "screener_done"; tickers: string[]; count: number; selected_markets?: ScreenedMarket[] }
+  | { type: "critic_done"; critique: BasketCritique }
   | { type: "basket_done"; basket: PredictionBasket; basket_id?: number }
   | { type: "error"; message: string };

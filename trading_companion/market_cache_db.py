@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import sqlite3
 
-from cache_paths import MARKETS_CACHE_DB_FILE
+try:
+    from .cache_paths import MARKETS_CACHE_DB_FILE
+except ImportError:
+    from cache_paths import MARKETS_CACHE_DB_FILE
 
 
 def _conn() -> sqlite3.Connection:
@@ -105,6 +108,34 @@ def get_markets_for_events(event_tickers: list[str]) -> list[dict]:
             """,
             event_tickers,
         )
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_all_markets(limit: int | None = None, status: str = "open") -> list[dict]:
+    if not MARKETS_CACHE_DB_FILE.exists():
+        raise FileNotFoundError(
+            f"Market cache DB not found at {MARKETS_CACHE_DB_FILE}. "
+            "Run `python sync_markets.py` first."
+        )
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        query = """
+            SELECT ticker, event_ticker, question, yes_sub_title, no_sub_title, yes_bid, yes_ask,
+                   last_price, mid_price, volume, status, close_time, close_date, rules_primary, rules_secondary
+            FROM markets
+        """
+        params: list[str | int] = []
+        if status:
+            query += " WHERE status = ?"
+            params.append(status)
+        query += " ORDER BY volume DESC, close_date, ticker"
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(limit)
+        cur.execute(query, tuple(params))
         return [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()

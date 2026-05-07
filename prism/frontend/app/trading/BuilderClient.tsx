@@ -1391,6 +1391,7 @@ function ChatThread({ messages }: { messages: ChatMsg[] }) {
 }
 
 function BeliefBrief({ summary }: { summary: BeliefSummary }) {
+  const mechanismText = Array.isArray(summary.mechanism) ? summary.mechanism.join(" • ") : (summary.mechanism || "Not specified");
   return (
     <Card>
       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
@@ -1401,7 +1402,7 @@ function BeliefBrief({ summary }: { summary: BeliefSummary }) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18, marginBottom: 14 }}>
         <EditorialField label="Time horizon" value={`${summary.timeframe_start || "Now"} → ${summary.timeframe_end || summary.time_horizon}`} />
-        <EditorialField label="Key mechanism" value={summary.mechanism || "Not specified"} />
+        <EditorialField label="Key mechanism" value={mechanismText} />
       </div>
       {!!summary.key_drivers?.length && (
         <div>

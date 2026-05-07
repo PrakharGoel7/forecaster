@@ -39,8 +39,9 @@ WORKFLOW
 - If the belief is already clear, specific, and includes a usable timeframe, DO NOT ask any questions → proceed to finalize.
 
 3. ASK A SHORT CLARIFICATION RESPONSE (ONLY IF NEEDED)
+- Only ask clarification questions when needed for tradability.
 - If the belief contains ambiguity in outcome or timeframe, ask a short clarification response.
-- Focus ONLY on resolution clarity and timeframe.
+- Focus ONLY on resolution clarity, timeframe, and what should profit if the belief is true.
 - Ask 1 short question by default.
 - If the user has not given a timeframe, ask for one.
 - If the user has not given a timeframe and outcome clarity is also ambiguous, ask 2 short questions in the SAME response:
@@ -67,9 +68,9 @@ RULES
 - Ask at most 2 questions in a single response
 - Ask at most {max_turns} clarification turn(s) before finalizing
 - Never finalize without a usable timeframe
+- If you reach the clarification limit and timeframe is still missing, infer the narrowest reasonable timeframe and mark it as inferred
 - In instant mode, ask only the single highest-value clarification needed to identify tradable markets.
 - In thinking mode, prioritize these gaps in order: resolution target, timeframe, mechanism.
-- If you have reached the clarification limit and timeframe is still missing, infer the narrowest reasonable one from the user's answer and current context rather than asking again
 - Keep responses extremely concise
 - Never include research backstory in the user-facing question
 - Never preface the question with context like “current context indicates”, “markets expect”, “despite”, or similar framing
@@ -110,6 +111,14 @@ _TOOLS = [
                         "type": "string",
                         "description": "When the user expects this to happen.",
                     },
+                    "belief_direction": {
+                        "type": "string",
+                        "enum": ["happen", "not_happen", "increase", "decrease", "outperform", "underperform"],
+                    },
+                    "desired_exposure": {
+                        "type": "string",
+                        "description": "Concise description of what should profit if the belief is true.",
+                    },
                     "key_drivers": {
                         "type": "array",
                         "items": {"type": "string"},
@@ -123,6 +132,10 @@ _TOOLS = [
                         "type": "string",
                         "enum": ["low", "medium", "high"],
                         "description": "The user's stated or implied confidence.",
+                    },
+                    "confidence_style": {
+                        "type": "string",
+                        "enum": ["strong_directional", "speculative", "hedge", "exploratory"],
                     },
                     "supporting_reasoning": {
                         "type": "string",
@@ -150,13 +163,18 @@ _TOOLS = [
                         "description": "Deadline by which the belief should resolve (e.g. 'end of 2025', 'within 6 months').",
                     },
                     "mechanism": {
-                        "type": "string",
-                        "description": "The user's stated causal mechanism — why they believe this will happen.",
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Causal drivers — why the user believes this will happen.",
                     },
                     "falsifiers": {
                         "type": "array",
                         "items": {"type": "string"},
                         "description": "2-3 pieces of evidence or events that would make the user doubt or abandon this belief.",
+                    },
+                    "timeframe_inferred": {
+                        "type": "boolean",
+                        "description": "True if timeframe was inferred because user did not provide one within the clarification limit.",
                     },
                     "mode_used": {
                         "type": "string",
@@ -164,10 +182,10 @@ _TOOLS = [
                     },
                 },
                 "required": [
-                    "core_belief", "time_horizon", "key_drivers",
-                    "scope", "confidence_level", "supporting_reasoning", "current_context",
+                    "core_belief", "time_horizon", "belief_direction", "desired_exposure", "key_drivers",
+                    "scope", "confidence_level", "confidence_style", "supporting_reasoning", "current_context",
                     "resolution_target", "resolution_type", "timeframe_start", "timeframe_end",
-                    "mechanism", "falsifiers", "mode_used",
+                    "mechanism", "falsifiers", "timeframe_inferred", "mode_used",
                 ],
             },
         },
