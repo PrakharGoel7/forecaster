@@ -1454,6 +1454,36 @@ function holdingTag(holding: PredictionBasket["holdings"][number]): string {
   return "Contrarian";
 }
 
+function basketQualityLabel(quality?: PredictionBasket["basket_quality"]): string {
+  switch (quality) {
+    case "direct":
+      return "Direct basket";
+    case "strong_proxy":
+      return "Strong proxy basket";
+    case "mixed_proxy":
+      return "Mixed proxy basket";
+    case "thin_market_coverage":
+      return "Thin market coverage";
+    default:
+      return "Prediction Market Basket";
+  }
+}
+
+function basketQualityCopy(quality?: PredictionBasket["basket_quality"]): string {
+  switch (quality) {
+    case "direct":
+      return "Most holdings closely resolve or test your thesis.";
+    case "strong_proxy":
+      return "Markets are not exact resolutions, but closely track the thesis.";
+    case "mixed_proxy":
+      return "Includes some broader signals because direct markets are limited.";
+    case "thin_market_coverage":
+      return "Few clean markets exist, so treat this as a rough expression.";
+    default:
+      return "Prism assembled the best available market expression of your thesis.";
+  }
+}
+
 function HoldingGroup({ title, holdings }: { title: string; holdings: PredictionBasket["holdings"] }) {
   if (!holdings.length) return null;
   return (
@@ -1471,6 +1501,8 @@ function HoldingGroup({ title, holdings }: { title: string; holdings: Prediction
                   <Tag>{holding.side}</Tag>
                   <Tag>{Math.round(holding.market_price * 100)}% odds</Tag>
                   <Tag>{holdingTag(holding)}</Tag>
+                  {holding.fit_type && <Tag>{holding.fit_type.replace(/_/g, " ")}</Tag>}
+                  {holding.fit_confidence && <Tag>{holding.fit_confidence} confidence</Tag>}
                 </div>
                 <div style={{ color: "#9b938c", fontSize: 14, lineHeight: 1.6, marginBottom: 6 }}>
                   <strong style={{ color: "#d8d0c8" }}>Why it&apos;s here:</strong> {holding.rationale || "Included as a direct expression of the thesis."}
@@ -1478,6 +1510,16 @@ function HoldingGroup({ title, holdings }: { title: string; holdings: Prediction
                 <div style={{ color: "#7f776f", fontSize: 13, lineHeight: 1.5 }}>
                   <strong style={{ color: "#c5bcb4" }}>Main risk:</strong> {holding.main_risk || "The thesis resolves differently than expected."}
                 </div>
+                {holding.fit_warning && (
+                  <div style={{ color: "#b9a48f", fontSize: 13, lineHeight: 1.5, marginTop: 8 }}>
+                    <strong style={{ color: "#d8d0c8" }}>Fit note:</strong> {holding.fit_warning}
+                  </div>
+                )}
+                {holding.proxy_reason && (
+                  <div style={{ color: "#8f877f", fontSize: 13, lineHeight: 1.5, marginTop: 6 }}>
+                    <strong style={{ color: "#c5bcb4" }}>Proxy reason:</strong> {holding.proxy_reason}
+                  </div>
+                )}
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ color: "#8f877f", fontSize: 12, marginBottom: 6 }}>Weight</div>
@@ -1555,6 +1597,10 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
             <Tag>Share-ready</Tag>
             <Tag>${basket.total_notional.toFixed(0)} notional</Tag>
+            {basket.basket_quality && <Tag>{basketQualityLabel(basket.basket_quality)}</Tag>}
+          </div>
+          <div style={{ color: "#9b938c", fontSize: 14, lineHeight: 1.6, marginTop: 10, maxWidth: 720 }}>
+            {basket.basket_quality_explanation || basketQualityCopy(basket.basket_quality)}
           </div>
         </div>
         <div style={{ minWidth: 180, display: "grid", gap: 10, justifyItems: "end" }}>

@@ -229,18 +229,20 @@ class ScreenerAgent:
 
 MARKET_SCREENER_PROMPT = """You are evaluating retrieved contract-level candidate markets.
 
-Your job is not to search. Your job is to reject weak proxies, select clean expressions of the thesis, choose the correct YES/NO side, and score resolution fit, expressiveness, causal purity, timeframe alignment, and liquidity usability.
+Your job is not to search. Your job is to select the best available markets, reject truly weak markets, choose the correct YES/NO side, and label proxy quality honestly.
+
+Prefer clean/direct markets, but if direct markets are sparse, select useful proxies and label them clearly. Do not pretend a proxy is direct.
 
 Rules:
-- Never select a market below 3.0 overall_score.
+- Reject overall_score below 2.5.
+- Select 8–25 markets if available.
+- Return fewer only if quality is truly thin.
 - Prefer direct_thesis and mechanism markets.
-- Include first_order_consequence markets only if causal_purity_score >= 3.
-- Include hedge_or_falsifier markets sparingly.
-- Do not select broad macro, election, crypto, or index markets unless the belief is a primary driver.
-- Do not select markets that are only thematically adjacent.
+- Markets with score 2.5–3.2 can be selected if direct/good markets are insufficient or if they add a useful early signal or hedge.
+- Every selected partial_proxy or early_signal must include fit_warning.
 - Recommended side must profit if the user's belief is true.
-- Return 12–25 selected markets if enough strong candidates exist.
-- Return fewer if quality is low rather than padding with weak markets.
+- Do not include absurdly broad markets unless clearly labeled and capped.
+- At least 50% of selected markets should be direct_thesis, mechanism, strong_proxy, or good_proxy if available.
 
 Scoring formula:
 overall_score =
@@ -267,31 +269,60 @@ _MARKET_SCREEN_TOOL = {
                             "event_ticker": {"type": "string"},
                             "question": {"type": "string"},
                             "linked_exposure_name": {"type": "string"},
+                            "route_ring": {
+                                "type": "string",
+                                "enum": ["direct", "strong_proxy", "early_signal"],
+                            },
                             "tier": {
                                 "type": "string",
                                 "enum": ["direct_thesis", "mechanism", "first_order_consequence", "hedge_or_falsifier"],
                             },
                             "recommended_side": {"type": "string", "enum": ["YES", "NO"]},
-                            "alignment": {"type": "string", "enum": ["YES", "NO"]},
                             "expressiveness_score": {"type": "number"},
                             "resolution_fit_score": {"type": "number"},
                             "causal_purity_score": {"type": "number"},
                             "timeframe_alignment_score": {"type": "number"},
                             "liquidity_usability_score": {"type": "number"},
                             "overall_score": {"type": "number"},
+                            "fit_type": {
+                                "type": "string",
+                                "enum": ["direct_thesis", "strong_proxy", "good_proxy", "partial_proxy", "early_signal", "hedge"],
+                            },
+                            "fit_confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+                            "fit_warning": {"type": ["string", "null"]},
+                            "proxy_reason": {"type": ["string", "null"]},
                             "rationale": {"type": "string"},
                             "main_confounder": {"type": "string"},
                         },
                         "required": [
-                            "ticker", "event_ticker", "question", "linked_exposure_name", "tier",
-                            "recommended_side", "alignment", "expressiveness_score",
+                            "ticker", "event_ticker", "question", "linked_exposure_name", "route_ring", "tier",
+                            "recommended_side", "expressiveness_score",
                             "resolution_fit_score", "causal_purity_score", "timeframe_alignment_score",
-                            "liquidity_usability_score", "overall_score", "rationale", "main_confounder",
+                            "liquidity_usability_score", "overall_score", "fit_type", "fit_confidence",
+                            "fit_warning", "proxy_reason", "rationale", "main_confounder",
                         ],
                     },
                 },
+                "coverage_summary": {
+                    "type": "object",
+                    "properties": {
+                        "direct_count": {"type": "number"},
+                        "strong_proxy_count": {"type": "number"},
+                        "partial_proxy_count": {"type": "number"},
+                        "early_signal_count": {"type": "number"},
+                        "hedge_count": {"type": "number"},
+                        "overall_coverage_quality": {
+                            "type": "string",
+                            "enum": ["direct", "strong_proxy", "mixed_proxy", "thin_market_coverage"],
+                        },
+                    },
+                    "required": [
+                        "direct_count", "strong_proxy_count", "partial_proxy_count",
+                        "early_signal_count", "hedge_count", "overall_coverage_quality",
+                    ],
+                },
             },
-            "required": ["selected_markets"],
+            "required": ["selected_markets", "coverage_summary"],
         },
     },
 }
@@ -309,7 +340,7 @@ class MarketScreenerAgent:
         exposure_lines = []
         for exposure in exposures:
             exposure_lines.append(
-                f"- {exposure.get('exposure_name')} | tier={exposure.get('tier')} | dir={exposure.get('direction_if_belief_true')} | "
+                f"- {exposure.get('exposure_name')} | ring={exposure.get('route_ring')} | tier={exposure.get('tier')} | dir={exposure.get('direction_if_belief_true')} | "
                 f"purity={exposure.get('causal_purity_score')} | expr={exposure.get('expressiveness_score')} | "
                 f"path={exposure.get('causal_path')}"
             )
@@ -321,7 +352,7 @@ class MarketScreenerAgent:
                 candidate_lines.append(
                     f"[{cand.get('ticker')}] {cand.get('question')} | event={cand.get('event_ticker')} | "
                     f"title={cand.get('event_title')} | category={cand.get('category')} | "
-                    f"yes={cand.get('yes_price')} | no={cand.get('no_price')} | vol={cand.get('volume')} | "
+                    f"ring={cand.get('route_ring')} | yes={cand.get('yes_price')} | no={cand.get('no_price')} | vol={cand.get('volume')} | "
                     f"retrieval={cand.get('retrieval_score')} | reasons={'; '.join(cand.get('retrieval_reasons', [])[:3])}"
                 )
 
@@ -351,13 +382,17 @@ class MarketScreenerAgent:
         tc = response.choices[0].message.tool_calls[0]
         result = json.loads(tc.function.arguments)
         validated: list[dict] = []
-        valid_candidates = {
-            cand["ticker"]: cand
-            for group in exposure_candidates
-            for cand in group.get("candidates", [])
-        }
+        candidate_entries: list[dict] = []
+        valid_candidates: dict[str, dict] = {}
+        for group in exposure_candidates:
+            exposure = group.get("exposure", {})
+            for cand in group.get("candidates", []):
+                bundle = {"candidate": cand, "exposure": exposure}
+                candidate_entries.append(bundle)
+                valid_candidates[cand["ticker"]] = bundle
         for selected in result.get("selected_markets", []):
-            source = valid_candidates.get(selected["ticker"])
+            bundle = valid_candidates.get(selected["ticker"])
+            source = bundle["candidate"] if bundle else None
             if not source:
                 continue
             selected["overall_score"] = round(
@@ -368,7 +403,129 @@ class MarketScreenerAgent:
                 0.05 * float(selected.get("liquidity_usability_score", 0)),
                 2,
             )
-            if selected["overall_score"] < 3.0:
+            if selected["overall_score"] < 2.5:
                 continue
+            selected["alignment"] = "YES" if selected.get("recommended_side") == "YES" else "NO"
+            if not selected.get("route_ring"):
+                selected["route_ring"] = source.get("route_ring", "direct")
+            if selected["overall_score"] < 3.2 and not selected.get("fit_warning"):
+                selected["fit_warning"] = "Useful proxy, but weaker than a clean direct market."
+            if selected.get("fit_type") in {"partial_proxy", "early_signal"} and not selected.get("fit_warning"):
+                selected["fit_warning"] = "This is not a direct resolution of the thesis."
             validated.append(selected)
-        return {"selected_markets": validated}
+
+        def _timeframe_scores(reasons: list[str]) -> tuple[float, float]:
+            if "timeframe_aligned" in reasons:
+                return 4.5, 4.5
+            if "earlier_than_thesis_but_signal" in reasons:
+                return 3.0, 2.5
+            if "slightly_beyond_thesis_window" in reasons:
+                return 3.0, 3.0
+            if "later_than_thesis_window" in reasons:
+                return 2.5, 2.0
+            return 2.5, 2.5
+
+        def _liquidity_score_from_candidate(candidate: dict) -> float:
+            volume = float(candidate.get("volume") or 0.0)
+            if candidate.get("yes_price") is None:
+                return 1.5
+            if volume >= 5000:
+                return 4.5
+            if volume >= 500:
+                return 3.5
+            if volume > 0:
+                return 2.5
+            return 1.5
+
+        def _fit_label(route_ring: str, tier: str, overall_score: float) -> tuple[str, str, str | None]:
+            if tier == "hedge_or_falsifier":
+                return "hedge", ("medium" if overall_score >= 3.2 else "low"), "This position mainly offsets or falsifies the thesis."
+            if overall_score >= 4.0:
+                if route_ring == "direct" and tier == "direct_thesis":
+                    return "direct_thesis", "high", None
+                return "strong_proxy", "high", "This closely tracks the thesis but does not literally resolve it."
+            if overall_score >= 3.2:
+                if route_ring == "direct":
+                    return "strong_proxy", "medium", "This tests the mechanism or a close expression of the thesis."
+                return "good_proxy", "medium", "This is a close proxy rather than the final thesis resolution."
+            if route_ring == "early_signal":
+                return "early_signal", "low", "This resolves earlier or more indirectly than the full thesis."
+            return "partial_proxy", "low", "This is a broader proxy and the thesis is only one driver."
+
+        selected_tickers = {m["ticker"] for m in validated}
+        heuristic_candidates: list[dict] = []
+        for bundle in candidate_entries:
+            candidate = bundle["candidate"]
+            exposure = bundle["exposure"] or {}
+            if candidate["ticker"] in selected_tickers:
+                continue
+            route_ring = exposure.get("route_ring", candidate.get("route_ring", "direct"))
+            expressiveness = float(exposure.get("expressiveness_score", 3))
+            causal_purity = float(exposure.get("causal_purity_score", 3))
+            resolution_fit, timeframe_alignment = _timeframe_scores(candidate.get("retrieval_reasons", []))
+            liquidity = _liquidity_score_from_candidate(candidate)
+            overall_score = round(
+                0.35 * expressiveness +
+                0.25 * resolution_fit +
+                0.20 * causal_purity +
+                0.15 * timeframe_alignment +
+                0.05 * liquidity,
+                2,
+            )
+            if overall_score < 2.5:
+                continue
+            fit_type, fit_confidence, fit_warning = _fit_label(route_ring, exposure.get("tier", "mechanism"), overall_score)
+            heuristic_candidates.append({
+                "ticker": candidate["ticker"],
+                "event_ticker": candidate["event_ticker"],
+                "question": candidate["question"],
+                "linked_exposure_name": exposure.get("exposure_name", ""),
+                "route_ring": route_ring,
+                "tier": exposure.get("tier", "mechanism"),
+                "recommended_side": "YES" if exposure.get("direction_if_belief_true", "YES") in {"YES", "UP"} else "NO",
+                "alignment": "YES" if exposure.get("direction_if_belief_true", "YES") in {"YES", "UP"} else "NO",
+                "expressiveness_score": expressiveness,
+                "resolution_fit_score": resolution_fit,
+                "causal_purity_score": causal_purity,
+                "timeframe_alignment_score": timeframe_alignment,
+                "liquidity_usability_score": liquidity,
+                "overall_score": overall_score,
+                "fit_type": fit_type,
+                "fit_confidence": fit_confidence,
+                "fit_warning": fit_warning,
+                "proxy_reason": None if route_ring == "direct" else exposure.get("why_this_is_clean_or_useful"),
+                "rationale": exposure.get("why_this_is_clean_or_useful") or exposure.get("causal_path", ""),
+                "main_confounder": "; ".join(exposure.get("main_confounders", [])[:2]),
+            })
+
+        heuristic_candidates.sort(key=lambda item: (-item["overall_score"], item["ticker"]))
+        target_count = 8
+        for candidate in heuristic_candidates:
+            if len(validated) >= target_count and validated:
+                break
+            if candidate["ticker"] in selected_tickers:
+                continue
+            validated.append(candidate)
+            selected_tickers.add(candidate["ticker"])
+        coverage_summary = result.get("coverage_summary", {})
+        if not coverage_summary:
+            direct_count = sum(1 for m in validated if m.get("fit_type") == "direct_thesis")
+            strong_proxy_count = sum(1 for m in validated if m.get("fit_type") in {"strong_proxy", "good_proxy"})
+            partial_proxy_count = sum(1 for m in validated if m.get("fit_type") == "partial_proxy")
+            early_signal_count = sum(1 for m in validated if m.get("fit_type") == "early_signal")
+            hedge_count = sum(1 for m in validated if m.get("fit_type") == "hedge")
+            overall_coverage_quality = (
+                "direct" if direct_count >= max(2, len(validated) // 2) else
+                "strong_proxy" if direct_count + strong_proxy_count >= max(3, len(validated) // 2) else
+                "mixed_proxy" if validated else
+                "thin_market_coverage"
+            )
+            coverage_summary = {
+                "direct_count": direct_count,
+                "strong_proxy_count": strong_proxy_count,
+                "partial_proxy_count": partial_proxy_count,
+                "early_signal_count": early_signal_count,
+                "hedge_count": hedge_count,
+                "overall_coverage_quality": overall_coverage_quality,
+            }
+        return {"selected_markets": validated, "coverage_summary": coverage_summary}

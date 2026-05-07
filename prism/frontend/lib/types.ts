@@ -109,11 +109,12 @@ export interface BeliefSummary {
 
 export interface ExposureRoute {
   exposure_name: string;
+  route_ring: "direct" | "strong_proxy" | "early_signal";
   tier: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
   direction_if_belief_true: "YES" | "NO" | "UP" | "DOWN";
   causal_distance: "direct" | "precursor" | "first_order" | "second_order" | "speculative";
   causal_path: string;
-  why_this_is_clean_exposure: string;
+  why_this_is_clean_or_useful: string;
   main_confounders: string[];
   timeframe_fit: "strong" | "partial" | "weak";
   search_terms: string[];
@@ -149,6 +150,7 @@ export interface RetrievedCandidate {
   event_title: string;
   category: string;
   close_date: string;
+  route_ring?: "direct" | "strong_proxy" | "early_signal";
   yes_price: number | null;
   no_price: number | null;
   volume: number | null;
@@ -161,6 +163,7 @@ export interface ScreenedMarket {
   event_ticker: string;
   question: string;
   linked_exposure_name: string;
+  route_ring: "direct" | "strong_proxy" | "early_signal";
   tier: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
   recommended_side: "YES" | "NO";
   alignment: "YES" | "NO";
@@ -170,8 +173,21 @@ export interface ScreenedMarket {
   timeframe_alignment_score: number;
   liquidity_usability_score: number;
   overall_score: number;
+  fit_type: "direct_thesis" | "strong_proxy" | "good_proxy" | "partial_proxy" | "early_signal" | "hedge";
+  fit_confidence: "high" | "medium" | "low";
+  fit_warning: string | null;
+  proxy_reason: string | null;
   rationale: string;
   main_confounder: string;
+}
+
+export interface CoverageSummary {
+  direct_count: number;
+  strong_proxy_count: number;
+  partial_proxy_count: number;
+  early_signal_count: number;
+  hedge_count: number;
+  overall_coverage_quality: "direct" | "strong_proxy" | "mixed_proxy" | "thin_market_coverage";
 }
 
 export interface BasketCritiqueIssue {
@@ -199,6 +215,11 @@ export interface BasketHolding {
   role: "direct" | "mechanism" | "indirect" | "hedge";
   weight_dollars: number;
   linked_exposure_name?: string;
+  route_ring?: "direct" | "strong_proxy" | "early_signal";
+  fit_type?: "direct_thesis" | "strong_proxy" | "good_proxy" | "partial_proxy" | "early_signal" | "hedge";
+  fit_confidence?: "high" | "medium" | "low";
+  fit_warning?: string | null;
+  proxy_reason?: string | null;
   rationale: string;
   main_risk: string;
   tier?: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
@@ -212,6 +233,8 @@ export interface PredictionBasket {
   basket_title: string;
   basket_summary: string;
   construction_notes: string;
+  basket_quality?: "direct" | "strong_proxy" | "mixed_proxy" | "thin_market_coverage";
+  basket_quality_explanation?: string;
   exposure_allocations?: {
     bucket: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
     weight_dollars: number;
@@ -310,7 +333,7 @@ export interface OracleRecommendation {
 export type TradingStreamMessage =
   | { type: "progress"; label: string }
   | { type: "analyst_done"; analysis: BeliefAnalysis }
-  | { type: "screener_done"; tickers: string[]; count: number; selected_markets?: ScreenedMarket[] }
+  | { type: "screener_done"; tickers: string[]; count: number; selected_markets?: ScreenedMarket[]; coverage_summary?: CoverageSummary }
   | { type: "critic_done"; critique: BasketCritique }
   | { type: "basket_done"; basket: PredictionBasket; basket_id?: number }
   | { type: "error"; message: string };

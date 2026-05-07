@@ -12,16 +12,26 @@ Think in exposure buckets first, holdings second. Avoid duplicated exposure. The
 
 Rules:
 - Total weight must equal exactly $100.
-- Include 5 to 10 holdings when enough quality exists.
-- At least 50% of notional should be direct_thesis + mechanism if available.
+- Include 5 to 10 holdings when possible.
+- If fewer than 5 good holdings exist, allow 3 to 4 holdings and explain thin coverage.
+- Direct_thesis + strong_proxy should target 50–70% when available.
+- Good_proxy can be up to 40%.
+- Partial_proxy + early_signal should be max 25%.
+- Hedge should be max 10%.
+- Direct_thesis or strong_proxy holdings should usually be $15–$30.
+- Good_proxy holdings should usually be $8–$18.
+- Partial_proxy or early_signal holdings should usually be $5–$12.
+- Hedge holdings should usually be $5–$10.
 - Max single holding: $35.
 - At most 1 holding per exact market ticker.
 - At most 1 holding per event_ticker unless intentionally using a threshold ladder.
-- At most 2 first_order_consequence holdings.
+- At most 2 first_order_consequence holdings when possible.
 - At most 1 hedge_or_falsifier unless strongly justified.
 - Avoid duplicated exposure.
 - Use price only after thematic fit.
-- If not enough high-quality markets exist, build a smaller basket and state the limitation in construction_notes.
+- Prefer clean markets but do not fail solely because only proxy markets exist.
+- Every proxy holding must preserve fit labels and warnings.
+- Basket summary should clearly state whether this is a Direct basket, Strong proxy basket, Mixed proxy basket, or Thin market coverage basket.
 """
 
 _BUILD_TOOL = {
@@ -35,6 +45,11 @@ _BUILD_TOOL = {
                 "basket_title": {"type": "string"},
                 "basket_summary": {"type": "string"},
                 "construction_notes": {"type": "string"},
+                "basket_quality": {
+                    "type": "string",
+                    "enum": ["direct", "strong_proxy", "mixed_proxy", "thin_market_coverage"],
+                },
+                "basket_quality_explanation": {"type": "string"},
                 "exposure_allocations": {
                     "type": "array",
                     "items": {
@@ -60,14 +75,27 @@ _BUILD_TOOL = {
                             "weight_dollars": {"type": "number"},
                             "role": {"type": "string", "enum": ["direct", "mechanism", "indirect", "hedge"]},
                             "linked_exposure_name": {"type": "string"},
+                            "fit_type": {
+                                "type": "string",
+                                "enum": ["direct_thesis", "strong_proxy", "good_proxy", "partial_proxy", "early_signal", "hedge"],
+                            },
+                            "fit_confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+                            "fit_warning": {"type": ["string", "null"]},
+                            "proxy_reason": {"type": ["string", "null"]},
                             "rationale": {"type": "string"},
                             "main_risk": {"type": "string"},
                         },
-                        "required": ["ticker", "side", "weight_dollars", "role", "linked_exposure_name", "rationale", "main_risk"],
+                        "required": [
+                            "ticker", "side", "weight_dollars", "role", "linked_exposure_name",
+                            "fit_type", "fit_confidence", "fit_warning", "proxy_reason", "rationale", "main_risk",
+                        ],
                     },
                 },
             },
-            "required": ["basket_title", "basket_summary", "construction_notes", "exposure_allocations", "holdings"],
+            "required": [
+                "basket_title", "basket_summary", "construction_notes",
+                "basket_quality", "basket_quality_explanation", "exposure_allocations", "holdings",
+            ],
         },
     },
 }
@@ -152,6 +180,11 @@ class BasketBuilderAgent:
                 "role": raw["role"],
                 "weight_dollars": float(raw["weight_dollars"]),
                 "linked_exposure_name": raw.get("linked_exposure_name", selected_meta.get("linked_exposure_name", "")),
+                "route_ring": selected_meta.get("route_ring"),
+                "fit_type": raw.get("fit_type", selected_meta.get("fit_type")),
+                "fit_confidence": raw.get("fit_confidence", selected_meta.get("fit_confidence")),
+                "fit_warning": raw.get("fit_warning", selected_meta.get("fit_warning")),
+                "proxy_reason": raw.get("proxy_reason", selected_meta.get("proxy_reason")),
                 "rationale": raw["rationale"],
                 "main_risk": raw["main_risk"],
                 "tier": selected_meta.get("tier"),
@@ -163,6 +196,8 @@ class BasketBuilderAgent:
                 "basket_title": result.get("basket_title", belief_summary["core_belief"]),
                 "basket_summary": result.get("basket_summary", ""),
                 "construction_notes": result.get("construction_notes", ""),
+                "basket_quality": result.get("basket_quality", "thin_market_coverage"),
+                "basket_quality_explanation": result.get("basket_quality_explanation", "No usable holdings were available."),
                 "exposure_allocations": result.get("exposure_allocations", []),
                 "holdings": [],
                 "total_notional": 0.0,
@@ -187,6 +222,8 @@ class BasketBuilderAgent:
             "basket_title": result.get("basket_title", belief_summary["core_belief"]),
             "basket_summary": result.get("basket_summary", ""),
             "construction_notes": result.get("construction_notes", ""),
+            "basket_quality": result.get("basket_quality"),
+            "basket_quality_explanation": result.get("basket_quality_explanation", ""),
             "exposure_allocations": result.get("exposure_allocations", []),
             "holdings": normalized,
             "total_notional": round(sum(h["weight_dollars"] for h in normalized), 2),

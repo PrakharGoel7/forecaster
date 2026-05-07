@@ -890,6 +890,16 @@ def _market_from_row(row: dict[str, Any]):
     })
 
 
+def _count_by_key(items: list[dict[str, Any]], key: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in items:
+        value = item.get(key)
+        if not value:
+            continue
+        counts[str(value)] = counts.get(str(value), 0) + 1
+    return counts
+
+
 def _run_belief_chat_sequence(
     *,
     message: str,
@@ -969,9 +979,13 @@ def _run_trading_pipeline(
     exposure_result = ExposureAgent().run(belief_summary)
     analysis = _exposure_analysis_payload(exposure_result)
     if include_trace:
+        exposure_ring_counts = _count_by_key(exposure_result.get("exposures", []), "route_ring")
         trace["stages"]["exposure"] = {
             "input": {"belief_summary": belief_summary},
             "output": exposure_result,
+            "observability": {
+                "routes_by_ring": exposure_ring_counts,
+            },
         }
     # Preserve the legacy stream shape expected by the frontend, but back it
     # with exposure-route analysis instead of the old domain map.
@@ -980,12 +994,19 @@ def _run_trading_pipeline(
     _emit({"type": "progress", "label": "Retrieving candidate markets from the cache…"})
     retrieval_result = retrieve_markets_for_exposures(exposure_result.get("exposures", []), belief_summary)
     if include_trace:
+        retrieval_by_ring: dict[str, int] = {}
+        for group in retrieval_result.get("exposure_candidates", []):
+            route_ring = group.get("exposure", {}).get("route_ring", "direct")
+            retrieval_by_ring[route_ring] = retrieval_by_ring.get(route_ring, 0) + len(group.get("candidates", []))
         trace["stages"]["retrieval"] = {
             "input": {
                 "exposures": exposure_result.get("exposures", []),
                 "belief_summary": belief_summary,
             },
             "output": retrieval_result,
+            "observability": {
+                "candidates_by_ring": retrieval_by_ring,
+            },
         }
 
     _emit({"type": "progress", "label": "Scoring tradable market exposures…"})
@@ -995,6 +1016,7 @@ def _run_trading_pipeline(
         retrieval_result.get("exposure_candidates", []),
     )
     selected_markets = screener_result.get("selected_markets", [])
+    coverage_summary = screener_result.get("coverage_summary", {})
     if include_trace:
         trace["stages"]["screener"] = {
             "input": {
@@ -1003,6 +1025,10 @@ def _run_trading_pipeline(
                 "exposure_candidates": retrieval_result.get("exposure_candidates", []),
             },
             "output": screener_result,
+            "observability": {
+                "selected_by_fit_type": _count_by_key(selected_markets, "fit_type"),
+                "coverage_summary": coverage_summary,
+            },
         }
 
     if not selected_markets:
@@ -1016,6 +1042,7 @@ def _run_trading_pipeline(
         "tickers": [m["ticker"] for m in selected_markets],
         "count": len(selected_markets),
         "selected_markets": selected_markets,
+        "coverage_summary": coverage_summary,
     }
     # Preserve legacy `screener_done` fields while attaching the richer
     # contract-level selection payload for debugging and future UI use.
@@ -1073,6 +1100,10 @@ def _run_trading_pipeline(
                 "mode": mode,
             },
             "output": basket,
+            "observability": {
+                "holdings_by_fit_type": _count_by_key(basket.get("holdings", []), "fit_type"),
+                "basket_quality": basket.get("basket_quality"),
+            },
         }
 
     critique = None
@@ -1144,6 +1175,7 @@ def _run_trading_pipeline(
         "retrieval_result": retrieval_result,
         "screener_result": screener_result,
         "selected_markets": selected_markets,
+        "coverage_summary": coverage_summary,
         "basket": basket,
         "basket_id": basket_id,
         "critique": critique,
@@ -1158,6 +1190,10 @@ def _run_trading_pipeline(
             "output": {
                 "warnings": validation_warnings,
                 "basket": basket,
+            },
+            "observability": {
+                "holdings_by_fit_type": _count_by_key(basket.get("holdings", []), "fit_type"),
+                "basket_quality": basket.get("basket_quality"),
             },
         }
         trace["result"] = {

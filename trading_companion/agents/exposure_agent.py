@@ -10,24 +10,33 @@ SYSTEM_PROMPT = """You are a prediction-market exposure strategist.
 
 Given a user's belief, produce tradable exposure routes: specific observable market outcomes that become more or less likely if the belief is true.
 
-Do NOT list broad domains. Avoid speculative third-order proxies. Prefer fewer, cleaner, causal, resolution-friendly exposures over many weak ones.
+Do NOT list broad domains. Generate routes in three rings:
+- Ring 1: direct / clean routes
+- Ring 2: strong proxy routes
+- Ring 3: early-signal / partial proxy routes
+
+Prefer direct routes, but do not stop there. Generate enough routes so the downstream retrieval and screener can still build a useful basket when direct markets are sparse.
 
 Each exposure route must:
 - be a specific observable market outcome
 - indicate the direction that profits if the belief is true
 - identify the causal path from the belief to the exposure
+- explain why the route is clean or, if a proxy, why it is still useful
 - include search terms useful for Kalshi retrieval
 - include negative search terms to filter thematic but wrong markets
 - score causal purity and expressiveness
 
 Rules:
-- Return 5 to 12 exposures.
-- Include at least one direct_thesis route when possible.
+- Return 8 to 18 exposure routes total.
+- Include at least 3 direct/clean routes when possible.
+- Include at least 3 strong proxy or early signal routes.
+- Do not only generate perfect/direct routes.
 - Include mechanism and first_order_consequence routes only when causally tight.
 - Include hedge_or_falsifier routes only if useful and interpretable.
-- Reject broad macro proxies unless the belief is a primary driver.
+- Do not include absurdly broad or unrelated proxies.
+- Every proxy route must explain why it is useful and what its main confounder is.
 - Search terms should be market retrieval friendly, not essay phrases.
-- Keep why_this_is_clean_exposure concise and concrete."""
+- Keep why_this_is_clean_or_useful concise and concrete."""
 
 _EXPOSURE_TOOL = {
     "type": "function",
@@ -43,6 +52,10 @@ _EXPOSURE_TOOL = {
                         "type": "object",
                         "properties": {
                             "exposure_name": {"type": "string"},
+                            "route_ring": {
+                                "type": "string",
+                                "enum": ["direct", "strong_proxy", "early_signal"],
+                            },
                             "tier": {
                                 "type": "string",
                                 "enum": ["direct_thesis", "mechanism", "first_order_consequence", "hedge_or_falsifier"],
@@ -56,7 +69,7 @@ _EXPOSURE_TOOL = {
                                 "enum": ["direct", "precursor", "first_order", "second_order", "speculative"],
                             },
                             "causal_path": {"type": "string"},
-                            "why_this_is_clean_exposure": {"type": "string"},
+                            "why_this_is_clean_or_useful": {"type": "string"},
                             "main_confounders": {"type": "array", "items": {"type": "string"}},
                             "timeframe_fit": {
                                 "type": "string",
@@ -69,8 +82,8 @@ _EXPOSURE_TOOL = {
                             "expressiveness_score": {"type": "number"},
                         },
                         "required": [
-                            "exposure_name", "tier", "direction_if_belief_true", "causal_distance",
-                            "causal_path", "why_this_is_clean_exposure", "main_confounders", "timeframe_fit",
+                            "exposure_name", "route_ring", "tier", "direction_if_belief_true", "causal_distance",
+                            "causal_path", "why_this_is_clean_or_useful", "main_confounders", "timeframe_fit",
                             "search_terms", "negative_search_terms", "resolution_features",
                             "causal_purity_score", "expressiveness_score",
                         ],

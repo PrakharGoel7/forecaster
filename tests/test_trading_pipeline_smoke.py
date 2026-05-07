@@ -78,6 +78,47 @@ class ValidationSmokeTests(unittest.TestCase):
         self.assertEqual(len(basket["holdings"]), 1)
         self.assertTrue(any("duplicate event exposure" in warning for warning in warnings))
 
+    def test_validation_preserves_labeled_partial_proxy(self):
+        class Market:
+            def __init__(self, ticker, event_ticker):
+                self.ticker = ticker
+                self.event_ticker = event_ticker
+                self.question = ticker
+                self.mid_price = 0.41
+                self.close_date = "2026-12-31"
+                self.rules_summary = ""
+
+        basket, warnings = validate_and_repair_basket(
+            {
+                "basket_quality": "mixed_proxy",
+                "holdings": [
+                    {
+                        "ticker": "A",
+                        "event_ticker": "EV1",
+                        "weight_dollars": 100,
+                        "side": "YES",
+                        "role": "indirect",
+                        "fit_type": "partial_proxy",
+                        "fit_warning": "This is a broader proxy and the thesis is only one driver.",
+                    },
+                ],
+            },
+            [
+                {
+                    "ticker": "A",
+                    "event_ticker": "EV1",
+                    "question": "A",
+                    "recommended_side": "YES",
+                    "tier": "first_order_consequence",
+                    "fit_type": "partial_proxy",
+                    "fit_warning": "This is a broader proxy and the thesis is only one driver.",
+                },
+            ],
+            {"A": Market("A", "EV1")},
+        )
+        self.assertEqual(basket["holdings"][0]["fit_type"], "partial_proxy")
+        self.assertTrue(any("labeled proxy" in warning for warning in warnings))
+
 
 class SchemaSmokeTests(unittest.TestCase):
     def test_belief_schema_includes_new_required_fields(self):

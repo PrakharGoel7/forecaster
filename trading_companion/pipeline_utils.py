@@ -68,6 +68,11 @@ def apply_critic_repairs(basket: dict[str, Any], selected_markets: list[dict[str
             "question": target["question"],
             "side": target.get("recommended_side", "YES"),
             "linked_exposure_name": target.get("linked_exposure_name", ""),
+            "route_ring": target.get("route_ring"),
+            "fit_type": target.get("fit_type"),
+            "fit_confidence": target.get("fit_confidence"),
+            "fit_warning": target.get("fit_warning"),
+            "proxy_reason": target.get("proxy_reason"),
             "tier": target.get("tier"),
             "rationale": replacement.get("reason", to_remove.get("rationale", "")),
         })
@@ -109,6 +114,11 @@ def validate_and_repair_basket(
             "question": holding.get("question") or source.get("question") or market.question,
             "side": side,
             "linked_exposure_name": holding.get("linked_exposure_name") or source.get("linked_exposure_name", ""),
+            "route_ring": holding.get("route_ring") or source.get("route_ring"),
+            "fit_type": holding.get("fit_type") or source.get("fit_type"),
+            "fit_confidence": holding.get("fit_confidence") or source.get("fit_confidence"),
+            "fit_warning": holding.get("fit_warning") if holding.get("fit_warning") is not None else source.get("fit_warning"),
+            "proxy_reason": holding.get("proxy_reason") if holding.get("proxy_reason") is not None else source.get("proxy_reason"),
             "tier": holding.get("tier") or source.get("tier"),
             "market_price": float(getattr(market, "mid_price", 0.0)),
             "close_date": getattr(market, "close_date", ""),
@@ -138,5 +148,15 @@ def validate_and_repair_basket(
         warnings.append("Trimmed holdings to 10")
     if len(repaired) < 5:
         warnings.append("Fewer than 5 high-quality holdings were available")
+    directish_weight = sum(
+        float(h.get("weight_dollars", 0.0))
+        for h in repaired
+        if h.get("fit_type") in {"direct_thesis", "strong_proxy"}
+    )
+    if directish_weight < 50 and basket.get("basket_quality") in {"mixed_proxy", "thin_market_coverage", "strong_proxy"}:
+        warnings.append("Direct exposure is below 50%, but the basket is explicitly labeled as proxy-heavy coverage")
+    for holding in repaired:
+        if holding.get("fit_type") in {"partial_proxy", "early_signal"} and holding.get("fit_warning"):
+            warnings.append(f"{holding['ticker']} is included as a labeled proxy or early signal")
     basket = {**basket, "holdings": repaired, "total_notional": round(sum(float(h.get("weight_dollars", 0.0)) for h in repaired), 2)}
     return basket, warnings

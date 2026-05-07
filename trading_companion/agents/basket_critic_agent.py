@@ -18,10 +18,16 @@ Checks:
 - Is the YES/NO side correct?
 - Is the basket understandable to a retail user?
 - Are confounders disclosed honestly?
+- Are proxies labeled honestly?
+- Are weak proxies overweighted?
+- Are broad proxies capped?
+- Is the basket_quality label accurate?
+- Are fit_warnings present where needed?
 
+Do not fail the basket just because proxies are included.
 Return pass if the basket is coherent.
 Return needs_repair if a clear fix exists.
-Return fail only if the basket is structurally broken."""
+Return fail only if holdings are unrelated, sides are wrong, duplicate exposure is severe, or proxy labeling is misleading."""
 
 _CRITIC_TOOL = {
     "type": "function",
