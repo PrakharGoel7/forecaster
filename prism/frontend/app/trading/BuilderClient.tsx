@@ -42,7 +42,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const [eventCategory, setEventCategory] = useState("");
   const [eventCategories, setEventCategories] = useState<string[]>([]);
   const [eventPage, setEventPage] = useState(1);
-  const [oddsFilter, setOddsFilter] = useState<"all" | "low" | "mid" | "high">("all");
   const [eventResults, setEventResults] = useState<KalshiEvent[]>([]);
   const [eventMarkets, setEventMarkets] = useState<KalshiMarket[]>([]);
   const [manualTitle, setManualTitle] = useState("");
@@ -349,8 +348,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     eventCategories={eventCategories}
                     eventPage={eventPage}
                     setEventPage={setEventPage}
-                    oddsFilter={oddsFilter}
-                    setOddsFilter={setOddsFilter}
                     eventResults={eventResults}
                     eventMarkets={eventMarkets}
                     onEventSearch={runEventSearch}
@@ -531,15 +528,13 @@ function ManualBuildComposer(props: {
   eventCategories: string[];
   eventPage: number;
   setEventPage: (value: number) => void;
-  oddsFilter: "all" | "low" | "mid" | "high";
-  setOddsFilter: (value: "all" | "low" | "mid" | "high") => void;
   eventResults: KalshiEvent[];
   eventMarkets: KalshiMarket[];
   onEventSearch: () => void;
   onOpenEvent: (event: KalshiEvent, mode: "details" | "add", markets: KalshiMarket[]) => void;
 }) {
   const {
-    eventQuery, setEventQuery, eventCategory, setEventCategory, eventCategories, eventPage, setEventPage, oddsFilter, setOddsFilter, eventResults, eventMarkets,
+    eventQuery, setEventQuery, eventCategory, setEventCategory, eventCategories, eventPage, setEventPage, eventResults, eventMarkets,
     onEventSearch, onOpenEvent,
   } = props;
   const pageSize = 12;
@@ -578,7 +573,7 @@ function ManualBuildComposer(props: {
         background: "linear-gradient(180deg, rgba(16,16,16,0.98), rgba(10,10,10,0.98))",
         boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
       }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.9fr) repeat(2, minmax(0,0.9fr)) auto", gap: 10, alignItems: "stretch" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.9fr) minmax(0,0.9fr) auto", gap: 10, alignItems: "stretch" }}>
           <input
             value={eventQuery}
             onChange={(e) => setEventQuery(e.target.value)}
@@ -591,12 +586,6 @@ function ManualBuildComposer(props: {
           <select value={eventCategory} onChange={(e) => setEventCategory(e.target.value)} style={{ ...inputStyle, height: 50, borderRadius: 12 }}>
             <option value="">All categories</option>
             {eventCategories.map((category) => <option key={category} value={category}>{category}</option>)}
-          </select>
-          <select value={oddsFilter} onChange={(e) => setOddsFilter(e.target.value as "all" | "low" | "mid" | "high")} style={{ ...inputStyle, height: 50, borderRadius: 12 }}>
-            <option value="all">All odds</option>
-            <option value="low">Below 33%</option>
-            <option value="mid">33% to 66%</option>
-            <option value="high">Above 66%</option>
           </select>
           <button onClick={onEventSearch} style={{ ...primaryButtonStyle, minWidth: 120, height: 50, borderRadius: 12 }}>Search</button>
         </div>
