@@ -35,6 +35,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const [eventQuery, setEventQuery] = useState("");
   const [eventCategory, setEventCategory] = useState("");
   const [eventCategories, setEventCategories] = useState<string[]>([]);
+  const [eventPage, setEventPage] = useState(1);
   const [oddsFilter, setOddsFilter] = useState<"all" | "low" | "mid" | "high">("all");
   const [eventResults, setEventResults] = useState<KalshiEvent[]>([]);
   const [eventMarkets, setEventMarkets] = useState<KalshiMarket[]>([]);
@@ -100,6 +101,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     setBasketId(null);
     setScreenedCount(0);
     setEventMarkets([]);
+    setEventPage(1);
     setManualHoldings([]);
     setManualTitle("");
     setManualSummary("");
@@ -153,13 +155,14 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   }
 
   async function runEventSearch() {
-    const events = await searchEvents(eventQuery, 24, eventCategory);
+    const events = await searchEvents(eventQuery, 120, eventCategory);
     setEventResults(events);
+    setEventPage(1);
     if (!events.length) {
       setEventMarkets([]);
       return;
     }
-    const marketsByEvent = await Promise.all(events.slice(0, 8).map(async (event) => ({
+    const marketsByEvent = await Promise.all(events.map(async (event) => ({
       event,
       markets: await getMarkets(event.event_ticker),
     })));
@@ -266,6 +269,8 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     eventCategory={eventCategory}
                     setEventCategory={setEventCategory}
                     eventCategories={eventCategories}
+                    eventPage={eventPage}
+                    setEventPage={setEventPage}
                     oddsFilter={oddsFilter}
                     setOddsFilter={setOddsFilter}
                     eventResults={eventResults}
@@ -416,6 +421,8 @@ function ManualBuildComposer(props: {
   eventCategory: string;
   setEventCategory: (value: string) => void;
   eventCategories: string[];
+  eventPage: number;
+  setEventPage: (value: number) => void;
   oddsFilter: "all" | "low" | "mid" | "high";
   setOddsFilter: (value: "all" | "low" | "mid" | "high") => void;
   eventResults: KalshiEvent[];
@@ -423,9 +430,10 @@ function ManualBuildComposer(props: {
   onEventSearch: () => void;
 }) {
   const {
-    eventQuery, setEventQuery, eventCategory, setEventCategory, eventCategories, oddsFilter, setOddsFilter, eventResults, eventMarkets,
+    eventQuery, setEventQuery, eventCategory, setEventCategory, eventCategories, eventPage, setEventPage, oddsFilter, setOddsFilter, eventResults, eventMarkets,
     onEventSearch,
   } = props;
+  const pageSize = 24;
   const normalizedQuery = eventQuery.trim().toLowerCase();
   const filteredEvents = eventResults.filter((event) => {
     if (eventCategory && event.category !== eventCategory) return false;
@@ -448,6 +456,15 @@ function ManualBuildComposer(props: {
     }).map((market) => market.event_ticker)
   );
   const browseEvents = filteredEvents.filter((event) => matchingEventTickers.size === 0 || matchingEventTickers.has(event.event_ticker));
+  const totalPages = Math.max(1, Math.ceil(browseEvents.length / pageSize));
+  const currentPage = Math.min(eventPage, totalPages);
+  const paginatedEvents = browseEvents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const marketsByEvent = new Map<string, KalshiMarket[]>();
+  for (const market of eventMarkets) {
+    const existing = marketsByEvent.get(market.event_ticker) ?? [];
+    existing.push(market);
+    marketsByEvent.set(market.event_ticker, existing);
+  }
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
@@ -501,8 +518,8 @@ function ManualBuildComposer(props: {
             <div style={{ color: "#6f6861", fontSize: 12 }}>{matchingEventTickers.size || browseEvents.length} match the odds filter</div>
           </div>
         </div>
-        <div style={{ display: "grid", gap: 12 }}>
-          {browseEvents.slice(0, 36).map((event) => (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+          {paginatedEvents.map((event) => (
             <Link
               key={event.event_ticker}
               href={`/market/${event.event_ticker}?title=${encodeURIComponent(event.title)}&cat=${encodeURIComponent(event.category)}&sub=${encodeURIComponent(event.sub_title)}&from=manual`}
@@ -511,32 +528,162 @@ function ManualBuildComposer(props: {
                 textDecoration: "none",
                 border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 18,
-                padding: 16,
+                padding: 18,
+                minHeight: 250,
                 background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
               }}
             >
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 16, alignItems: "start" }}>
-                <div>
-                  <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
-                    {event.category || "Event"}{event.sub_title ? ` · ${event.sub_title}` : ""}
-                  </div>
-                  <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 8, lineHeight: 1.45, fontSize: 16 }}>{event.title}</div>
-                  <div style={{ color: "#8c847c", fontSize: 13, lineHeight: 1.55 }}>
-                    Open the event page to compare its answer options and inspect the markets inside it.
-                  </div>
-                </div>
-                <div style={{ display: "grid", justifyItems: "end", gap: 10, minWidth: 144 }}>
-                  <div style={{ color: "#9f978f", fontSize: 12 }}>{event.event_ticker}</div>
-                  <div style={{ ...ghostButtonStyle, minWidth: 144, textAlign: "center" }}>Open event</div>
-                </div>
-              </div>
+              <EventScopeCard event={event} markets={marketsByEvent.get(event.event_ticker) ?? []} />
             </Link>
           ))}
         </div>
+        {browseEvents.length > pageSize && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 16 }}>
+            <div style={{ color: "#7f776f", fontSize: 13 }}>
+              Page {currentPage} of {totalPages}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setEventPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                style={{ ...ghostButtonStyle, opacity: currentPage === 1 ? 0.45 : 1, cursor: currentPage === 1 ? "default" : "pointer" }}
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setEventPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                style={{ ...ghostButtonStyle, opacity: currentPage === totalPages ? 0.45 : 1, cursor: currentPage === totalPages ? "default" : "pointer" }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
         {!browseEvents.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No events match the current search and filters.</div>}
       </Card>
     </div>
   );
+}
+
+function EventScopeCard({ event, markets }: { event: KalshiEvent; markets: KalshiMarket[] }) {
+  const accent = categoryAccent(event.category || "");
+  const sortedMarkets = [...markets].sort((a, b) => b.mid_price - a.mid_price);
+  const isBinary = sortedMarkets.length === 1;
+  const shownMarkets = isBinary ? sortedMarkets.slice(0, 1) : sortedMarkets.slice(0, 3);
+  const extraMarkets = Math.max(0, sortedMarkets.length - shownMarkets.length);
+  const deadline = sortedMarkets[0]?.close_date || event.sub_title;
+  return (
+    <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr auto", gap: 12, height: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 10 }}>
+        <div style={{
+          fontFamily: "var(--font-mono), monospace",
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.14em",
+          color: accent,
+          border: `1px solid ${accent}33`,
+          borderRadius: 999,
+          padding: "4px 8px",
+          width: "fit-content",
+        }}>
+          {event.category || "Event"}
+        </div>
+        <div style={{ color: "#8f877e", fontSize: 12, textAlign: "right" }}>
+          {deadline ? `Closes ${deadline}` : event.event_ticker}
+        </div>
+      </div>
+
+      <div style={{ color: "#ede9e3", fontWeight: 600, lineHeight: 1.4, fontSize: 17 }}>
+        {event.title}
+      </div>
+
+      <div style={{
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: 14,
+        padding: 14,
+        background: "rgba(8,8,8,0.34)",
+        display: "grid",
+        alignContent: "start",
+        gap: 8,
+      }}>
+        <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace" }}>
+          Options
+        </div>
+        {shownMarkets.length > 0 ? (
+          isBinary ? (
+            <>
+              <EventOptionLine label="Yes" price={shownMarkets[0].mid_price} />
+              <EventOptionLine label="No" price={1 - shownMarkets[0].mid_price} />
+            </>
+          ) : (
+            <>
+              {shownMarkets.map((market) => (
+                <EventOptionLine key={market.ticker} label={market.yes_sub_title || market.ticker} price={market.mid_price} />
+              ))}
+              {extraMarkets > 0 && (
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: "#6f6861", marginTop: 2 }}>
+                  +{extraMarkets} more options
+                </div>
+              )}
+            </>
+          )
+        ) : (
+          <div style={{ color: "#6f6861", fontSize: 12 }}>Open the event to inspect its markets.</div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <div style={{ color: "#9f978f", fontSize: 12 }}>{event.event_ticker}</div>
+        <div style={{ ...ghostButtonStyle, minWidth: 124, textAlign: "center" }}>Open event</div>
+      </div>
+    </div>
+  );
+}
+
+function EventOptionLine({ label, price }: { label: string; price: number }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+      <div style={{
+        fontSize: 12,
+        color: "#b8b0a8",
+        lineHeight: 1.35,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontFamily: "var(--font-mono), monospace",
+        fontSize: 12,
+        fontWeight: 700,
+        color: priceColor(price),
+        flexShrink: 0,
+      }}>
+        {(price * 100).toFixed(0)}%
+      </div>
+    </div>
+  );
+}
+
+function categoryAccent(category: string): string {
+  const c = category.toLowerCase();
+  if (c.includes("polit") || c.includes("elect") || c.includes("govern")) return "#5b9cf6";
+  if (c.includes("crypto") || c.includes("bitcoin") || c.includes("coin") || c.includes("eth")) return "#f59e0b";
+  if (c.includes("sport") || c.includes("nba") || c.includes("nfl") || c.includes("mlb") || c.includes("soccer")) return "#4ade80";
+  if (c.includes("econ") || c.includes("financ") || c.includes("fed") || c.includes("rate")) return "#a78bfa";
+  if (c.includes("tech") || c.includes("ai") || c.includes("sci")) return "#2dd4bf";
+  if (c.includes("weather") || c.includes("climate")) return "#7dd3fc";
+  if (c.includes("entertain") || c.includes("award") || c.includes("oscar") || c.includes("music")) return "#f472b6";
+  return "#e36438";
+}
+
+function priceColor(price: number): string {
+  if (price >= 0.65) return "#4ade80";
+  if (price <= 0.35) return "#f87171";
+  return "#9b9790";
 }
 
 function ManualBasketSidebar(props: {
