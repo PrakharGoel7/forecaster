@@ -38,16 +38,40 @@ export function clearManualBasketDraft() {
   emitUpdate();
 }
 
-export function addMarketToManualBasketDraft(market: KalshiMarket) {
+export function addMarketToManualBasketDraft(
+  market: KalshiMarket,
+  options?: {
+    side?: "YES" | "NO";
+    question?: string;
+    marketPrice?: number;
+  },
+) {
   const holdings = loadManualBasketDraft();
-  if (holdings.some((holding) => holding.ticker === market.ticker)) return false;
+  const side = options?.side ?? "YES";
+  const question = options?.question ?? market.question;
+  const marketPrice = options?.marketPrice ?? (side === "NO" ? 1 - market.mid_price : market.mid_price);
+  const existingIndex = holdings.findIndex((holding) => holding.ticker === market.ticker);
+
+  if (existingIndex >= 0) {
+    holdings[existingIndex] = {
+      ...holdings[existingIndex],
+      question,
+      market_price: marketPrice,
+      side,
+      rules_summary: market.rules_primary,
+      close_date: market.close_date,
+    };
+    saveManualBasketDraft(holdings);
+    return "updated";
+  }
+
   holdings.push({
     ticker: market.ticker,
     event_ticker: market.event_ticker,
-    question: market.question,
-    market_price: market.mid_price,
+    question,
+    market_price: marketPrice,
     close_date: market.close_date,
-    side: "YES",
+    side,
     role: "direct",
     weight_dollars: 10,
     rationale: "",
@@ -55,5 +79,5 @@ export function addMarketToManualBasketDraft(market: KalshiMarket) {
     rules_summary: market.rules_primary,
   });
   saveManualBasketDraft(holdings);
-  return true;
+  return "added";
 }

@@ -109,9 +109,6 @@ export default function MarketPage() {
                 <h1 style={{ fontSize: "clamp(30px, 4vw, 42px)", fontWeight: 700, color: "#f2ede7", lineHeight: 1.08, letterSpacing: "-0.04em", margin: "0 0 12px" }}>
                   {eventTitle || primaryMarket.question || rawTicker}
                 </h1>
-                <div style={{ color: "#918981", fontSize: "15px", lineHeight: 1.7 }}>
-                  Review the event rules, compare the available answer options, and add the contract you want to your basket.
-                </div>
               </div>
 
               {fromManual && (

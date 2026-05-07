@@ -18,6 +18,11 @@ interface ChatMsg {
   content: string;
 }
 
+interface ManualEventModalState {
+  event: KalshiEvent;
+  mode: "details" | "add";
+}
+
 export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -45,6 +50,10 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const [manualTimeframe, setManualTimeframe] = useState("");
   const [manualHoldings, setManualHoldings] = useState<ManualBasketDraftHolding[]>([]);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [manualEventModal, setManualEventModal] = useState<ManualEventModalState | null>(null);
+  const [manualEventModalMarkets, setManualEventModalMarkets] = useState<KalshiMarket[]>([]);
+  const [manualEventModalLoading, setManualEventModalLoading] = useState(false);
+  const [manualEventModalNotice, setManualEventModalNotice] = useState("");
   const [screenedCount, setScreenedCount] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
   const [loading, setLoading] = useState(false);
@@ -130,6 +139,10 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     setManualSummary("");
     setManualTimeframe("");
     setSaveModalOpen(false);
+    setManualEventModal(null);
+    setManualEventModalMarkets([]);
+    setManualEventModalLoading(false);
+    setManualEventModalNotice("");
     setProgressLabel("");
     setError("");
     router.replace(routeBase, { scroll: false });
@@ -205,6 +218,44 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
         }))
       )
     );
+  }
+
+  async function openManualEventModal(event: KalshiEvent, mode: "details" | "add", seedMarkets: KalshiMarket[] = []) {
+    setManualEventModal({ event, mode });
+    setManualEventModalNotice("");
+    if (seedMarkets.length) {
+      setManualEventModalMarkets(seedMarkets);
+      return;
+    }
+    setManualEventModalLoading(true);
+    try {
+      const markets = await getMarkets(event.event_ticker);
+      setManualEventModalMarkets(
+        markets.map((market) => ({
+          ...market,
+          event_title: event.title,
+          category: event.category,
+        }))
+      );
+    } catch (err) {
+      setManualEventModalMarkets([]);
+      setManualEventModalNotice(err instanceof Error ? err.message : "Could not load markets.");
+    } finally {
+      setManualEventModalLoading(false);
+    }
+  }
+
+  function addSelectionToManualBasket(
+    market: KalshiMarket,
+    selection: { side: "YES" | "NO"; label?: string; price?: number },
+  ) {
+    const status = addMarketToManualBasketDraft(market, {
+      side: selection.side,
+      question: selection.label ?? market.question,
+      marketPrice: selection.price,
+    });
+    setManualHoldings(loadManualBasketDraft());
+    setManualEventModalNotice(status === "added" ? "Added to basket." : "Updated existing basket entry.");
   }
 
   function updateManualHolding(ticker: string, patch: Partial<ManualBasketDraftHolding>) {
@@ -289,10 +340,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     eventResults={eventResults}
                     eventMarkets={eventMarkets}
                     onEventSearch={runEventSearch}
-                    onAddMarket={(market) => {
-                      addMarketToManualBasketDraft(market);
-                      setManualHoldings(loadManualBasketDraft());
-                    }}
+                    onOpenEvent={(event, mode, markets) => void openManualEventModal(event, mode, markets)}
                   />
                 )
               )}
@@ -388,6 +436,22 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
           onSave={saveManual}
         />
       )}
+      {buildPath === "manual" && manualEventModal && stage === "idle" && (
+        <ManualEventModal
+          event={manualEventModal.event}
+          markets={manualEventModalMarkets}
+          mode={manualEventModal.mode}
+          loading={manualEventModalLoading}
+          notice={manualEventModalNotice}
+          onClose={() => {
+            setManualEventModal(null);
+            setManualEventModalMarkets([]);
+            setManualEventModalLoading(false);
+            setManualEventModalNotice("");
+          }}
+          onAddSelection={addSelectionToManualBasket}
+        />
+      )}
     </div>
   );
 }
@@ -458,12 +522,11 @@ function ManualBuildComposer(props: {
   eventResults: KalshiEvent[];
   eventMarkets: KalshiMarket[];
   onEventSearch: () => void;
-  onAddMarket: (market: KalshiMarket) => void;
+  onOpenEvent: (event: KalshiEvent, mode: "details" | "add", markets: KalshiMarket[]) => void;
 }) {
-  const router = useRouter();
   const {
     eventQuery, setEventQuery, eventCategory, setEventCategory, eventCategories, eventPage, setEventPage, oddsFilter, setOddsFilter, eventResults, eventMarkets,
-    onEventSearch, onAddMarket,
+    onEventSearch, onOpenEvent,
   } = props;
   const pageSize = 12;
   const normalizedQuery = eventQuery.trim().toLowerCase();
@@ -541,7 +604,6 @@ function ManualBuildComposer(props: {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
           {paginatedEvents.map((event) => {
-            const eventHref = `/market/${event.event_ticker}?title=${encodeURIComponent(event.title)}&cat=${encodeURIComponent(event.category)}&sub=${encodeURIComponent(event.sub_title)}&from=manual`;
             const eventMarketList = marketsByEvent.get(event.event_ticker) ?? [];
             return (
               <div
@@ -557,12 +619,8 @@ function ManualBuildComposer(props: {
                 <EventScopeCard
                   event={event}
                   markets={eventMarketList}
-                  onMoreDetails={() => router.push(eventHref)}
-                  onAddToBasket={() => {
-                    const primaryMarket = [...eventMarketList].sort((a, b) => b.mid_price - a.mid_price)[0];
-                    if (!primaryMarket) return;
-                    onAddMarket(primaryMarket);
-                  }}
+                  onMoreDetails={() => onOpenEvent(event, "details", eventMarketList)}
+                  onAddToBasket={() => onOpenEvent(event, "add", eventMarketList)}
                 />
               </div>
             );
@@ -741,6 +799,242 @@ function priceColor(price: number): string {
   if (price >= 0.65) return "#4ade80";
   if (price <= 0.35) return "#f87171";
   return "#9b9790";
+}
+
+function ManualEventModal(props: {
+  event: KalshiEvent;
+  markets: KalshiMarket[];
+  mode: "details" | "add";
+  loading: boolean;
+  notice: string;
+  onClose: () => void;
+  onAddSelection: (market: KalshiMarket, selection: { side: "YES" | "NO"; label?: string; price?: number }) => void;
+}) {
+  const {
+    event, markets, mode, loading, notice, onClose, onAddSelection,
+  } = props;
+  const sortedMarkets = [...markets].sort((a, b) => b.mid_price - a.mid_price);
+  const isBinary = sortedMarkets.length === 1;
+  const leadMarket = sortedMarkets[0] ?? null;
+  const closeLabel = leadMarket?.close_date || event.sub_title;
+
+  return (
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 140,
+      background: "rgba(3,3,3,0.78)",
+      backdropFilter: "blur(12px)",
+      WebkitBackdropFilter: "blur(12px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    }}>
+      <div style={{
+        width: "min(100%, 1120px)",
+        maxHeight: "calc(100vh - 48px)",
+        overflowY: "auto",
+        borderRadius: 28,
+        border: "1px solid rgba(255,255,255,0.08)",
+        background: "linear-gradient(180deg, rgba(18,18,18,0.98), rgba(9,9,9,0.99))",
+        boxShadow: "0 36px 110px rgba(0,0,0,0.56)",
+        padding: 28,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "start", marginBottom: 20 }}>
+          <div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+              <Tag>{event.category || "Event"}</Tag>
+              {closeLabel && <Tag>Closes {closeLabel}</Tag>}
+              {sortedMarkets.length > 0 && <Tag>{sortedMarkets.length} option{sortedMarkets.length === 1 ? "" : "s"}</Tag>}
+            </div>
+            <div style={{ color: "#ede9e3", fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.04em", maxWidth: 760 }}>
+              {event.title}
+            </div>
+          </div>
+          <button onClick={onClose} style={ghostButtonStyle}>Close</button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(320px,0.86fr)", gap: 20, alignItems: "start" }}>
+          <section style={{
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 22,
+            padding: 22,
+            background: "rgba(255,255,255,0.02)",
+          }}>
+            <div style={{ color: "#ede9e3", fontSize: 21, fontWeight: 600, marginBottom: 8 }}>
+              {mode === "add" ? "Choose a contract for your basket" : "Available contracts"}
+            </div>
+            <div style={{ color: "#8f877e", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
+              {isBinary
+                ? "This event has one binary market. Choose YES or NO."
+                : "This event has multiple outcome markets. Each row is the YES contract for that option."}
+            </div>
+
+            {loading ? (
+              <div style={{ color: "#8f877e", fontSize: 14 }}>Loading options...</div>
+            ) : !sortedMarkets.length ? (
+              <div style={{ color: "#8f877e", fontSize: 14 }}>No markets available for this event.</div>
+            ) : isBinary && leadMarket ? (
+              <div style={{ display: "grid", gap: 12 }}>
+                <ContractChoiceCard
+                  title="Yes"
+                  subtitle={leadMarket.question}
+                  probability={leadMarket.mid_price}
+                  detail={`Volume ${Math.round(leadMarket.volume).toLocaleString()} · Closes ${leadMarket.close_date}`}
+                  actionLabel="Add YES"
+                  onChoose={() => onAddSelection(leadMarket, {
+                    side: "YES",
+                    label: leadMarket.question,
+                    price: leadMarket.mid_price,
+                  })}
+                />
+                <ContractChoiceCard
+                  title="No"
+                  subtitle={leadMarket.question}
+                  probability={1 - leadMarket.mid_price}
+                  detail={`Volume ${Math.round(leadMarket.volume).toLocaleString()} · Closes ${leadMarket.close_date}`}
+                  actionLabel="Add NO"
+                  onChoose={() => onAddSelection(leadMarket, {
+                    side: "NO",
+                    label: leadMarket.question,
+                    price: 1 - leadMarket.mid_price,
+                  })}
+                />
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 12 }}>
+                {sortedMarkets.map((market) => (
+                  <ContractChoiceCard
+                    key={market.ticker}
+                    title={market.yes_sub_title || market.question}
+                    subtitle={market.question}
+                    probability={market.mid_price}
+                    detail={`Volume ${Math.round(market.volume).toLocaleString()} · Closes ${market.close_date}`}
+                    actionLabel="Add option"
+                    onChoose={() => onAddSelection(market, {
+                      side: "YES",
+                      label: market.yes_sub_title || market.question,
+                      price: market.mid_price,
+                    })}
+                  />
+                ))}
+              </div>
+            )}
+
+            {notice && (
+              <div style={{
+                marginTop: 14,
+                borderRadius: 12,
+                border: "1px solid rgba(227,100,56,0.2)",
+                background: "rgba(227,100,56,0.08)",
+                padding: "12px 14px",
+                color: "#d6cbc0",
+                fontSize: 13,
+              }}>
+                {notice}
+              </div>
+            )}
+          </section>
+
+          <section style={{ display: "grid", gap: 20 }}>
+            {leadMarket?.rules_primary && (
+              <div style={{
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 22,
+                padding: 22,
+                background: "rgba(255,255,255,0.02)",
+              }}>
+                <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600, marginBottom: 10 }}>
+                  Resolution rule
+                </div>
+                <div style={{ color: "#9b938b", fontSize: 14, lineHeight: 1.75 }}>
+                  {leadMarket.rules_primary}
+                </div>
+              </div>
+            )}
+
+            <div style={{
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 22,
+              padding: 22,
+              background: "rgba(255,255,255,0.02)",
+            }}>
+              <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600, marginBottom: 12 }}>
+                Event details
+              </div>
+              <div style={{ display: "grid", gap: 12 }}>
+                <DetailRow label="Event" value={event.title} />
+                <DetailRow label="Category" value={event.category || "Uncategorized"} />
+                <DetailRow label="Deadline" value={closeLabel || "Not listed"} />
+                {leadMarket && <DetailRow label="Question" value={leadMarket.question} />}
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContractChoiceCard({
+  title,
+  subtitle,
+  probability,
+  detail,
+  actionLabel,
+  onChoose,
+}: {
+  title: string;
+  subtitle: string;
+  probability: number;
+  detail: string;
+  actionLabel: string;
+  onChoose: () => void;
+}) {
+  return (
+    <div style={{
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 18,
+      padding: 18,
+      background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "start", marginBottom: 10 }}>
+        <div>
+          <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, lineHeight: 1.35, marginBottom: 6 }}>
+            {title}
+          </div>
+          <div style={{ color: "#8f877e", fontSize: 13, lineHeight: 1.5 }}>
+            {subtitle}
+          </div>
+        </div>
+        <div style={{ color: priceColor(probability), fontFamily: "var(--font-mono), monospace", fontSize: 20, fontWeight: 700 }}>
+          {(probability * 100).toFixed(0)}%
+        </div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <div style={{ color: "#706960", fontSize: 12 }}>
+          {detail}
+        </div>
+        <button onClick={onChoose} style={primaryButtonStyle}>
+          {actionLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div style={{ color: "#7b746d", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: "5px" }}>
+        {label}
+      </div>
+      <div style={{ color: "#e1dbd3", fontSize: "14px", lineHeight: 1.6 }}>
+        {value}
+      </div>
+    </div>
+  );
 }
 
 function ManualBasketSidebar(props: {
