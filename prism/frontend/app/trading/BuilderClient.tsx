@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import GridOverlay from "@/components/GridOverlay";
 import Header from "@/components/Header";
-import { getBasket, getMarkets, listBaskets, saveManualBasket, searchEvents, streamTradingAnalysis, tradingChat } from "@/lib/api";
+import { getBasket, getMarkets, listBaskets, listEventCategories, saveManualBasket, searchEvents, streamTradingAnalysis, tradingChat } from "@/lib/api";
 import type { BeliefAnalysis, BeliefSummary, KalshiEvent, KalshiMarket, ManualBasketDraftHolding, PredictionBasket, SavedBasket } from "@/lib/types";
 
 type Mode = "instant" | "thinking";
@@ -34,6 +34,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const [basketId, setBasketId] = useState<number | null>(basketParam ? Number(basketParam) : null);
   const [eventQuery, setEventQuery] = useState("");
   const [eventCategory, setEventCategory] = useState("");
+  const [eventCategories, setEventCategories] = useState<string[]>([]);
   const [oddsFilter, setOddsFilter] = useState<"all" | "low" | "mid" | "high">("all");
   const [eventResults, setEventResults] = useState<KalshiEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<KalshiEvent | null>(null);
@@ -51,6 +52,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   useEffect(() => {
     listBaskets(20).then(setSavedBaskets).catch(() => {});
     if (buildPath === "manual") {
+      listEventCategories().then(setEventCategories).catch(() => {});
       void runEventSearch();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -277,6 +279,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     setEventQuery={setEventQuery}
                     eventCategory={eventCategory}
                     setEventCategory={setEventCategory}
+                    eventCategories={eventCategories}
                     oddsFilter={oddsFilter}
                     setOddsFilter={setOddsFilter}
                     eventResults={eventResults}
@@ -429,6 +432,7 @@ function ManualBuildComposer(props: {
   setEventQuery: (value: string) => void;
   eventCategory: string;
   setEventCategory: (value: string) => void;
+  eventCategories: string[];
   oddsFilter: "all" | "low" | "mid" | "high";
   setOddsFilter: (value: "all" | "low" | "mid" | "high") => void;
   eventResults: KalshiEvent[];
@@ -439,11 +443,10 @@ function ManualBuildComposer(props: {
   onAddHolding: (market: KalshiMarket) => void;
 }) {
   const {
-    eventQuery, setEventQuery, eventCategory, setEventCategory, oddsFilter, setOddsFilter, eventResults, selectedEvent, eventMarkets,
+    eventQuery, setEventQuery, eventCategory, setEventCategory, eventCategories, oddsFilter, setOddsFilter, eventResults, selectedEvent, eventMarkets,
     onEventSearch, onPickEvent, onAddHolding,
   } = props;
   const normalizedQuery = eventQuery.trim().toLowerCase();
-  const categoryOptions = Array.from(new Set(eventResults.map((event) => event.category).filter(Boolean))).sort();
   const filteredEvents = eventResults.filter((event) => {
     if (eventCategory && event.category !== eventCategory) return false;
     if (!normalizedQuery) return true;
@@ -494,7 +497,7 @@ function ManualBuildComposer(props: {
           />
           <select value={eventCategory} onChange={(e) => setEventCategory(e.target.value)} style={{ ...inputStyle, height: 50, borderRadius: 12 }}>
             <option value="">All categories</option>
-            {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
+            {eventCategories.map((category) => <option key={category} value={category}>{category}</option>)}
           </select>
           <select value={oddsFilter} onChange={(e) => setOddsFilter(e.target.value as "all" | "low" | "mid" | "high")} style={{ ...inputStyle, height: 50, borderRadius: 12 }}>
             <option value="all">All odds</option>

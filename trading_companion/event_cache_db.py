@@ -140,7 +140,7 @@ def _require_db() -> None:
         )
 
 
-def load_all_events(limit: int | None = None) -> list[dict]:
+def load_all_events(limit: int | None = None, category: str | None = None) -> list[dict]:
     _require_db()
     conn = _conn()
     try:
@@ -148,13 +148,16 @@ def load_all_events(limit: int | None = None) -> list[dict]:
         query = """
             SELECT event_ticker, series_ticker, title, sub_title, category
             FROM events
-            ORDER BY category, event_ticker
         """
-        params: tuple = ()
+        params: list[str | int] = []
+        if category:
+            query += " WHERE category = ?"
+            params.append(category)
+        query += " ORDER BY category, event_ticker"
         if limit is not None:
             query += " LIMIT ?"
-            params = (limit,)
-        cur.execute(query, params)
+            params.append(limit)
+        cur.execute(query, tuple(params))
         return [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
@@ -190,29 +193,55 @@ def search_events_fts(query_text: str, limit: int = 1200) -> list[dict]:
         conn.close()
 
 
-def search_events(query_text: str, limit: int = 48) -> list[dict]:
+def list_event_categories() -> list[str]:
+    _require_db()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT DISTINCT category
+            FROM events
+            WHERE trim(category) <> ''
+            ORDER BY category
+            """
+        )
+        return [row["category"] for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def search_events(query_text: str, limit: int = 48, category: str | None = None) -> list[dict]:
     _require_db()
     q = query_text.strip().lower()
     if not q:
-        return load_all_events(limit=limit)
+        return load_all_events(limit=limit, category=category)
 
     conn = _conn()
     try:
         cur = conn.cursor()
         like = f"%{q}%"
+        category_clause = "AND category = ?" if category else ""
+        params: list[str | int] = [like, like, like, like, like]
+        if category:
+            params.append(category)
+        params.append(limit)
         cur.execute(
-            """
+            f"""
             SELECT event_ticker, series_ticker, title, sub_title, category
             FROM events
-            WHERE lower(title) LIKE ?
-               OR lower(sub_title) LIKE ?
-               OR lower(event_ticker) LIKE ?
-               OR lower(series_ticker) LIKE ?
-               OR lower(category) LIKE ?
+            WHERE (
+                   lower(title) LIKE ?
+                OR lower(sub_title) LIKE ?
+                OR lower(event_ticker) LIKE ?
+                OR lower(series_ticker) LIKE ?
+                OR lower(category) LIKE ?
+            )
+               {category_clause}
             ORDER BY category, event_ticker
             LIMIT ?
             """,
-            (like, like, like, like, like, limit),
+            tuple(params),
         )
         return [dict(r) for r in cur.fetchall()]
     finally:

@@ -244,12 +244,20 @@ async def download_kalshi_log():
     )
 
 
+@app.get("/api/events/categories")
+async def list_event_categories():
+    from event_cache_db import list_event_categories as list_cached_event_categories
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, list_cached_event_categories)
+
+
 @app.get("/api/events")
-async def search_events(query: str = "", limit: int = 24):
+async def search_events(query: str = "", limit: int = 24, category: str = ""):
     from event_cache_db import search_events as search_cached_events
 
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, lambda: search_cached_events(query, limit))
+    return await loop.run_in_executor(None, lambda: search_cached_events(query, limit, category or None))
 
 
 @app.get("/api/events/{event_ticker}/markets")

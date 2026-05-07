@@ -26,6 +26,9 @@ async function apiFetch(path: string, init?: RequestInit, token?: string) {
 export const searchEvents = (query = "", limit = 24, category = ""): Promise<KalshiEvent[]> =>
   apiFetch(`/api/events?query=${encodeURIComponent(query)}&limit=${limit}${category ? `&category=${encodeURIComponent(category)}` : ""}`);
 
+export const listEventCategories = (): Promise<string[]> =>
+  apiFetch("/api/events/categories");
+
 export const getMarkets = (eventTicker: string): Promise<KalshiMarket[]> =>
   apiFetch(`/api/events/${eventTicker}/markets`);
 
