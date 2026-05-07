@@ -20,7 +20,13 @@ export function loadManualBasketDraft(): ManualBasketDraftHolding[] {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed)
+      ? parsed.map((holding) => ({
+        ...holding,
+        contract_label: holding.contract_label ?? (holding.side === "NO" ? "No" : "Yes"),
+        weight_percent: holding.weight_percent ?? holding.weight_dollars ?? 10,
+      }))
+      : [];
   } catch {
     return [];
   }
@@ -44,12 +50,14 @@ export function addMarketToManualBasketDraft(
     side?: "YES" | "NO";
     question?: string;
     marketPrice?: number;
+    contractLabel?: string;
   },
 ) {
   const holdings = loadManualBasketDraft();
   const side = options?.side ?? "YES";
   const question = options?.question ?? market.question;
   const marketPrice = options?.marketPrice ?? (side === "NO" ? 1 - market.mid_price : market.mid_price);
+  const contractLabel = options?.contractLabel ?? (side === "NO" ? "No" : market.yes_sub_title || "Yes");
   const existingIndex = holdings.findIndex((holding) => holding.ticker === market.ticker);
 
   if (existingIndex >= 0) {
@@ -58,6 +66,7 @@ export function addMarketToManualBasketDraft(
       question,
       market_price: marketPrice,
       side,
+      contract_label: contractLabel,
       rules_summary: market.rules_primary,
       close_date: market.close_date,
     };
@@ -72,8 +81,8 @@ export function addMarketToManualBasketDraft(
     market_price: marketPrice,
     close_date: market.close_date,
     side,
-    role: "direct",
-    weight_dollars: 10,
+    contract_label: contractLabel,
+    weight_percent: 10,
     rationale: "",
     main_risk: "",
     rules_summary: market.rules_primary,

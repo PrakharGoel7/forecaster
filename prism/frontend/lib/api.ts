@@ -101,7 +101,7 @@ export async function saveManualBasket(
     title: string;
     summary: string;
     timeframe?: string;
-    holdings: ManualBasketDraftHolding[];
+    holdings: (ManualBasketDraftHolding & { weight_dollars: number; role: "direct" | "mechanism" | "indirect" | "hedge" })[];
     is_public?: boolean;
   },
   token?: string,

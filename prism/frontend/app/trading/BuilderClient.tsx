@@ -247,12 +247,13 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
 
   function addSelectionToManualBasket(
     market: KalshiMarket,
-    selection: { side: "YES" | "NO"; label?: string; price?: number },
+    selection: { side: "YES" | "NO"; label?: string; price?: number; contractLabel?: string },
   ) {
     addMarketToManualBasketDraft(market, {
       side: selection.side,
       question: selection.label ?? market.question,
       marketPrice: selection.price,
+      contractLabel: selection.contractLabel,
     });
     setManualHoldings(loadManualBasketDraft());
     setManualEventModal(null);
@@ -274,6 +275,11 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       setError("Add a basket title and at least one holding.");
       return;
     }
+    const totalPercent = manualHoldings.reduce((sum, holding) => sum + Math.max(0, holding.weight_percent || 0), 0);
+    if (totalPercent <= 0) {
+      setError("Set portfolio composition above 0% for at least one holding.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -281,7 +287,11 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
         title: manualTitle.trim(),
         summary: manualSummary.trim() || manualTitle.trim(),
         timeframe: manualTimeframe.trim(),
-        holdings: manualHoldings,
+        holdings: manualHoldings.map((holding) => ({
+          ...holding,
+          weight_dollars: Number((((holding.weight_percent || 0) / totalPercent) * 100).toFixed(2)),
+          role: "direct",
+        })),
       });
       setBasket(JSON.parse(result.basket.basket_json));
       setBeliefSummary(JSON.parse(result.basket.belief_summary_json));
@@ -452,7 +462,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
             setManualEventModalLoading(false);
             setManualEventModalNotice("");
           }}
-          onAddSelection={addSelectionToManualBasket}
+                  onAddSelection={addSelectionToManualBasket}
         />
       )}
     </div>
@@ -790,7 +800,7 @@ function ManualEventModal(props: {
   loading: boolean;
   notice: string;
   onClose: () => void;
-  onAddSelection: (market: KalshiMarket, selection: { side: "YES" | "NO"; label?: string; price?: number }) => void;
+  onAddSelection: (market: KalshiMarket, selection: { side: "YES" | "NO"; label?: string; price?: number; contractLabel?: string }) => void;
 }) {
   const {
     event, markets, mode, loading, notice, onClose, onAddSelection,
@@ -910,6 +920,7 @@ function ManualEventModal(props: {
                     side: "YES",
                     label: leadMarket.question,
                     price: leadMarket.mid_price,
+                    contractLabel: "Yes",
                   })}
                 />
                 <ContractChoiceCard
@@ -920,6 +931,7 @@ function ManualEventModal(props: {
                     side: "NO",
                     label: leadMarket.question,
                     price: 1 - leadMarket.mid_price,
+                    contractLabel: "No",
                   })}
                 />
               </div>
@@ -935,6 +947,7 @@ function ManualEventModal(props: {
                       side: "YES",
                       label: market.yes_sub_title || market.question,
                       price: market.mid_price,
+                      contractLabel: market.yes_sub_title || market.question,
                     })}
                   />
                 ))}
@@ -1023,7 +1036,7 @@ function ManualBasketSidebar(props: {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ color: "#ede9e3", fontWeight: 600 }}>Selected holdings</div>
           <div style={{ color: "#8f877e", fontSize: 12 }}>
-            ${manualHoldings.reduce((sum, holding) => sum + (holding.weight_dollars || 0), 0).toFixed(0)} draft
+            {manualHoldings.reduce((sum, holding) => sum + (holding.weight_percent || 0), 0).toFixed(0)}% draft
           </div>
         </div>
         <div style={{ display: "grid", gap: 10, maxHeight: "calc(100vh - 360px)", overflowY: "auto", paddingRight: 4 }}>
@@ -1038,7 +1051,7 @@ function ManualBasketSidebar(props: {
           {!manualHoldings.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No holdings yet. Add them from the market cards.</div>}
         </div>
         <div style={{ color: "#7f776f", fontSize: 13, lineHeight: 1.6, marginTop: 14, marginBottom: 14 }}>
-          Weights will be normalized to a $100 basket when you save.
+          Portfolio composition will be normalized to a 100% basket when you save.
         </div>
         <button onClick={onOpenSaveModal} style={{ ...primaryButtonStyle, width: "100%", opacity: loading ? 0.7 : 1 }}>
           {loading ? "Saving..." : "Save basket"}
@@ -1346,13 +1359,15 @@ function ManualHoldingCard({ holding, onUpdate, onRemove }: {
           ×
         </button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8, marginBottom: 8 }}>
-        <select value={holding.side} onChange={(e) => onUpdate({ side: e.target.value as "YES" | "NO" })} style={inputStyle}>
-          <option value="YES">YES</option>
-          <option value="NO">NO</option>
-        </select>
-        <input value={holding.weight_dollars} type="number" min={1} onChange={(e) => onUpdate({ weight_dollars: Number(e.target.value) })} style={inputStyle} />
-        <input value={`${Math.round(holding.market_price * 100)}%`} disabled style={inputStyle} />
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)", gap: 8, marginBottom: 8 }}>
+        <input value={holding.contract_label || (holding.side === "NO" ? "No" : "Yes")} disabled style={inputStyle} />
+        <input
+          value={holding.weight_percent}
+          type="number"
+          min={1}
+          onChange={(e) => onUpdate({ weight_percent: Number(e.target.value) })}
+          style={inputStyle}
+        />
       </div>
       <input
         value={holding.rationale}

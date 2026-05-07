@@ -179,8 +179,8 @@ export interface ManualBasketDraftHolding {
   market_price: number;
   close_date: string;
   side: "YES" | "NO";
-  role: "direct" | "mechanism" | "indirect" | "hedge";
-  weight_dollars: number;
+  contract_label?: string;
+  weight_percent: number;
   rationale: string;
   main_risk: string;
   rules_summary?: string;
