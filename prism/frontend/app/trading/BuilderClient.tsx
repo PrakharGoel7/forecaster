@@ -23,52 +23,6 @@ interface ManualEventModalState {
   mode: "details" | "add";
 }
 
-const QUICK_CATEGORY_CHIPS = ["All", "Economics", "Politics", "Climate", "AI", "Crypto", "Sports"] as const;
-
-function resolveCategoryChip(chip: string, categories: string[]): string {
-  if (chip === "All") return "";
-  const normalizedChip = chip.toLowerCase();
-  const directMatch = categories.find((category) => category.toLowerCase() === normalizedChip);
-  if (directMatch) return directMatch;
-  if (chip === "AI") {
-    return categories.find((category) => {
-      const c = category.toLowerCase();
-      return c.includes("science") || c.includes("technology") || c.includes("tech") || c.includes("ai");
-    }) ?? "";
-  }
-  if (chip === "Climate") {
-    return categories.find((category) => {
-      const c = category.toLowerCase();
-      return c.includes("climate") || c.includes("weather");
-    }) ?? "";
-  }
-  if (chip === "Politics") {
-    return categories.find((category) => {
-      const c = category.toLowerCase();
-      return c.includes("polit") || c.includes("elect") || c.includes("govern");
-    }) ?? "";
-  }
-  if (chip === "Economics") {
-    return categories.find((category) => {
-      const c = category.toLowerCase();
-      return c.includes("econ") || c.includes("financial") || c.includes("fed") || c.includes("rate");
-    }) ?? "";
-  }
-  if (chip === "Crypto") {
-    return categories.find((category) => {
-      const c = category.toLowerCase();
-      return c.includes("crypto") || c.includes("bitcoin") || c.includes("eth");
-    }) ?? "";
-  }
-  if (chip === "Sports") {
-    return categories.find((category) => {
-      const c = category.toLowerCase();
-      return c.includes("sport") || c.includes("nba") || c.includes("nfl") || c.includes("mlb") || c.includes("soccer");
-    }) ?? "";
-  }
-  return categories.find((category) => category.toLowerCase().includes(normalizedChip)) ?? "";
-}
-
 export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -624,30 +578,6 @@ function ManualBuildComposer(props: {
         display: "grid",
         gap: 16,
       }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {QUICK_CATEGORY_CHIPS.map((chip) => {
-            const resolved = resolveCategoryChip(chip, eventCategories);
-            const isActive = chip === "All" ? !eventCategory : eventCategory === resolved;
-            return (
-              <button
-                key={chip}
-                onClick={() => setEventCategory(resolved)}
-                style={{
-                  borderRadius: 999,
-                  border: `1px solid ${isActive ? "rgba(227,100,56,0.42)" : "rgba(255,255,255,0.08)"}`,
-                  background: isActive ? "rgba(227,100,56,0.13)" : "rgba(255,255,255,0.02)",
-                  color: isActive ? "#f3e8df" : "#a79f97",
-                  padding: "9px 14px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                {chip}
-              </button>
-            );
-          })}
-        </div>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "stretch" }}>
           <input
             value={eventQuery}
@@ -659,6 +589,37 @@ function ManualBuildComposer(props: {
             style={{ ...inputStyle, height: 54, fontSize: 15, borderRadius: 16 }}
           />
           <button onClick={onEventSearch} style={{ ...primaryButtonStyle, minWidth: 132, height: 54, borderRadius: 16 }}>Search</button>
+        </div>
+        <div style={{
+          display: "flex",
+          gap: 10,
+          overflowX: "auto",
+          paddingBottom: 4,
+          scrollbarWidth: "thin",
+        }}>
+          {["All", ...eventCategories].map((chip) => {
+            const isActive = chip === "All" ? !eventCategory : eventCategory === chip;
+            return (
+              <button
+                key={chip}
+                onClick={() => setEventCategory(chip === "All" ? "" : chip)}
+                style={{
+                  borderRadius: 999,
+                  border: `1px solid ${isActive ? "rgba(227,100,56,0.42)" : "rgba(255,255,255,0.08)"}`,
+                  background: isActive ? "rgba(227,100,56,0.13)" : "rgba(255,255,255,0.02)",
+                  color: isActive ? "#f3e8df" : "#a79f97",
+                  padding: "9px 14px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                {chip}
+              </button>
+            );
+          })}
         </div>
       </div>
 
