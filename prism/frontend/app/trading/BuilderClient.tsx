@@ -473,24 +473,11 @@ function ManualBuildComposer(props: {
     const haystack = [event.title, event.category, event.event_ticker].filter(Boolean).join(" ").toLowerCase();
     return haystack.includes(normalizedQuery);
   });
-  const matchingEventTickers = new Set(
-    eventMarkets.filter((market) => {
-      if (eventCategory && market.category !== eventCategory) return false;
-      if (normalizedQuery) {
-        const haystack = [market.question, market.event_title, market.category, market.ticker].filter(Boolean).join(" ").toLowerCase();
-        if (!haystack.includes(normalizedQuery)) return false;
-      }
-      const implied = market.mid_price * 100;
-      if (oddsFilter === "low") return implied < 33;
-      if (oddsFilter === "mid") return implied >= 33 && implied <= 66;
-      if (oddsFilter === "high") return implied > 66;
-      return true;
-    }).map((market) => market.event_ticker)
-  );
-  const browseEvents = filteredEvents.filter((event) => matchingEventTickers.size === 0 || matchingEventTickers.has(event.event_ticker));
+  const browseEvents = filteredEvents;
   const totalPages = Math.max(1, Math.ceil(browseEvents.length / pageSize));
   const currentPage = Math.min(eventPage, totalPages);
   const paginatedEvents = browseEvents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const visibleCardCount = paginatedEvents.length;
   const marketsByEvent = new Map<string, KalshiMarket[]>();
   for (const market of eventMarkets) {
     const existing = marketsByEvent.get(market.event_ticker) ?? [];
@@ -547,7 +534,9 @@ function ManualBuildComposer(props: {
           </div>
           <div style={{ display: "grid", justifyItems: "end", gap: 2 }}>
             <div style={{ color: "#8f877e", fontSize: 12 }}>{browseEvents.length} events</div>
-            <div style={{ color: "#6f6861", fontSize: 12 }}>{matchingEventTickers.size || browseEvents.length} match the odds filter</div>
+            <div style={{ color: "#6f6861", fontSize: 12 }}>
+              {oddsFilter === "all" ? "Option previews load per page" : `Odds filter applies to the ${visibleCardCount} visible cards`}
+            </div>
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
@@ -705,13 +694,6 @@ function EventScopeCard({
         >
           Add to basket
         </button>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-        <div style={{ color: "#9f978f", fontSize: 12 }}>{sortedMarkets.length ? `${sortedMarkets.length} options` : "Event details"}</div>
-        <div style={{ color: "#706960", fontSize: 12 }}>
-          {sortedMarkets.length ? "Adds the top option from this event" : "No markets loaded yet"}
-        </div>
       </div>
     </div>
   );
