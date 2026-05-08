@@ -23,17 +23,6 @@ interface ManualEventModalState {
   mode: "details" | "add";
 }
 
-const AI_EXAMPLE_PROMPTS = [
-  "AI agents replace entry-level work",
-  "China invades Taiwan before 2030",
-  "Rates stay higher for longer",
-  "Bitcoin hits $250K",
-  "GLP-1 drugs reshape healthcare",
-  "India becomes a manufacturing hub",
-  "Nuclear energy makes a comeback",
-  "Climate disasters strain insurance markets",
-] as const;
-
 export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -586,7 +575,9 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
           ))}
         </div>
         <div style={{ color: "#8f877e", fontSize: 13, lineHeight: 1.6 }}>
-          {mode === "instant" ? "Fast basket from your take." : "More thesis sharpening and broader implication mapping."} {stepLabel}.
+          {mode === "instant"
+            ? "Build a basket fast with minimal back-and-forth."
+            : "Talk with Prism to dig deeper into your thesis before building."} {stepLabel}.
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "stretch" }}>
           <input
@@ -599,28 +590,6 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
             style={{ ...inputStyle, height: 54, fontSize: 15, borderRadius: 16 }}
           />
           <button onClick={onSubmit} style={{ ...primaryButtonStyle, minWidth: 132, borderRadius: 16 }}>Build basket</button>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {AI_EXAMPLE_PROMPTS.map((example) => (
-            <button
-              key={example}
-              onClick={() => setInput(example)}
-              style={{
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.02)",
-                color: "#b8b0a8",
-                padding: "9px 13px",
-                fontSize: 13,
-                cursor: "pointer",
-              }}
-            >
-              {example}
-            </button>
-          ))}
-        </div>
-        <div style={{ color: "#7f776f", fontSize: 13 }}>
-          Output: a weighted prediction-market basket built from your take.
         </div>
       </div>
     </div>
