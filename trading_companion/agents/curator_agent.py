@@ -32,6 +32,8 @@ Rules:
 - Prefer clean markets but do not fail solely because only proxy markets exist.
 - Every proxy holding must preserve fit labels and warnings.
 - Basket summary should clearly state whether this is a Direct basket, Strong proxy basket, Mixed proxy basket, or Thin market coverage basket.
+- Create 2 to 5 topic-specific basket buckets that would make sense to a retail user reading this thesis.
+- Group holdings into those topic buckets using plain-English labels tailored to the thesis, not generic labels like direct, mechanism, hedge, or consequence.
 """
 
 _BUILD_TOOL = {
@@ -65,6 +67,17 @@ _BUILD_TOOL = {
                         "required": ["bucket", "weight_dollars", "reason"],
                     },
                 },
+                "basket_buckets": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "description": {"type": "string"},
+                        },
+                        "required": ["name", "description"],
+                    },
+                },
                 "holdings": {
                     "type": "array",
                     "items": {
@@ -73,7 +86,8 @@ _BUILD_TOOL = {
                             "ticker": {"type": "string"},
                             "side": {"type": "string", "enum": ["YES", "NO"]},
                             "weight_dollars": {"type": "number"},
-                            "role": {"type": "string", "enum": ["direct", "mechanism", "indirect", "hedge"]},
+                            "topic_bucket": {"type": "string"},
+                            "bucket_thesis": {"type": ["string", "null"]},
                             "linked_exposure_name": {"type": "string"},
                             "fit_type": {
                                 "type": "string",
@@ -86,7 +100,7 @@ _BUILD_TOOL = {
                             "main_risk": {"type": "string"},
                         },
                         "required": [
-                            "ticker", "side", "weight_dollars", "role", "linked_exposure_name",
+                            "ticker", "side", "weight_dollars", "topic_bucket", "bucket_thesis", "linked_exposure_name",
                             "fit_type", "fit_confidence", "fit_warning", "proxy_reason", "rationale", "main_risk",
                         ],
                     },
@@ -94,7 +108,7 @@ _BUILD_TOOL = {
             },
             "required": [
                 "basket_title", "basket_summary", "construction_notes",
-                "basket_quality", "basket_quality_explanation", "exposure_allocations", "holdings",
+                "basket_quality", "basket_quality_explanation", "exposure_allocations", "basket_buckets", "holdings",
             ],
         },
     },
@@ -164,12 +178,24 @@ class BasketBuilderAgent:
         market_map = {m.ticker: m for m in markets}
         seen_events: set[str] = set()
         holdings: list[dict] = []
+
+        def _compat_role(selected_meta: dict, fit_type: str | None) -> str:
+            tier = selected_meta.get("tier")
+            if tier == "hedge_or_falsifier" or fit_type == "hedge":
+                return "hedge"
+            if tier == "direct_thesis":
+                return "direct"
+            if tier == "mechanism":
+                return "mechanism"
+            return "indirect"
+
         for raw in result.get("holdings", []):
             market = market_map.get(raw["ticker"])
             if not market or market.event_ticker in seen_events:
                 continue
             seen_events.add(market.event_ticker)
             selected_meta = selected_market_map.get(market.ticker, {})
+            fit_type = raw.get("fit_type", selected_meta.get("fit_type"))
             holdings.append({
                 "ticker": market.ticker,
                 "event_ticker": market.event_ticker,
@@ -177,11 +203,13 @@ class BasketBuilderAgent:
                 "market_price": market.mid_price,
                 "close_date": market.close_date,
                 "side": raw["side"],
-                "role": raw["role"],
+                "role": _compat_role(selected_meta, fit_type),
                 "weight_dollars": float(raw["weight_dollars"]),
+                "topic_bucket": raw.get("topic_bucket", ""),
+                "bucket_thesis": raw.get("bucket_thesis"),
                 "linked_exposure_name": raw.get("linked_exposure_name", selected_meta.get("linked_exposure_name", "")),
                 "route_ring": selected_meta.get("route_ring"),
-                "fit_type": raw.get("fit_type", selected_meta.get("fit_type")),
+                "fit_type": fit_type,
                 "fit_confidence": raw.get("fit_confidence", selected_meta.get("fit_confidence")),
                 "fit_warning": raw.get("fit_warning", selected_meta.get("fit_warning")),
                 "proxy_reason": raw.get("proxy_reason", selected_meta.get("proxy_reason")),
@@ -199,6 +227,7 @@ class BasketBuilderAgent:
                 "basket_quality": result.get("basket_quality", "thin_market_coverage"),
                 "basket_quality_explanation": result.get("basket_quality_explanation", "No usable holdings were available."),
                 "exposure_allocations": result.get("exposure_allocations", []),
+                "basket_buckets": result.get("basket_buckets", []),
                 "holdings": [],
                 "total_notional": 0.0,
             }
@@ -225,6 +254,7 @@ class BasketBuilderAgent:
             "basket_quality": result.get("basket_quality"),
             "basket_quality_explanation": result.get("basket_quality_explanation", ""),
             "exposure_allocations": result.get("exposure_allocations", []),
+            "basket_buckets": result.get("basket_buckets", []),
             "holdings": normalized,
             "total_notional": round(sum(h["weight_dollars"] for h in normalized), 2),
         }

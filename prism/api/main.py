@@ -860,7 +860,7 @@ class ManualBasketHoldingRequest(BaseModel):
     market_price: float
     close_date: str
     side: str
-    role: str
+    role: str | None = None
     weight_dollars: float
     rationale: str = ""
     main_risk: str = ""
@@ -1446,7 +1446,7 @@ async def create_manual_basket(req: ManualBasketRequest, request: Request):
             "market_price": holding.market_price,
             "close_date": holding.close_date,
             "side": holding.side,
-            "role": holding.role,
+            "role": holding.role or "direct",
             "weight_dollars": weight,
             "rationale": holding.rationale,
             "main_risk": holding.main_risk,

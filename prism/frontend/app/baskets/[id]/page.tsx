@@ -76,7 +76,7 @@ export default function BasketSharePage() {
                     <div style={{ color: "#ede9e3", fontWeight: 600, fontSize: 18, marginBottom: 8 }}>{holding.question}</div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                       <Tag>{holding.side}</Tag>
-                      <Tag>{holding.role}</Tag>
+                      <Tag>{holding.topic_bucket || holding.fit_type?.replace(/_/g, " ") || "position"}</Tag>
                       <Tag>{Math.round(holding.market_price * 100)}% market odds</Tag>
                     </div>
                     <div style={{ color: "#978f87", lineHeight: 1.6 }}>{holding.rationale}</div>

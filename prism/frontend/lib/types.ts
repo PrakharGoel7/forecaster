@@ -212,8 +212,10 @@ export interface BasketHolding {
   market_price: number;
   close_date: string;
   side: "YES" | "NO";
-  role: "direct" | "mechanism" | "indirect" | "hedge";
+  role?: "direct" | "mechanism" | "indirect" | "hedge";
   weight_dollars: number;
+  topic_bucket?: string;
+  bucket_thesis?: string | null;
   linked_exposure_name?: string;
   route_ring?: "direct" | "strong_proxy" | "early_signal";
   fit_type?: "direct_thesis" | "strong_proxy" | "good_proxy" | "partial_proxy" | "early_signal" | "hedge";
@@ -235,6 +237,10 @@ export interface PredictionBasket {
   construction_notes: string;
   basket_quality?: "direct" | "strong_proxy" | "mixed_proxy" | "thin_market_coverage";
   basket_quality_explanation?: string;
+  basket_buckets?: {
+    name: string;
+    description: string;
+  }[];
   exposure_allocations?: {
     bucket: "direct_thesis" | "mechanism" | "first_order_consequence" | "hedge_or_falsifier";
     weight_dollars: number;

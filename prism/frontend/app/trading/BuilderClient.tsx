@@ -1440,18 +1440,13 @@ function consequenceLine(domain: DomainAnalysis): string {
   return firstClause.length > 54 ? `${firstClause.slice(0, 51)}...` : firstClause;
 }
 
-function holdingGroup(holding: PredictionBasket["holdings"][number]): "direct" | "consequence" | "hedge" {
-  if (holding.tier === "hedge_or_falsifier" || holding.role === "hedge") return "hedge";
-  if (holding.tier === "direct_thesis" || holding.role === "direct") return "direct";
-  return "consequence";
-}
-
 function holdingTag(holding: PredictionBasket["holdings"][number]): string {
-  if (holding.tier === "hedge_or_falsifier" || holding.role === "hedge") return "Hedge";
-  if (holding.tier === "direct_thesis" || holding.role === "direct") return "Direct";
+  if (holding.topic_bucket?.trim()) return holding.topic_bucket.trim();
+  if (holding.tier === "hedge_or_falsifier" || holding.fit_type === "hedge" || holding.role === "hedge") return "Hedge";
+  if (holding.tier === "direct_thesis" || holding.role === "direct") return "Core thesis";
+  if (holding.tier === "mechanism" || holding.role === "mechanism") return "Mechanism";
   if (holding.tier === "first_order_consequence" || holding.role === "indirect") return "Consequence";
-  if (holding.role === "mechanism" || holding.tier === "mechanism") return "Consequence";
-  return "Contrarian";
+  return "Related signal";
 }
 
 function basketQualityLabel(quality?: PredictionBasket["basket_quality"]): string {
@@ -1507,6 +1502,11 @@ function HoldingGroup({ title, holdings }: { title: string; holdings: Prediction
                 <div style={{ color: "#9b938c", fontSize: 14, lineHeight: 1.6, marginBottom: 6 }}>
                   <strong style={{ color: "#d8d0c8" }}>Why it&apos;s here:</strong> {holding.rationale || "Included as a direct expression of the thesis."}
                 </div>
+                {holding.bucket_thesis && (
+                  <div style={{ color: "#9f968e", fontSize: 13, lineHeight: 1.5, marginBottom: 6 }}>
+                    <strong style={{ color: "#d8d0c8" }}>Bucket view:</strong> {holding.bucket_thesis}
+                  </div>
+                )}
                 <div style={{ color: "#7f776f", fontSize: 13, lineHeight: 1.5 }}>
                   <strong style={{ color: "#c5bcb4" }}>Main risk:</strong> {holding.main_risk || "The thesis resolves differently than expected."}
                 </div>
@@ -1568,11 +1568,23 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
 
 function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: number | null }) {
   const [copied, setCopied] = useState(false);
-  const grouped = {
-    direct: basket.holdings.filter((holding) => holdingGroup(holding) === "direct"),
-    consequence: basket.holdings.filter((holding) => holdingGroup(holding) === "consequence"),
-    hedge: basket.holdings.filter((holding) => holdingGroup(holding) === "hedge"),
-  };
+  const bucketDefinitions = basket.basket_buckets ?? [];
+  const grouped = Array.from(
+    basket.holdings.reduce((map, holding) => {
+      const name = holding.topic_bucket?.trim() || holdingTag(holding);
+      const existing = map.get(name) ?? [];
+      existing.push(holding);
+      map.set(name, existing);
+      return map;
+    }, new Map<string, PredictionBasket["holdings"]>()),
+  ).map(([name, holdings]) => ({
+    name,
+    holdings,
+    description:
+      bucketDefinitions.find((bucket) => bucket.name === name)?.description ??
+      holdings.find((holding) => holding.bucket_thesis)?.bucket_thesis ??
+      "",
+  }));
 
   async function copyLink() {
     if (!basketId || typeof window === "undefined" || !navigator.clipboard) return;
@@ -1618,9 +1630,16 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
       </div>
 
       <div style={{ display: "grid", gap: 16 }}>
-        <HoldingGroup title="Direct bets" holdings={grouped.direct} />
-        <HoldingGroup title="First-order consequences" holdings={grouped.consequence} />
-        <HoldingGroup title="Hedge positions" holdings={grouped.hedge} />
+        {grouped.map((group) => (
+          <div key={group.name}>
+            <HoldingGroup title={group.name} holdings={group.holdings} />
+            {group.description && (
+              <div style={{ color: "#8f877f", fontSize: 13, lineHeight: 1.5, marginTop: -12 }}>
+                {group.description}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       <div style={{ marginTop: 18, color: "#8f877f", fontSize: 14, lineHeight: 1.6 }}>

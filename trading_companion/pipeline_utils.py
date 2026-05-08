@@ -74,6 +74,8 @@ def apply_critic_repairs(basket: dict[str, Any], selected_markets: list[dict[str
             "fit_warning": target.get("fit_warning"),
             "proxy_reason": target.get("proxy_reason"),
             "tier": target.get("tier"),
+            "topic_bucket": to_remove.get("topic_bucket", ""),
+            "bucket_thesis": to_remove.get("bucket_thesis"),
             "rationale": replacement.get("reason", to_remove.get("rationale", "")),
         })
     return {**basket, "holdings": holdings}
@@ -113,6 +115,8 @@ def validate_and_repair_basket(
             "event_ticker": event_ticker,
             "question": holding.get("question") or source.get("question") or market.question,
             "side": side,
+            "topic_bucket": holding.get("topic_bucket", ""),
+            "bucket_thesis": holding.get("bucket_thesis"),
             "linked_exposure_name": holding.get("linked_exposure_name") or source.get("linked_exposure_name", ""),
             "route_ring": holding.get("route_ring") or source.get("route_ring"),
             "fit_type": holding.get("fit_type") or source.get("fit_type"),
@@ -133,10 +137,10 @@ def validate_and_repair_basket(
         keep = {h["ticker"] for h in first_order[:2]}
         repaired = [h for h in repaired if h.get("tier") != "first_order_consequence" or h["ticker"] in keep]
         warnings.append("Trimmed first-order consequence holdings to 2")
-    hedges = [h for h in repaired if h.get("tier") == "hedge_or_falsifier" or h.get("role") == "hedge"]
+    hedges = [h for h in repaired if h.get("tier") == "hedge_or_falsifier" or h.get("fit_type") == "hedge"]
     if len(hedges) > 1:
         keep = hedges[0]["ticker"]
-        repaired = [h for h in repaired if not ((h.get("tier") == "hedge_or_falsifier" or h.get("role") == "hedge") and h["ticker"] != keep)]
+        repaired = [h for h in repaired if not ((h.get("tier") == "hedge_or_falsifier" or h.get("fit_type") == "hedge") and h["ticker"] != keep)]
         warnings.append("Trimmed hedge holdings to 1")
     for holding in repaired:
         if float(holding.get("weight_dollars", 0.0)) > 35.0:
