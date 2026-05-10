@@ -114,10 +114,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialBelief, buildPath]);
 
-  const stepLabel = useMemo(() => (
-    mode === "instant" ? "1 follow-up max" : "up to 3 follow-ups"
-  ), [mode]);
-
   const progressCopy = useMemo(() => {
     const label = progressLabel.toLowerCase();
     if (stage === "chatting") return "Sharpening your thesis";
@@ -347,7 +343,6 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     setMode={setMode}
                     input={input}
                     setInput={setInput}
-                    stepLabel={stepLabel}
                     onSubmit={onSubmitInitial}
                   />
                 ) : (
@@ -525,12 +520,11 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   );
 }
 
-function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }: {
+function AIBuildComposer({ mode, setMode, input, setInput, onSubmit }: {
   mode: Mode;
   setMode: (mode: Mode) => void;
   input: string;
   setInput: (value: string) => void;
-  stepLabel: string;
   onSubmit: () => void;
 }) {
   return (
@@ -577,7 +571,7 @@ function AIBuildComposer({ mode, setMode, input, setInput, stepLabel, onSubmit }
         <div style={{ color: "#8f877e", fontSize: 13, lineHeight: 1.6 }}>
           {mode === "instant"
             ? "Build a basket fast with minimal back-and-forth."
-            : "Talk with Prism to dig deeper into your thesis before building."} {stepLabel}.
+            : "Talk with Prism to dig deeper into your thesis before building."}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "stretch" }}>
           <input
@@ -1448,7 +1442,7 @@ function basketQualityCopy(quality?: PredictionBasket["basket_quality"]): string
   }
 }
 
-function HoldingGroup({ title, holdings }: { title: string; holdings: PredictionBasket["holdings"] }) {
+function HoldingGroup({ title, holdings, totalNotional }: { title: string; holdings: PredictionBasket["holdings"]; totalNotional: number }) {
   if (!holdings.length) return null;
   return (
     <section>
@@ -1492,7 +1486,9 @@ function HoldingGroup({ title, holdings }: { title: string; holdings: Prediction
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ color: "#8f877f", fontSize: 12, marginBottom: 6 }}>Weight</div>
-                <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600 }}>${holding.weight_dollars.toFixed(0)}</div>
+                <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600 }}>
+                  {Math.round((holding.weight_dollars / totalNotional) * 100)}%
+                </div>
               </div>
             </div>
           </div>
@@ -1536,6 +1532,7 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
 }
 
 function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: number | null }) {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const bucketDefinitions = basket.basket_buckets ?? [];
   const grouped = Array.from(
@@ -1562,6 +1559,25 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
     window.setTimeout(() => setCopied(false), 1600);
   }
 
+  function editBasket() {
+    const draftHoldings: ManualBasketDraftHolding[] = basket.holdings.map((holding) => ({
+      ticker: holding.ticker,
+      event_ticker: holding.event_ticker,
+      event_title: holding.event_title,
+      question: holding.question,
+      market_price: holding.market_price,
+      close_date: holding.close_date,
+      side: holding.side,
+      contract_label: holding.side === "NO" ? "No" : "Yes",
+      weight_percent: Math.round((holding.weight_dollars / basket.total_notional) * 100),
+      rationale: holding.rationale || "",
+      main_risk: holding.main_risk || "",
+      rules_summary: holding.rules_summary,
+    }));
+    saveManualBasketDraft(draftHoldings);
+    router.push("/trading/manual");
+  }
+
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}>
@@ -1577,7 +1593,7 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
             <Tag>Share-ready</Tag>
-            <Tag>${basket.total_notional.toFixed(0)} notional</Tag>
+            <Tag>{basket.holdings.length} positions</Tag>
             {basket.basket_quality && <Tag>{basketQualityLabel(basket.basket_quality)}</Tag>}
           </div>
           <div style={{ color: "#9b938c", fontSize: 14, lineHeight: 1.6, marginTop: 10, maxWidth: 720 }}>
@@ -1595,13 +1611,16 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
               </button>
             </>
           )}
+          <button onClick={editBasket} style={ghostButtonStyle}>
+            Edit basket
+          </button>
         </div>
       </div>
 
       <div style={{ display: "grid", gap: 16 }}>
         {grouped.map((group) => (
           <div key={group.name}>
-            <HoldingGroup title={group.name} holdings={group.holdings} />
+            <HoldingGroup title={group.name} holdings={group.holdings} totalNotional={basket.total_notional} />
             {group.description && (
               <div style={{ color: "#8f877f", fontSize: 13, lineHeight: 1.5, marginTop: -12 }}>
                 {group.description}
