@@ -67,7 +67,10 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
       >
         {/* Author row */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div
+            style={{ display: "flex", alignItems: "center", gap: 8 }}
+            onClick={basket.username ? (e) => { e.preventDefault(); window.location.href = `/users/${basket.username}`; } : undefined}
+          >
             <div style={{
               width: 28, height: 28, borderRadius: "50%",
               background: color,
@@ -77,7 +80,11 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
               <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>◈</span>
             </div>
             <div>
-              <div style={{ color: "#1c1814", fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>
+              <div style={{
+                color: basket.username ? "#4f46e5" : "#1c1814",
+                fontSize: 13, fontWeight: 600, lineHeight: 1.2,
+                cursor: basket.username ? "pointer" : "default",
+              }}>
                 {basket.username ? `@${basket.username}` : "Prism"}
               </div>
               <div style={{ color: "#a8a29a", fontSize: 11, lineHeight: 1.2 }}>{timeAgo(basket.created_at)}</div>
