@@ -332,7 +332,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
     <div style={{ minHeight: "100vh", background: "#f8f6f2", position: "relative" }}>
       <Header />
       <GridOverlay />
-      <div style={{ position: "relative", zIndex: 10, paddingTop: 56 }}>
+      <div style={{ position: "relative", zIndex: 10, paddingTop: 80 }}>
         <div style={{ maxWidth: buildPath === "manual" ? 1560 : 1040, margin: "0 auto", padding: buildPath === "manual" ? "24px 20px 72px" : "24px 20px 72px" }}>
           <div style={{ display: "grid", gridTemplateColumns: buildPath === "manual" ? "minmax(0, 1fr) 420px" : "minmax(0, 1fr)", gap: 20, alignItems: "start" }}>
             <div>
@@ -541,7 +541,7 @@ function AIBuildComposer({ mode, setMode, input, setInput, onSubmit }: {
         </p>
       </div>
       <div style={{
-        border: "1px solid rgba(255,255,255,0.07)",
+        border: "1px solid rgba(0,0,0,0.07)",
         borderRadius: 24,
         padding: 20,
         background: "#ffffff",
@@ -640,7 +640,7 @@ function ManualBuildComposer(props: {
       </div>
 
       <div style={{
-        border: "1px solid rgba(255,255,255,0.07)",
+        border: "1px solid rgba(0,0,0,0.07)",
         borderRadius: 24,
         padding: 20,
         background: "#ffffff",
@@ -676,7 +676,7 @@ function ManualBuildComposer(props: {
                 style={{
                   borderRadius: 999,
                   border: `1px solid ${isActive ? "rgba(227,100,56,0.42)" : "rgba(0,0,0,0.08)"}`,
-                  background: isActive ? "rgba(227,100,56,0.13)" : "rgba(0,0,0,0.02)",
+                  background: isActive ? "rgba(227,100,56,0.13)" : "rgba(0,0,0,0.04)",
                   color: isActive ? "#1c1814" : "#6e675f",
                   padding: "9px 14px",
                   fontSize: 13,
@@ -705,7 +705,7 @@ function ManualBuildComposer(props: {
               <div
                 key={event.event_ticker}
                 style={{
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(0,0,0,0.08)",
                   borderRadius: 22,
                   padding: 20,
                   minHeight: 276,
@@ -793,7 +793,7 @@ function EventScopeCard({
       </div>
 
       <div style={{
-        border: "1px solid rgba(255,255,255,0.05)",
+        border: "1px solid rgba(0,0,0,0.05)",
         borderRadius: 16,
         padding: 14,
         background: "rgba(0,0,0,0.03)",
@@ -925,7 +925,7 @@ function ManualEventModal(props: {
         maxHeight: "calc(100vh - 48px)",
         overflowY: "auto",
         borderRadius: 28,
-        border: "1px solid rgba(255,255,255,0.08)",
+        border: "1px solid rgba(0,0,0,0.08)",
         background: "#ffffff",
         boxShadow: "0 8px 40px rgba(0,0,0,0.12)",
         padding: 28,
@@ -941,7 +941,7 @@ function ManualEventModal(props: {
             aria-label="Close"
             style={{
               background: "transparent",
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid rgba(0,0,0,0.08)",
               color: "#6e675f",
               width: 38,
               height: 38,
@@ -957,7 +957,7 @@ function ManualEventModal(props: {
 
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(340px,0.92fr)", gap: 20, alignItems: "start" }}>
           <section style={{
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: "1px solid rgba(0,0,0,0.08)",
             borderRadius: 22,
             padding: 22,
             background: "rgba(0,0,0,0.02)",
@@ -973,7 +973,7 @@ function ManualEventModal(props: {
             </div>
             {leadMarket?.rules_primary && (
               <div style={{
-                borderTop: "1px solid rgba(255,255,255,0.08)",
+                borderTop: "1px solid rgba(0,0,0,0.08)",
                 paddingTop: 18,
               }}>
                 <div style={{ color: "#1c1814", fontSize: 17, fontWeight: 600, marginBottom: 10 }}>
@@ -987,7 +987,7 @@ function ManualEventModal(props: {
           </section>
 
           <section style={{
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: "1px solid rgba(0,0,0,0.08)",
             borderRadius: 22,
             padding: 22,
             background: "rgba(0,0,0,0.02)",
@@ -1066,7 +1066,7 @@ function ContractChoiceCard({
 }) {
   return (
     <div style={{
-      border: "1px solid rgba(255,255,255,0.08)",
+      border: "1px solid rgba(0,0,0,0.08)",
       borderRadius: 18,
       padding: "14px 16px",
       background: "rgba(0,0,0,0.02)",
@@ -1188,7 +1188,7 @@ function ManualBasketSidebar(props: {
           ))}
           {!manualHoldings.length && (
             <div style={{
-              border: "1px dashed rgba(255,255,255,0.10)",
+              border: "1px dashed rgba(0,0,0,0.10)",
               borderRadius: 18,
               padding: 18,
               color: "#6e675f",
@@ -1239,7 +1239,7 @@ function SaveManualBasketModal(props: {
       <div style={{
         width: "min(100%, 560px)",
         borderRadius: 24,
-        border: "1px solid rgba(255,255,255,0.08)",
+        border: "1px solid rgba(0,0,0,0.08)",
         background: "#ffffff",
         boxShadow: "0 8px 40px rgba(0,0,0,0.12)",
         padding: 24,
@@ -1310,7 +1310,7 @@ function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; 
               style={{
                 display: "block",
                 textDecoration: "none",
-                border: "1px solid rgba(255,255,255,0.08)",
+                border: "1px solid rgba(0,0,0,0.08)",
                 borderRadius: 14,
                 padding: 14,
                 background: "rgba(0,0,0,0.02)",
@@ -1337,7 +1337,7 @@ function ChatThread({ messages }: { messages: ChatMsg[] }) {
             padding: "12px 14px",
             borderRadius: 18,
             background: message.role === "user" ? "rgba(227,100,56,0.1)" : "rgba(0,0,0,0.02)",
-            border: message.role === "user" ? "1px solid rgba(227,100,56,0.2)" : "1px solid rgba(255,255,255,0.05)",
+            border: message.role === "user" ? "1px solid rgba(227,100,56,0.2)" : "1px solid rgba(0,0,0,0.05)",
             color: "#1c1814",
             maxWidth: message.role === "user" ? "92%" : "100%",
             justifySelf: message.role === "user" ? "end" : "start",
@@ -1449,7 +1449,7 @@ function HoldingGroup({ title, holdings, totalNotional }: { title: string; holdi
       <div style={{ color: "#2e2924", fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{title}</div>
       <div style={{ display: "grid", gap: 10 }}>
         {holdings.map((holding) => (
-          <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 16, background: "rgba(0,0,0,0.02)" }}>
+          <div key={holding.ticker} style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 14, padding: 16, background: "rgba(0,0,0,0.02)" }}>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 120px", gap: 16, alignItems: "start" }}>
               <div>
                 <div style={{ color: "#1c1814", fontSize: 17, fontWeight: 600, marginBottom: 6 }}>
@@ -1507,7 +1507,7 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
       </div>
       <div style={{ display: "grid", gap: 10 }}>
         {topDomains.slice(0, 4).map((domain) => (
-          <div key={domain.domain} style={{ borderRadius: 16, padding: 14, background: "rgba(0,0,0,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div key={domain.domain} style={{ borderRadius: 16, padding: 14, background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.06)" }}>
             <div style={{ color: "#1c1814", fontWeight: 600, marginBottom: 6 }}>
               {consequenceLabel(domain)}
             </div>
@@ -1639,7 +1639,7 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
 
 function ManualMarketCard({ market, onAdd }: { market: KalshiMarket; onAdd: () => void }) {
   return (
-    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: 16, background: "rgba(0,0,0,0.02)" }}>
+    <div style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 18, padding: 16, background: "rgba(0,0,0,0.02)" }}>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 16, alignItems: "start" }}>
         <div>
           <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
@@ -1713,7 +1713,7 @@ function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
   const selectedChoice = `${holding.ticker}:${holding.side}`;
 
   return (
-    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, background: "rgba(0,0,0,0.02)" }}>
+    <div style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 16, padding: 14, background: "rgba(0,0,0,0.02)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 10 }}>
         <div>
           <div style={{ color: "#1c1814", fontWeight: 600, lineHeight: 1.45, marginBottom: 4 }}>{holding.event_title || holding.question}</div>
@@ -1780,10 +1780,10 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
   return (
     <div style={{
       background: "#ffffff",
-      border: "1px solid rgba(255,255,255,0.08)",
+      border: "1px solid rgba(0,0,0,0.08)",
       borderRadius: 22,
       padding: 22,
-      boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+      boxShadow: "0 2px 16px rgba(0,0,0,0.07)",
       ...style,
     }}>
       {children}
@@ -1798,7 +1798,7 @@ function Tag({ children }: { children: React.ReactNode }) {
       alignItems: "center",
       padding: "5px 9px",
       borderRadius: 999,
-      border: "1px solid rgba(255,255,255,0.08)",
+      border: "1px solid rgba(0,0,0,0.08)",
       color: "#3a3530",
       fontSize: 12,
       background: "rgba(0,0,0,0.02)",
@@ -1810,7 +1810,7 @@ function Tag({ children }: { children: React.ReactNode }) {
 
 const textareaStyle: React.CSSProperties = {
   width: "100%",
-  background: "rgba(0,0,0,0.02)",
+  background: "#faf9f7",
   border: "1px solid rgba(0,0,0,0.09)",
   borderRadius: 16,
   padding: "16px 18px",
@@ -1820,17 +1820,19 @@ const textareaStyle: React.CSSProperties = {
   resize: "vertical",
   minHeight: 140,
   outline: "none",
+  boxShadow: "inset 0 1px 3px rgba(0,0,0,0.04)",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  background: "rgba(0,0,0,0.02)",
+  background: "#faf9f7",
   border: "1px solid rgba(0,0,0,0.09)",
   borderRadius: 12,
   padding: "12px 14px",
   color: "#1c1814",
   fontSize: 14,
   outline: "none",
+  boxShadow: "inset 0 1px 3px rgba(0,0,0,0.04)",
 };
 
 const miniLabelStyle: React.CSSProperties = {
@@ -1855,7 +1857,7 @@ const primaryButtonStyle: React.CSSProperties = {
 const ghostButtonStyle: React.CSSProperties = {
   background: "transparent",
   color: "#6e675f",
-  border: "1px solid rgba(255,255,255,0.08)",
+  border: "1px solid rgba(0,0,0,0.08)",
   borderRadius: 12,
   padding: "10px 14px",
   cursor: "pointer",

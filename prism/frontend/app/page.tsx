@@ -13,6 +13,7 @@ export default function HomePage() {
   const router = useRouter();
   const [belief, setBelief] = useState("");
   const [publicBaskets, setPublicBaskets] = useState<SavedBasket[]>([]);
+  const [textareaFocused, setTextareaFocused] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,23 +44,23 @@ export default function HomePage() {
 
         <div style={{ maxWidth: 760 }}>
           <section style={cardStyle}>
-            <div style={eyebrowStyle}>Prediction Market ETFs</div>
-            <div style={titleStyle}>Turn a thesis into a weighted basket</div>
-            <p style={bodyStyle}>
-              Describe a future theme. Prism will clarify it, map the implications, and build a shareable basket of direct and indirect prediction market exposures.
-            </p>
+            <div style={{ color: "#9b9390", fontSize: 13, marginBottom: 12 }}>What future are you betting on?</div>
             <textarea
               value={belief}
               onChange={(e) => setBelief(e.target.value)}
               rows={5}
               placeholder="Example: I think tighter export controls will reshape AI hardware supply chains over the next 12 months."
-              style={textareaStyle}
+              style={{
+                ...textareaStyle,
+                border: textareaFocused ? "1px solid rgba(227,100,56,0.4)" : "1px solid rgba(0,0,0,0.12)",
+              }}
+              onFocus={() => setTextareaFocused(true)}
+              onBlur={() => setTextareaFocused(false)}
             />
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
-              <div style={{ color: "#9b9390", fontSize: 13 }}>Instant and thinking modes available inside the builder.</div>
+            <div style={{ marginTop: 14 }}>
               <button
                 onClick={() => router.push(belief.trim() ? `/trading?belief=${encodeURIComponent(belief.trim())}` : "/trading")}
-                style={primaryButtonStyle}
+                style={{ ...primaryButtonStyle, width: "100%", padding: "14px 18px", fontSize: 15 }}
               >
                 Build basket
               </button>
@@ -77,8 +78,16 @@ export default function HomePage() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
-                <button onClick={() => scrollCarousel("left")} style={arrowButtonStyle} aria-label="Scroll left">←</button>
-                <button onClick={() => scrollCarousel("right")} style={arrowButtonStyle} aria-label="Scroll right">→</button>
+                <button onClick={() => scrollCarousel("left")} style={arrowButtonStyle} aria-label="Scroll left">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <button onClick={() => scrollCarousel("right")} style={arrowButtonStyle} aria-label="Scroll right">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
                 <Link
                   href="/baskets"
                   style={{
@@ -136,25 +145,9 @@ const eyebrowStyle: React.CSSProperties = {
   marginBottom: 10,
 };
 
-const titleStyle: React.CSSProperties = {
-  color: "#1c1814",
-  fontSize: 28,
-  fontWeight: 600,
-  letterSpacing: "-0.04em",
-  marginBottom: 10,
-};
-
-const bodyStyle: React.CSSProperties = {
-  color: "#6e675f",
-  fontSize: 15,
-  lineHeight: 1.65,
-  margin: "0 0 16px",
-};
-
 const textareaStyle: React.CSSProperties = {
   width: "100%",
   background: "#ffffff",
-  border: "1px solid rgba(0,0,0,0.09)",
   borderRadius: 16,
   padding: "16px 18px",
   color: "#1c1814",
@@ -170,7 +163,6 @@ const primaryButtonStyle: React.CSSProperties = {
   color: "#fff",
   border: "none",
   borderRadius: 12,
-  padding: "12px 18px",
   fontWeight: 600,
   cursor: "pointer",
 };

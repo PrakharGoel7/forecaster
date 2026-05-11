@@ -278,7 +278,15 @@ export interface SavedBasket {
   total_notional: number;
   screened_count: number;
   is_public: boolean;
+  user_id?: string;
+  username?: string;
   holdings?: BasketHolding[];
+}
+
+export interface UserProfile {
+  user_id: string;
+  username: string;
+  created_at: string;
 }
 
 export interface ManualBasketDraftHolding {

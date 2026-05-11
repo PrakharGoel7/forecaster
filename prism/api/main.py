@@ -807,6 +807,45 @@ async def list_public_baskets(limit: int = 48):
         return {"error": str(e), "items": []}
 
 
+# ── Profile endpoints ─────────────────────────────────────────────────────────
+
+class ProfileRequest(BaseModel):
+    username: str
+
+@app.get("/api/profiles/me")
+async def get_my_profile(request: Request):
+    user_id = _get_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    profile = db.get_profile(user_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="No profile")
+    return profile
+
+@app.post("/api/profiles")
+async def create_profile(req: ProfileRequest, request: Request):
+    user_id = _get_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    username = req.username.strip().lower()
+    import re
+    if not re.match(r'^[a-z0-9_]{3,24}$', username):
+        raise HTTPException(status_code=400, detail="Username must be 3-24 chars, letters/numbers/underscores only")
+    if db.username_taken(username):
+        existing = db.get_profile(user_id)
+        if not existing or existing.get("username") != username:
+            raise HTTPException(status_code=409, detail="Username already taken")
+    return db.save_profile(user_id, username)
+
+@app.get("/api/users/{username}")
+async def get_user_profile(username: str):
+    profile = db.get_profile_by_username(username.lower())
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    baskets = db.get_baskets(limit=48, by_username=username.lower())
+    return {"profile": profile, "baskets": baskets}
+
+
 @app.get("/api/baskets/{basket_id}")
 async def get_basket(basket_id: int, request: Request):
     user_id = _get_user_id(request)

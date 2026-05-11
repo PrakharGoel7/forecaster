@@ -3,7 +3,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
+import { getMyProfile, createProfile } from "@/lib/api";
 import type { User } from "@supabase/supabase-js";
+import type { UserProfile } from "@/lib/types";
 
 const NAV = [
   { href: "/",          label: "Home"      },
@@ -18,6 +20,7 @@ export default function Header() {
   const router = useRouter();
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -25,12 +28,33 @@ export default function Header() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [usernameInput, setUsernameInput] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameLoading, setUsernameLoading] = useState(false);
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+
+    const checkProfile = async (token: string) => {
+      try {
+        const p = await getMyProfile(token);
+        setProfile(p);
+      } catch {
+        setPendingToken(token);
+        setShowUsernameModal(true);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
+      if (session?.access_token) {
+        checkProfile(session.access_token);
+      } else {
+        setProfile(null);
+        setShowUsernameModal(false);
+      }
     });
     return () => subscription.unsubscribe();
   }, [supabase]);
@@ -59,7 +83,24 @@ export default function Header() {
   async function signOut() {
     if (!supabase) return;
     await supabase.auth.signOut();
+    setProfile(null);
     router.refresh();
+  }
+
+  async function submitUsername() {
+    if (!pendingToken || !usernameInput.trim()) return;
+    setUsernameLoading(true);
+    setUsernameError("");
+    try {
+      const p = await createProfile(usernameInput.trim().toLowerCase(), pendingToken);
+      setProfile(p);
+      setShowUsernameModal(false);
+      setPendingToken(null);
+      setUsernameInput("");
+    } catch (e) {
+      setUsernameError(e instanceof Error ? e.message : "Username taken or invalid");
+    }
+    setUsernameLoading(false);
   }
 
   function hardNavigate(href: string) {
@@ -150,13 +191,27 @@ export default function Header() {
 
             {user ? (
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{
-                  fontFamily: "var(--font-mono), monospace", fontSize: "10px",
-                  color: "#a8a29a", letterSpacing: "0.04em",
-                  maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                  {user.email}
-                </span>
+                {profile ? (
+                  <Link
+                    href={`/users/${profile.username}`}
+                    onClick={e => { e.preventDefault(); hardNavigate(`/users/${profile.username}`); }}
+                    style={{
+                      fontFamily: "var(--font-mono), monospace", fontSize: "11px",
+                      color: "#e36438", letterSpacing: "0.04em", textDecoration: "none",
+                      fontWeight: 600,
+                    }}
+                  >
+                    @{profile.username}
+                  </Link>
+                ) : (
+                  <span style={{
+                    fontFamily: "var(--font-mono), monospace", fontSize: "10px",
+                    color: "#a8a29a", letterSpacing: "0.04em",
+                    maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {user.email}
+                  </span>
+                )}
                 <button onClick={signOut} style={{
                   fontFamily: "var(--font-mono), monospace", fontSize: "10px",
                   fontWeight: 600, letterSpacing: "0.08em",
@@ -190,7 +245,7 @@ export default function Header() {
         </div>
       </header>
 
-      {/* Sign-in modal */}
+      {/* Sign-in / Sign-up modal */}
       {showModal && (
         <div
           onClick={() => setShowModal(false)}
@@ -272,6 +327,84 @@ export default function Header() {
                 </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Username setup modal */}
+      {showUsernameModal && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff", border: "1px solid rgba(227,100,56,0.2)",
+              borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "380px",
+              boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
+            }}
+          >
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+                One more step
+              </div>
+              <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 6 }}>
+                Choose a username
+              </div>
+              <div style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.6 }}>
+                This is how you&rsquo;ll appear on public baskets. Lowercase letters, numbers, and underscores only.
+              </div>
+            </div>
+
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <span style={{
+                position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+                color: "#a8a29a", fontSize: 13, fontFamily: "var(--font-mono), monospace",
+                pointerEvents: "none",
+              }}>@</span>
+              <input
+                type="text"
+                placeholder="yourname"
+                value={usernameInput}
+                onChange={e => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                onKeyDown={e => { if (e.key === "Enter") submitUsername(); }}
+                maxLength={24}
+                autoFocus
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  background: "#f8f6f2", border: "1px solid rgba(0,0,0,0.1)",
+                  borderRadius: "8px", padding: "10px 14px 10px 28px",
+                  fontSize: "13px", color: "#1c1814",
+                  fontFamily: "var(--font-mono), monospace",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            {usernameError && <div style={{ fontSize: "12px", color: "#dc2626", marginBottom: "10px" }}>{usernameError}</div>}
+
+            <button
+              onClick={submitUsername}
+              disabled={usernameLoading || usernameInput.length < 3}
+              style={{
+                width: "100%",
+                background: usernameInput.length >= 3 ? "#e36438" : "#f0ede9",
+                color: "#fff", border: "none", borderRadius: "8px",
+                padding: "10px", fontSize: "12px",
+                fontFamily: "var(--font-mono), monospace",
+                fontWeight: 600, letterSpacing: "0.08em",
+                cursor: usernameInput.length >= 3 ? "pointer" : "default",
+                opacity: usernameInput.length >= 3 ? 1 : 0.4,
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={e => { if (usernameInput.length >= 3) e.currentTarget.style.background = "#c4421a"; }}
+              onMouseLeave={e => { if (usernameInput.length >= 3) e.currentTarget.style.background = "#e36438"; }}
+            >
+              {usernameLoading ? "…" : "Set username →"}
+            </button>
           </div>
         </div>
       )}

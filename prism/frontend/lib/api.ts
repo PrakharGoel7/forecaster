@@ -4,6 +4,7 @@ import type {
   TradingStreamMessage,
   BeliefSummary,
   SavedBasket,
+  UserProfile,
   ManualBasketDraftHolding,
   OracleTurnResponse,
   OraclePipelineMessage,
@@ -174,6 +175,21 @@ export function streamTradingAnalysis(
 
   return () => { cancelled = true; };
 }
+
+// ── Profile endpoints ─────────────────────────────────────────────────────────
+
+export const getMyProfile = (token: string): Promise<UserProfile> =>
+  apiFetch("/api/profiles/me", undefined, token);
+
+export const createProfile = (username: string, token: string): Promise<UserProfile> =>
+  apiFetch("/api/profiles", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username }),
+  }, token);
+
+export const getUserPage = (username: string): Promise<{ profile: UserProfile; baskets: SavedBasket[] }> =>
+  apiFetch(`/api/users/${username}`);
 
 // ── Legacy Oracle endpoints ───────────────────────────────────────────────────
 

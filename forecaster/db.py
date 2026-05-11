@@ -107,6 +107,13 @@ def _init():
                     close_date             TEXT
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS profiles (
+                    user_id    TEXT PRIMARY KEY,
+                    username   TEXT UNIQUE NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            """)
             # Safe migrations for existing tables
             for stmt in [
                 "ALTER TABLE forecasts ADD COLUMN IF NOT EXISTS user_id TEXT",
@@ -174,6 +181,13 @@ def _init():
                     market_price_at_create REAL,
                     close_date             TEXT,
                     FOREIGN KEY(basket_id) REFERENCES baskets(id) ON DELETE CASCADE
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS profiles (
+                    user_id    TEXT PRIMARY KEY,
+                    username   TEXT UNIQUE NOT NULL,
+                    created_at TEXT NOT NULL
                 )
             """)
             for col in ["user_id"]:
@@ -309,7 +323,7 @@ def save_basket(*, title, summary, core_belief, mode, time_horizon, timeframe_st
         conn.close()
 
 
-def get_baskets(limit: int = 20, user_id: str | None = None, public_only: bool = False):
+def get_baskets(limit: int = 20, user_id: str | None = None, public_only: bool = False, by_username: str | None = None):
     _init()
     p = _ph()
     conn = _conn()
@@ -317,14 +331,18 @@ def get_baskets(limit: int = 20, user_id: str | None = None, public_only: bool =
         cur = conn.cursor()
         clauses: list[str] = []
         params: list = []
-        if user_id:
-            clauses.append(f"user_id = {p}")
+        if by_username:
+            clauses.append(f"p.username = {p}")
+            params.append(by_username)
+            clauses.append("b.is_public = 1" if not _use_pg() else "b.is_public = TRUE")
+        elif user_id:
+            clauses.append(f"b.user_id = {p}")
             params.append(user_id)
         elif public_only:
-            clauses.append("is_public = 1" if not _use_pg() else "is_public = TRUE")
+            clauses.append("b.is_public = 1" if not _use_pg() else "b.is_public = TRUE")
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         cur.execute(
-            f"SELECT * FROM baskets {where} ORDER BY created_at DESC LIMIT {p}",
+            f"SELECT b.*, p.username FROM baskets b LEFT JOIN profiles p ON b.user_id = p.user_id {where} ORDER BY b.created_at DESC LIMIT {p}",
             (*params, limit),
         )
         rows = _rows_to_dicts(cur.fetchall(), cur)
@@ -340,9 +358,9 @@ def get_basket(basket_id: int, user_id: str | None = None):
     try:
         cur = conn.cursor()
         if user_id:
-            cur.execute(f"SELECT * FROM baskets WHERE id = {p} AND (user_id = {p} OR is_public = {'TRUE' if _use_pg() else '1'})", (basket_id, user_id))
+            cur.execute(f"SELECT b.*, p.username FROM baskets b LEFT JOIN profiles p ON b.user_id = p.user_id WHERE b.id = {p} AND (b.user_id = {p} OR b.is_public = {'TRUE' if _use_pg() else '1'})", (basket_id, user_id))
         else:
-            cur.execute(f"SELECT * FROM baskets WHERE id = {p} AND is_public = {'TRUE' if _use_pg() else '1'}", (basket_id,))
+            cur.execute(f"SELECT b.*, p.username FROM baskets b LEFT JOIN profiles p ON b.user_id = p.user_id WHERE b.id = {p} AND b.is_public = {'TRUE' if _use_pg() else '1'}", (basket_id,))
         row = cur.fetchone()
         if not row:
             return None
@@ -350,5 +368,67 @@ def get_basket(basket_id: int, user_id: str | None = None):
         cur.execute(f"SELECT * FROM basket_holdings WHERE basket_id = {p} ORDER BY weight_dollars DESC, id ASC", (basket_id,))
         basket["holdings"] = _rows_to_dicts(cur.fetchall(), cur)
         return basket
+    finally:
+        conn.close()
+
+def save_profile(user_id: str, username: str) -> dict:
+    _init()
+    p = _ph()
+    conn = _conn()
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        cur = conn.cursor()
+        if _use_pg():
+            cur.execute(
+                f"INSERT INTO profiles (user_id, username, created_at) VALUES ({p},{p},{p}) "
+                f"ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username",
+                (user_id, username, ts),
+            )
+        else:
+            cur.execute(
+                f"INSERT INTO profiles (user_id, username, created_at) VALUES ({p},{p},{p}) "
+                f"ON CONFLICT (user_id) DO UPDATE SET username = excluded.username",
+                (user_id, username, ts),
+            )
+        conn.commit()
+        return {"user_id": user_id, "username": username, "created_at": ts}
+    finally:
+        conn.close()
+
+
+def get_profile(user_id: str) -> dict | None:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"SELECT * FROM profiles WHERE user_id = {p}", (user_id,))
+        row = cur.fetchone()
+        return _rows_to_dicts([row], cur)[0] if row else None
+    finally:
+        conn.close()
+
+
+def get_profile_by_username(username: str) -> dict | None:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"SELECT * FROM profiles WHERE username = {p}", (username,))
+        row = cur.fetchone()
+        return _rows_to_dicts([row], cur)[0] if row else None
+    finally:
+        conn.close()
+
+
+def username_taken(username: str) -> bool:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"SELECT 1 FROM profiles WHERE username = {p}", (username,))
+        return cur.fetchone() is not None
     finally:
         conn.close()

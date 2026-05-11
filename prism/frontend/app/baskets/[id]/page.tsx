@@ -42,12 +42,25 @@ export default function BasketSharePage() {
       <Header />
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, maxWidth: 960, margin: "0 auto", padding: "110px 24px 80px" }}>
+        <Link href="/baskets" style={{ color: "#9b9390", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 20 }}>
+          ← Back to baskets
+        </Link>
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 14 }}>
           Shared Prediction Market ETF
         </div>
         <h1 style={{ color: "#1c1814", fontSize: "clamp(34px, 5vw, 56px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 10px" }}>
           {basket.title}
         </h1>
+        {basket.username && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#e36438", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "#fff", fontSize: 9, fontWeight: 700 }}>◈</span>
+            </div>
+            <Link href={`/users/${basket.username}`} style={{ color: "#6e675f", fontSize: 13, textDecoration: "none", fontFamily: "var(--font-mono), monospace" }}>
+              @{basket.username}
+            </Link>
+          </div>
+        )}
         <p style={{ color: "#6e675f", fontSize: 17, lineHeight: 1.65, margin: "0 0 26px", maxWidth: 780 }}>
           {basket.summary}
         </p>
@@ -59,10 +72,13 @@ export default function BasketSharePage() {
 
         <section style={sectionStyle}>
           <div style={sectionTitleStyle}>Thesis</div>
-          <div style={{ color: "#1c1814", fontSize: 24, fontWeight: 600, marginBottom: 10 }}>{beliefSummary?.core_belief}</div>
-          <div style={{ color: "#6e675f", lineHeight: 1.7 }}>
-            <strong style={{ color: "#2e2924" }}>Resolution target:</strong> {beliefSummary?.resolution_target}<br />
-            <strong style={{ color: "#2e2924" }}>Mechanism:</strong> {beliefSummary?.mechanism}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 18 }}>
+            <EditorialField label="Resolution Target" value={beliefSummary?.resolution_target || "—"} />
+            <EditorialField label="Mechanism" value={
+              Array.isArray(beliefSummary?.mechanism)
+                ? (beliefSummary.mechanism as string[]).join(" • ")
+                : (beliefSummary?.mechanism || "—")
+            } />
           </div>
         </section>
 
@@ -70,7 +86,7 @@ export default function BasketSharePage() {
           <div style={sectionTitleStyle}>Holdings</div>
           <div style={{ display: "grid", gap: 12 }}>
         {(parsedBasket as PredictionBasket).holdings.map((holding) => (
-              <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: 18, background: "rgba(0,0,0,0.02)" }}>
+              <div key={holding.ticker} style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 18, padding: 18, background: "rgba(0,0,0,0.03)" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 100px", gap: 16 }}>
                   <div>
                     <div style={{ color: "#1c1814", fontWeight: 600, fontSize: 18, marginBottom: 8 }}>{holding.question}</div>
@@ -81,7 +97,7 @@ export default function BasketSharePage() {
                     </div>
                     <div style={{ color: "#6e675f", lineHeight: 1.6 }}>{holding.rationale}</div>
                   </div>
-                  <div style={{ textAlign: "right", color: "#1c1814", fontSize: 30, fontWeight: 600 }}>
+                  <div style={{ textAlign: "right", color: "#1c1814", fontSize: 22, fontWeight: 600 }}>
                     {Math.round((holding.weight_dollars / parsedBasket.total_notional) * 100)}%
                   </div>
                 </div>
@@ -97,9 +113,29 @@ export default function BasketSharePage() {
           </section>
         )}
 
-        <div style={{ marginTop: 28 }}>
-          <Link href={`/trading?basket=${basket.id}`} style={{ color: "#e36438", textDecoration: "none", fontWeight: 600 }}>
+        <div style={{ marginTop: 28, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <Link href={`/trading?basket=${basket.id}`} style={{
+            background: "#e36438",
+            color: "#fff",
+            padding: "10px 18px",
+            borderRadius: 12,
+            fontWeight: 600,
+            textDecoration: "none",
+            display: "inline-block",
+          }}>
             Open in builder
+          </Link>
+          <Link href="/trading/manual" style={{
+            background: "transparent",
+            color: "#6e675f",
+            border: "1px solid rgba(0,0,0,0.12)",
+            padding: "10px 18px",
+            borderRadius: 12,
+            fontWeight: 600,
+            textDecoration: "none",
+            display: "inline-block",
+          }}>
+            Edit basket
           </Link>
         </div>
       </div>
@@ -109,7 +145,7 @@ export default function BasketSharePage() {
 
 const sectionStyle: React.CSSProperties = {
   background: "#ffffff",
-  border: "1px solid rgba(255,255,255,0.08)",
+  border: "1px solid rgba(0,0,0,0.08)",
   borderRadius: 22,
   padding: 22,
   boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
@@ -125,6 +161,19 @@ const sectionTitleStyle: React.CSSProperties = {
   marginBottom: 12,
 };
 
+function EditorialField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
+        {label}
+      </div>
+      <div style={{ color: "#2e2924", fontSize: 15, lineHeight: 1.7 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 function Tag({ children }: { children: React.ReactNode }) {
   return (
     <span style={{
@@ -132,7 +181,7 @@ function Tag({ children }: { children: React.ReactNode }) {
       alignItems: "center",
       padding: "5px 9px",
       borderRadius: 999,
-      border: "1px solid rgba(255,255,255,0.08)",
+      border: "1px solid rgba(0,0,0,0.08)",
       color: "#3a3530",
       fontSize: 12,
       background: "rgba(0,0,0,0.03)",

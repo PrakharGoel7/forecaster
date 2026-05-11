@@ -15,6 +15,18 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function formatTimeframe(value: string): string {
+  // If it looks like an ISO date (YYYY-MM-DD or similar), format it
+  if (/^\d{4}-\d{2}/.test(value)) {
+    try {
+      return new Date(value).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
 function avatarColor(seed: number): string {
   const palette = ["#e36438", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
   return palette[seed % palette.length];
@@ -62,21 +74,23 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
             }}>
-              <span style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>P</span>
+              <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>◈</span>
             </div>
             <div>
-              <div style={{ color: "#1c1814", fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>Prism</div>
+              <div style={{ color: "#1c1814", fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>
+                {basket.username ? `@${basket.username}` : "Prism"}
+              </div>
               <div style={{ color: "#a8a29a", fontSize: 11, lineHeight: 1.2 }}>{timeAgo(basket.created_at)}</div>
             </div>
           </div>
           <span style={{
             fontFamily: "var(--font-mono), monospace",
             fontSize: 10,
-            color: "#e36438",
-            border: "1px solid rgba(227,100,56,0.2)",
+            color: "#6e675f",
+            border: "1px solid rgba(0,0,0,0.1)",
             borderRadius: 999,
             padding: "3px 8px",
-            background: "rgba(227,100,56,0.06)",
+            background: "rgba(0,0,0,0.04)",
             textTransform: "uppercase",
             letterSpacing: "0.1em",
           }}>
@@ -114,7 +128,7 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           <span style={tagStyle}>{holdingsCount} positions</span>
           {(basket.timeframe_end || basket.time_horizon) && (
-            <span style={tagStyle}>{basket.timeframe_end || basket.time_horizon}</span>
+            <span style={tagStyle}>{formatTimeframe(basket.timeframe_end || basket.time_horizon)}</span>
           )}
           {quality && (
             <span style={{ ...tagStyle, color: "#6e675f" }}>{quality.replace(/_/g, " ")}</span>
