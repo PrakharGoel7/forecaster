@@ -701,11 +701,15 @@ function ManualBuildComposer(props: {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 18 }}>
           {paginatedEvents.map((event) => {
             const eventMarketList = marketsByEvent.get(event.event_ticker) ?? [];
+            const accent = categoryAccent(event.category || "");
             return (
               <div
                 key={event.event_ticker}
                 style={{
-                  border: "1px solid rgba(0,0,0,0.08)",
+                  borderTop: "1px solid rgba(0,0,0,0.08)",
+                  borderRight: "1px solid rgba(0,0,0,0.08)",
+                  borderBottom: "1px solid rgba(0,0,0,0.08)",
+                  borderLeft: `4px solid ${accent}`,
                   borderRadius: 22,
                   padding: 20,
                   minHeight: 276,
@@ -1153,58 +1157,63 @@ function ManualBasketSidebar(props: {
     };
   }, [manualHoldings, holdingMarkets]);
 
-  return (
-    <>
-      <Card>
-        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
-          Basket draft
-        </div>
-        <div style={{ color: "#1c1814", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
-          Your basket
-        </div>
-        <div style={{ color: "#6e675f", fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
-          Curate positions, size your exposure, and save when the basket reflects your thesis.
-        </div>
-      </Card>
+  const totalWeight = manualHoldings.reduce((sum, h) => sum + (h.weight_percent || 0), 0);
+  const sliceColors = ["#e36438", "#c4421a", "#f08a60", "#993010", "#f5b090", "#d06030"];
 
-      <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 14 }}>
-          <div>
-            <div style={{ color: "#1c1814", fontWeight: 600, marginBottom: 4 }}>Your Basket</div>
-            <div style={{ color: "#6e675f", fontSize: 13 }}>
-              {manualHoldings.length} {manualHoldings.length === 1 ? "position" : "positions"} · {manualHoldings.reduce((sum, holding) => sum + (holding.weight_percent || 0), 0).toFixed(0)}% drafted
-            </div>
+  return (
+    <Card>
+      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+        Basket draft
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
+        <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Your basket</div>
+        <div style={{ color: "#9b9390", fontSize: 12, fontFamily: "var(--font-mono), monospace" }}>
+          {manualHoldings.length} pos · {totalWeight.toFixed(0)}%
+        </div>
+      </div>
+
+      {/* Stacked weight bar */}
+      <div style={{ display: "flex", height: 5, borderRadius: 999, overflow: "hidden", background: "rgba(0,0,0,0.06)", marginBottom: 16, gap: 2 }}>
+        {manualHoldings.map((h, i) => (
+          <div key={h.ticker} style={{
+            flexBasis: `${(h.weight_percent || 0) / Math.max(totalWeight, 1) * 100}%`,
+            background: sliceColors[i % sliceColors.length],
+            transition: "flex-basis 0.2s",
+            flexShrink: 0,
+          }} />
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gap: 10, maxHeight: "calc(100vh - 340px)", overflowY: "auto", paddingRight: 4, marginBottom: 14 }}>
+        {manualHoldings.map((holding, i) => (
+          <ManualHoldingCard
+            key={holding.event_ticker}
+            holding={holding}
+            accentColor={sliceColors[i % sliceColors.length]}
+            onUpdate={(patch) => onUpdateHolding(holding.ticker, patch)}
+            onRemove={() => onRemoveHolding(holding.ticker)}
+            markets={holdingMarkets[holding.event_ticker] ?? []}
+          />
+        ))}
+        {!manualHoldings.length && (
+          <div style={{
+            border: "1px dashed rgba(0,0,0,0.10)",
+            borderRadius: 18,
+            padding: 18,
+            color: "#6e675f",
+            fontSize: 14,
+            lineHeight: 1.6,
+            background: "rgba(0,0,0,0.015)",
+          }}>
+            No positions yet. Inspect a market and add a contract to start your basket.
           </div>
-        </div>
-        <div style={{ display: "grid", gap: 10, maxHeight: "calc(100vh - 360px)", overflowY: "auto", paddingRight: 4 }}>
-          {manualHoldings.map((holding) => (
-            <ManualHoldingCard
-              key={holding.event_ticker}
-              holding={holding}
-              onUpdate={(patch) => onUpdateHolding(holding.ticker, patch)}
-              onRemove={() => onRemoveHolding(holding.ticker)}
-              markets={holdingMarkets[holding.event_ticker] ?? []}
-            />
-          ))}
-          {!manualHoldings.length && (
-            <div style={{
-              border: "1px dashed rgba(0,0,0,0.10)",
-              borderRadius: 18,
-              padding: 18,
-              color: "#6e675f",
-              fontSize: 14,
-              lineHeight: 1.6,
-              background: "rgba(0,0,0,0.015)",
-            }}>
-              No positions yet. Inspect a market and add a contract to start your basket.
-            </div>
-          )}
-        </div>
-        <button onClick={onOpenSaveModal} style={{ ...primaryButtonStyle, width: "100%", opacity: loading ? 0.7 : 1 }}>
-          {loading ? "Saving..." : "Save basket"}
-        </button>
-      </Card>
-    </>
+        )}
+      </div>
+
+      <button onClick={onOpenSaveModal} style={{ ...primaryButtonStyle, width: "100%", opacity: loading ? 0.7 : 1 }}>
+        {loading ? "Saving..." : "Save basket"}
+      </button>
+    </Card>
   );
 }
 
@@ -1666,8 +1675,9 @@ function ManualMarketCard({ market, onAdd }: { market: KalshiMarket; onAdd: () =
   );
 }
 
-function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
+function ManualHoldingCard({ holding, accentColor, onUpdate, onRemove, markets }: {
   holding: ManualBasketDraftHolding;
+  accentColor?: string;
   onUpdate: (patch: Partial<ManualBasketDraftHolding>) => void;
   onRemove: () => void;
   markets: KalshiMarket[];
@@ -1713,7 +1723,15 @@ function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
   const selectedChoice = `${holding.ticker}:${holding.side}`;
 
   return (
-    <div style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 16, padding: 14, background: "rgba(0,0,0,0.02)" }}>
+    <div style={{
+      borderTop: "1px solid rgba(0,0,0,0.08)",
+      borderRight: "1px solid rgba(0,0,0,0.08)",
+      borderBottom: "1px solid rgba(0,0,0,0.08)",
+      borderLeft: `3px solid ${accentColor ?? "#e36438"}`,
+      borderRadius: 16,
+      padding: 14,
+      background: "rgba(0,0,0,0.02)",
+    }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 10 }}>
         <div>
           <div style={{ color: "#1c1814", fontWeight: 600, lineHeight: 1.45, marginBottom: 4 }}>{holding.event_title || holding.question}</div>
