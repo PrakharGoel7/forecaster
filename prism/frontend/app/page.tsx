@@ -41,7 +41,7 @@ export default function HomePage() {
             <Link href="/baskets" style={primaryLinkStyle}>
               Browse baskets
             </Link>
-            <Link href="/trading" style={ghostLinkStyle}>
+            <Link href="/build" style={ghostLinkStyle}>
               Build your own
             </Link>
           </div>

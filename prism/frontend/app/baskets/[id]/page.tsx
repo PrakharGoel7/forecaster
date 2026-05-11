@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
-import { getBasket } from "@/lib/api";
+import { getBasket, getUserPage } from "@/lib/api";
+import { BasketCard } from "@/components/BasketCard";
 import type { BeliefAnalysis, BeliefSummary, PredictionBasket, SavedBasket } from "@/lib/types";
 
 export default function BasketSharePage() {
@@ -13,6 +14,8 @@ export default function BasketSharePage() {
   const [basket, setBasket] = useState<SavedBasket | null>(null);
   const [beliefSummary, setBeliefSummary] = useState<BeliefSummary | null>(null);
   const [analysis, setAnalysis] = useState<BeliefAnalysis | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [authorBaskets, setAuthorBaskets] = useState<SavedBasket[]>([]);
 
   useEffect(() => {
     if (!params?.id) return;
@@ -22,6 +25,20 @@ export default function BasketSharePage() {
       setAnalysis(JSON.parse(saved.analysis_json));
     }).catch(() => {});
   }, [params]);
+
+  useEffect(() => {
+    if (!basket?.username || !basket?.id) return;
+    getUserPage(basket.username).then(({ baskets: b }) => {
+      setAuthorBaskets(b.filter((x) => x.id !== basket.id).slice(0, 3));
+    }).catch(() => {});
+  }, [basket?.username, basket?.id]);
+
+  async function copyLink() {
+    if (typeof window === "undefined" || !navigator.clipboard || !basket) return;
+    await navigator.clipboard.writeText(`${window.location.origin}/baskets/${basket.id}`);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
 
   if (!basket) {
     return (
@@ -84,6 +101,28 @@ export default function BasketSharePage() {
 
         <section style={sectionStyle}>
           <div style={sectionTitleStyle}>Holdings</div>
+          {(() => {
+            const total = parsedBasket.total_notional || parsedBasket.holdings.reduce((s: number, h: { weight_dollars: number }) => s + h.weight_dollars, 0) || 1;
+            const colors = ["#4f46e5","#4338ca","#7c73f0","#312e9e","#a5a0f4","#6159eb","#2dd4bf","#f59e0b"];
+            return (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ display: "flex", height: 6, borderRadius: 999, overflow: "hidden", gap: 2, marginBottom: 10 }}>
+                  {(parsedBasket as PredictionBasket).holdings.map((h: { ticker: string; weight_dollars: number }, i: number) => (
+                    <div key={h.ticker} style={{ flexBasis: `${(h.weight_dollars / total) * 100}%`, background: colors[i % colors.length], flexShrink: 0 }} />
+                  ))}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
+                  {(parsedBasket as PredictionBasket).holdings.map((h: { ticker: string; weight_dollars: number; question: string }, i: number) => (
+                    <div key={h.ticker} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#6e675f" }}>
+                      <div style={{ width: 8, height: 8, borderRadius: 2, background: colors[i % colors.length], flexShrink: 0 }} />
+                      <span style={{ fontFamily: "var(--font-mono), monospace" }}>{Math.round((h.weight_dollars / total) * 100)}%</span>
+                      <span style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.question}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           <div style={{ display: "grid", gap: 12 }}>
         {(parsedBasket as PredictionBasket).holdings.map((holding) => (
               <div key={holding.ticker} style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 18, padding: 18, background: "rgba(0,0,0,0.03)" }}>
@@ -151,7 +190,33 @@ export default function BasketSharePage() {
           }}>
             Edit basket
           </Link>
+          <button
+            onClick={copyLink}
+            style={{
+              background: "transparent",
+              color: "#6e675f",
+              border: "1px solid rgba(0,0,0,0.12)",
+              padding: "10px 18px",
+              borderRadius: 12,
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            {copied ? "Copied ✓" : "Copy link"}
+          </button>
         </div>
+
+        {authorBaskets.length > 0 && basket.username && (
+          <div style={{ marginTop: 40 }}>
+            <div style={sectionTitleStyle}>More from @{basket.username}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+              {authorBaskets.map((b) => (
+                <BasketCard key={b.id} basket={b} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

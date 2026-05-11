@@ -14,16 +14,29 @@ export default function BasketsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sort, setSort] = useState<"newest" | "positions">("newest");
+  const [modeFilter, setModeFilter] = useState<"all" | "ai" | "manual">("all");
 
   useEffect(() => {
     listPublicBaskets(96).then(setBaskets).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  const filteredBaskets = baskets.filter((basket) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return basket.title.toLowerCase().includes(q) || basket.summary.toLowerCase().includes(q);
-  });
+  const filteredBaskets = (() => {
+    let list = baskets.filter((basket) => {
+      if (modeFilter === "ai" && basket.mode === "manual") return false;
+      if (modeFilter === "manual" && basket.mode !== "manual") return false;
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return basket.title.toLowerCase().includes(q) || basket.summary.toLowerCase().includes(q);
+    });
+    if (sort === "positions") {
+      list = [...list].sort((a, b) => {
+        const count = (x: typeof a) => { try { return JSON.parse(x.basket_json)?.holdings?.length ?? 0; } catch { return 0; } };
+        return count(b) - count(a);
+      });
+    }
+    return list;
+  })();
 
   const totalPages = Math.max(1, Math.ceil(filteredBaskets.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -58,10 +71,46 @@ export default function BasketsPage() {
             fontSize: 14,
             color: "#1c1814",
             outline: "none",
-            marginBottom: 28,
+            marginBottom: 12,
             display: "block",
           }}
         />
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 28, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 6 }}>
+            {(["all", "ai", "manual"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => { setModeFilter(f); setPage(1); }}
+                style={{
+                  borderRadius: 999, border: `1px solid ${modeFilter === f ? "rgba(79,70,229,0.4)" : "rgba(0,0,0,0.08)"}`,
+                  background: modeFilter === f ? "rgba(79,70,229,0.1)" : "rgba(0,0,0,0.03)",
+                  color: modeFilter === f ? "#1c1814" : "#6e675f",
+                  padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                {f === "all" ? "All" : f === "ai" ? "AI Built" : "Manual"}
+              </button>
+            ))}
+          </div>
+          <div style={{ width: 1, height: 20, background: "rgba(0,0,0,0.1)", margin: "0 4px" }} />
+          <div style={{ display: "flex", gap: 6 }}>
+            {(["newest", "positions"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSort(s)}
+                style={{
+                  borderRadius: 999, border: `1px solid ${sort === s ? "rgba(79,70,229,0.4)" : "rgba(0,0,0,0.08)"}`,
+                  background: sort === s ? "rgba(79,70,229,0.1)" : "rgba(0,0,0,0.03)",
+                  color: sort === s ? "#1c1814" : "#6e675f",
+                  padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                {s === "newest" ? "Newest" : "Most positions"}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {loading ? (
           <div style={{ color: "#9b9390", fontSize: 15 }}>Loading baskets…</div>

@@ -1707,14 +1707,26 @@ function BasketView({ basket, basketId, isPublished, publishLoading, onPublish }
 
       {isPublished && basketId && (
         <div style={{
-          display: "inline-flex", alignItems: "center", gap: 7,
-          background: "rgba(22,163,74,0.07)",
-          border: "1px solid rgba(22,163,74,0.2)",
-          borderRadius: 999, padding: "6px 14px",
-          color: "#15803d", fontSize: 13, fontWeight: 600,
-          marginBottom: 4,
+          background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)",
+          borderRadius: 18, padding: "16px 20px",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          gap: 16, flexWrap: "wrap", marginBottom: 4,
         }}>
-          <span style={{ fontSize: 7 }}>●</span> Live on the community feed
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", flexShrink: 0 }} />
+            <div>
+              <div style={{ color: "#15803d", fontWeight: 700, fontSize: 15, marginBottom: 2 }}>Live on the community feed</div>
+              <div style={{ color: "#6e675f", fontSize: 13 }}>Others can now discover, view, and remix your basket.</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10, flexShrink: 0, flexWrap: "wrap" }}>
+            <button onClick={copyLink} style={{ ...ghostButtonStyle, color: "#15803d", borderColor: "rgba(22,163,74,0.3)" }}>
+              {copied ? "Copied ✓" : "Copy link"}
+            </button>
+            <Link href={`/baskets/${basketId}`} style={{ background: "#16a34a", color: "#fff", fontWeight: 700, fontSize: 14, padding: "10px 16px", borderRadius: 12, textDecoration: "none", display: "inline-block" }}>
+              View on feed →
+            </Link>
+          </div>
         </div>
       )}
 
