@@ -12,7 +12,6 @@ const NAV = [
   { href: "/trading",   label: "AI Build"  },
   { href: "/trading/manual", label: "Basket Studio" },
   { href: "/baskets",   label: "Baskets"   },
-  { href: "/model",     label: "Model"     },
 ];
 
 export default function Header() {
