@@ -93,6 +93,9 @@ export function streamForecast(
 export const listBaskets = (limit = 20, token?: string): Promise<SavedBasket[]> =>
   apiFetch(`/api/baskets?limit=${limit}`, undefined, token);
 
+export const listPublicBaskets = (limit = 48): Promise<SavedBasket[]> =>
+  apiFetch(`/api/baskets/public?limit=${limit}`);
+
 export const getBasket = (basketId: number, token?: string): Promise<SavedBasket> =>
   apiFetch(`/api/baskets/${basketId}`, undefined, token);
 

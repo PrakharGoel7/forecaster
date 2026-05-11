@@ -1,13 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
+import { BasketCard } from "@/components/BasketCard";
+import { listPublicBaskets } from "@/lib/api";
+import type { SavedBasket } from "@/lib/types";
 
 export default function HomePage() {
   const router = useRouter();
   const [belief, setBelief] = useState("");
+  const [publicBaskets, setPublicBaskets] = useState<SavedBasket[]>([]);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    listPublicBaskets(12).then(setPublicBaskets).catch(() => {});
+  }, []);
+
+  function scrollCarousel(dir: "left" | "right") {
+    if (!carouselRef.current) return;
+    carouselRef.current.scrollBy({ left: dir === "right" ? 360 : -360, behavior: "smooth" });
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#080808", position: "relative" }}>
@@ -31,7 +46,7 @@ export default function HomePage() {
             <div style={eyebrowStyle}>Prediction Market ETFs</div>
             <div style={titleStyle}>Turn a thesis into a weighted basket</div>
             <p style={bodyStyle}>
-              Describe a future theme. Prism will clarify it, map the implications, and build a shareable $100 basket of direct and indirect prediction market exposures.
+              Describe a future theme. Prism will clarify it, map the implications, and build a shareable basket of direct and indirect prediction market exposures.
             </p>
             <textarea
               value={belief}
@@ -51,6 +66,54 @@ export default function HomePage() {
             </div>
           </section>
         </div>
+
+        {publicBaskets.length > 0 && (
+          <div style={{ marginTop: 72 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20, gap: 16 }}>
+              <div>
+                <div style={eyebrowStyle}>Community</div>
+                <div style={{ color: "#ede9e3", fontSize: 26, fontWeight: 600, letterSpacing: "-0.035em" }}>
+                  Public baskets
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
+                <button onClick={() => scrollCarousel("left")} style={arrowButtonStyle} aria-label="Scroll left">←</button>
+                <button onClick={() => scrollCarousel("right")} style={arrowButtonStyle} aria-label="Scroll right">→</button>
+                <Link
+                  href="/baskets"
+                  style={{
+                    ...ghostButtonLinkStyle,
+                    textDecoration: "none",
+                  }}
+                >
+                  View all
+                </Link>
+              </div>
+            </div>
+
+            <div
+              ref={carouselRef}
+              style={{
+                display: "flex",
+                gap: 16,
+                overflowX: "auto",
+                scrollSnapType: "x mandatory",
+                paddingBottom: 8,
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+              }}
+            >
+              {publicBaskets.map((basket) => (
+                <div
+                  key={basket.id}
+                  style={{ minWidth: 300, maxWidth: 300, scrollSnapAlign: "start", flexShrink: 0 }}
+                >
+                  <BasketCard basket={basket} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -110,4 +173,30 @@ const primaryButtonStyle: React.CSSProperties = {
   padding: "12px 18px",
   fontWeight: 600,
   cursor: "pointer",
+};
+
+const arrowButtonStyle: React.CSSProperties = {
+  background: "transparent",
+  border: "1px solid rgba(255,255,255,0.08)",
+  color: "#8d857d",
+  borderRadius: 999,
+  width: 36,
+  height: 36,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  fontSize: 16,
+  lineHeight: 1,
+};
+
+const ghostButtonLinkStyle: React.CSSProperties = {
+  background: "transparent",
+  color: "#8d857d",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 12,
+  padding: "8px 14px",
+  cursor: "pointer",
+  fontSize: 13,
+  display: "inline-block",
 };

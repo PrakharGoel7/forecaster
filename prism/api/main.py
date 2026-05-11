@@ -799,6 +799,14 @@ async def list_baskets(request: Request, limit: int = 20):
         return {"error": str(e), "items": []}
 
 
+@app.get("/api/baskets/public")
+async def list_public_baskets(limit: int = 48):
+    try:
+        return db.get_baskets(limit=limit, public_only=True)
+    except Exception as e:
+        return {"error": str(e), "items": []}
+
+
 @app.get("/api/baskets/{basket_id}")
 async def get_basket(basket_id: int, request: Request):
     user_id = _get_user_id(request)

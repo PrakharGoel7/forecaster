@@ -53,7 +53,7 @@ export default function BasketSharePage() {
         </p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
           <Tag>{basket.mode}</Tag>
-          <Tag>${basket.total_notional.toFixed(0)} total</Tag>
+          <Tag>{parsedBasket.holdings.length} positions</Tag>
           <Tag>{basket.timeframe_start || "now"} → {basket.timeframe_end || basket.time_horizon}</Tag>
         </div>
 
@@ -82,7 +82,7 @@ export default function BasketSharePage() {
                     <div style={{ color: "#978f87", lineHeight: 1.6 }}>{holding.rationale}</div>
                   </div>
                   <div style={{ textAlign: "right", color: "#ede9e3", fontSize: 30, fontWeight: 600 }}>
-                    ${holding.weight_dollars.toFixed(0)}
+                    {Math.round((holding.weight_dollars / parsedBasket.total_notional) * 100)}%
                   </div>
                 </div>
               </div>
