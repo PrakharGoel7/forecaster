@@ -33,6 +33,7 @@ export default function Header() {
   const [usernameError, setUsernameError] = useState("");
   const [usernameLoading, setUsernameLoading] = useState(false);
   const [pendingToken, setPendingToken] = useState<string | null>(null);
+  const [usernameSignup, setUsernameSignup] = useState("");
 
   useEffect(() => {
     if (!supabase) return;
@@ -42,6 +43,16 @@ export default function Header() {
         const p = await getMyProfile(token);
         setProfile(p);
       } catch {
+        // Check for a username saved during signup (email-confirm flow)
+        const pending = typeof window !== "undefined" ? localStorage.getItem("prism_pending_username") : null;
+        if (pending) {
+          localStorage.removeItem("prism_pending_username");
+          try {
+            const p = await createProfile(pending, token);
+            setProfile(p);
+            return;
+          } catch { /* fall through to manual prompt */ }
+        }
         setPendingToken(token);
         setShowUsernameModal(true);
       }
@@ -65,6 +76,7 @@ export default function Header() {
       return;
     }
     if (!email.trim() || !password.trim()) return;
+    if (mode === "signup" && usernameSignup.length < 3) return;
     setLoading(true);
     setError("");
     setSuccess("");
@@ -73,9 +85,26 @@ export default function Header() {
       if (e) setError(e.message);
       else setShowModal(false);
     } else {
-      const { error: e } = await supabase.auth.signUp({ email, password });
-      if (e) setError(e.message);
-      else setSuccess("Account created! Check your email to confirm, then sign in.");
+      const { data, error: e } = await supabase.auth.signUp({ email, password });
+      if (e) {
+        setError(e.message);
+      } else if (data.session) {
+        // No email confirmation required — create profile immediately
+        try {
+          const p = await createProfile(usernameSignup.trim().toLowerCase(), data.session.access_token);
+          setProfile(p);
+        } catch {
+          setPendingToken(data.session.access_token);
+          setShowUsernameModal(true);
+        }
+        setShowModal(false);
+      } else {
+        // Email confirmation required — stash username for when they sign in
+        if (usernameSignup.trim()) {
+          localStorage.setItem("prism_pending_username", usernameSignup.trim().toLowerCase());
+        }
+        setSuccess("Account created! Check your email to confirm, then sign in.");
+      }
     }
     setLoading(false);
   }
@@ -227,7 +256,7 @@ export default function Header() {
                 </button>
               </div>
             ) : (
-              <button onClick={() => { setShowModal(true); setMode("signin"); setEmail(""); setPassword(""); setError(""); setSuccess(""); }} style={{
+              <button onClick={() => { setShowModal(true); setMode("signin"); setEmail(""); setPassword(""); setUsernameSignup(""); setError(""); setSuccess(""); }} style={{
                 fontFamily: "var(--font-mono), monospace", fontSize: "10px",
                 fontWeight: 600, letterSpacing: "0.08em",
                 color: "#a8a29a", background: "transparent",
@@ -266,7 +295,7 @@ export default function Header() {
             {/* Mode toggle */}
             <div style={{ display: "flex", gap: "4px", marginBottom: "24px", background: "rgba(0,0,0,0.04)", borderRadius: "8px", padding: "4px" }}>
               {(["signin", "signup"] as const).map(m => (
-                <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }}
+                <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); setUsernameSignup(""); }}
                   style={{
                     flex: 1, padding: "7px", border: "none", borderRadius: "6px",
                     fontFamily: "var(--font-mono), monospace", fontSize: "11px",
@@ -305,26 +334,57 @@ export default function Header() {
                     borderRadius: "8px", padding: "10px 14px",
                     fontSize: "13px", color: "#1c1814",
                     fontFamily: "var(--font-jakarta), system-ui, sans-serif",
-                    outline: "none", marginBottom: "12px",
+                    outline: "none", marginBottom: "8px",
                   }}
                 />
+                {mode === "signup" && (
+                  <div style={{ position: "relative", marginBottom: "12px" }}>
+                    <span style={{
+                      position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+                      color: "#a8a29a", fontSize: 13,
+                      fontFamily: "var(--font-mono), monospace",
+                      pointerEvents: "none",
+                    }}>@</span>
+                    <input
+                      type="text"
+                      placeholder="username"
+                      value={usernameSignup}
+                      onChange={e => setUsernameSignup(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                      onKeyDown={e => { if (e.key === "Enter") submit(); }}
+                      maxLength={24}
+                      style={{
+                        width: "100%", boxSizing: "border-box",
+                        background: "#f8f6f2", border: "1px solid rgba(0,0,0,0.1)",
+                        borderRadius: "8px", padding: "10px 14px 10px 28px",
+                        fontSize: "13px", color: "#1c1814",
+                        fontFamily: "var(--font-mono), monospace",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                )}
                 {error && <div style={{ fontSize: "12px", color: "#dc2626", marginBottom: "10px" }}>{error}</div>}
-                <button onClick={submit} disabled={loading || !email.trim() || !password.trim()}
+                {(() => {
+                  const ready = !!(email.trim() && password.trim() && (mode === "signin" || usernameSignup.length >= 3));
+                  return (
+                <button onClick={submit} disabled={loading || !ready}
                   style={{
-                    width: "100%", background: (email.trim() && password.trim()) ? "#e36438" : "#f0ede9",
+                    width: "100%", background: ready ? "#e36438" : "#f0ede9",
                     color: "#fff", border: "none", borderRadius: "8px",
                     padding: "10px", fontSize: "12px",
                     fontFamily: "var(--font-mono), monospace",
                     fontWeight: 600, letterSpacing: "0.08em",
-                    cursor: (email.trim() && password.trim()) ? "pointer" : "default",
-                    opacity: (email.trim() && password.trim()) ? 1 : 0.4,
+                    cursor: ready ? "pointer" : "default",
+                    opacity: ready ? 1 : 0.4,
                     transition: "background 0.15s",
                   }}
-                  onMouseEnter={e => { if (email.trim() && password.trim()) e.currentTarget.style.background = "#c4421a"; }}
-                  onMouseLeave={e => { if (email.trim() && password.trim()) e.currentTarget.style.background = "#e36438"; }}
+                  onMouseEnter={e => { if (ready) e.currentTarget.style.background = "#c4421a"; }}
+                  onMouseLeave={e => { if (ready) e.currentTarget.style.background = "#e36438"; }}
                 >
                   {loading ? "…" : mode === "signin" ? "Sign in →" : "Create account →"}
                 </button>
+                  );
+                })()}
               </>
             )}
           </div>
