@@ -33,6 +33,8 @@ export default function Header() {
   const [usernameLoading, setUsernameLoading] = useState(false);
   const [pendingToken, setPendingToken] = useState<string | null>(null);
   const [usernameSignup, setUsernameSignup] = useState("");
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [welcomeUsername, setWelcomeUsername] = useState("");
 
   useEffect(() => {
     if (!supabase) return;
@@ -125,6 +127,8 @@ export default function Header() {
       setShowUsernameModal(false);
       setPendingToken(null);
       setUsernameInput("");
+      setWelcomeUsername(p.username);
+      setShowWelcomeModal(true);
     } catch (e) {
       setUsernameError(e instanceof Error ? e.message : "Username taken or invalid");
     }
@@ -386,6 +390,71 @@ export default function Header() {
                 })()}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Welcome modal */}
+      {showWelcomeModal && (
+        <div
+          onClick={() => setShowWelcomeModal(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 110,
+            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "#ffffff", border: "1px solid rgba(79,70,229,0.2)",
+              borderRadius: "20px", padding: "36px 32px", width: "100%", maxWidth: "400px",
+              boxShadow: "0 24px 80px rgba(0,0,0,0.25)", textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 40, marginBottom: 12 }}>◈</div>
+            <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+              Welcome to Prism
+            </div>
+            <div style={{ color: "#1c1814", fontSize: 22, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>
+              @{welcomeUsername}
+            </div>
+            <p style={{ color: "#6e675f", fontSize: 14, lineHeight: 1.65, margin: "0 0 24px" }}>
+              You&rsquo;re all set. Build a basket around a conviction or browse what the community is betting on.
+            </p>
+            <div style={{ display: "grid", gap: 10 }}>
+              <button
+                onClick={() => { setShowWelcomeModal(false); hardNavigate("/trading"); }}
+                style={{
+                  background: "#4f46e5", color: "#fff", border: "none", borderRadius: 10,
+                  padding: "12px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                  fontFamily: "var(--font-mono), monospace", letterSpacing: "0.06em",
+                }}
+              >
+                AI Build →
+              </button>
+              <button
+                onClick={() => { setShowWelcomeModal(false); hardNavigate("/trading/manual"); }}
+                style={{
+                  background: "transparent", color: "#4f46e5",
+                  border: "1px solid rgba(79,70,229,0.25)", borderRadius: 10,
+                  padding: "12px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  fontFamily: "var(--font-mono), monospace", letterSpacing: "0.06em",
+                }}
+              >
+                Basket Studio
+              </button>
+              <button
+                onClick={() => { setShowWelcomeModal(false); hardNavigate("/baskets"); }}
+                style={{
+                  background: "transparent", color: "#9b9390", border: "none",
+                  fontSize: 13, cursor: "pointer", padding: "4px",
+                  fontFamily: "var(--font-jakarta), system-ui, sans-serif",
+                }}
+              >
+                Browse community first
+              </button>
+            </div>
           </div>
         </div>
       )}

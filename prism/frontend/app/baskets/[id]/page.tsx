@@ -114,9 +114,23 @@ export default function BasketSharePage() {
         )}
 
         <div style={{ marginTop: 28, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          {beliefSummary?.core_belief && (
+            <Link href={`/trading?belief=${encodeURIComponent(beliefSummary.core_belief)}`} style={{
+              background: "#4f46e5",
+              color: "#fff",
+              padding: "10px 18px",
+              borderRadius: 12,
+              fontWeight: 600,
+              textDecoration: "none",
+              display: "inline-block",
+            }}>
+              Remix with AI
+            </Link>
+          )}
           <Link href={`/trading?basket=${basket.id}`} style={{
-            background: "#4f46e5",
-            color: "#fff",
+            background: "transparent",
+            color: "#6e675f",
+            border: "1px solid rgba(0,0,0,0.12)",
             padding: "10px 18px",
             borderRadius: 12,
             fontWeight: 600,

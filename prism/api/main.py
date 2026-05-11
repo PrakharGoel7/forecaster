@@ -855,6 +855,20 @@ async def get_basket(basket_id: int, request: Request):
     return basket
 
 
+class VisibilityRequest(BaseModel):
+    is_public: bool
+
+@app.patch("/api/baskets/{basket_id}/visibility")
+async def update_basket_visibility(basket_id: int, req: VisibilityRequest, request: Request):
+    user_id = _get_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    updated = db.update_basket_visibility(basket_id, user_id, req.is_public)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Basket not found or not yours")
+    return {"ok": True}
+
+
 @app.post("/api/trading/chat")
 async def trading_chat(req: TradingChatRequest):
     if not _TC_AVAILABLE:
@@ -1222,6 +1236,7 @@ def _run_trading_pipeline(
                 total_notional=basket.get("total_notional", 100.0),
                 screened_count=len(selected_markets),
                 holdings=basket.get("holdings", []),
+                is_public=False,
                 user_id=request_user_id,
             )
         except Exception as exc:

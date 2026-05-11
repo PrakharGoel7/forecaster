@@ -176,6 +176,13 @@ export function streamTradingAnalysis(
   return () => { cancelled = true; };
 }
 
+export const setBasketVisibility = (basketId: number, isPublic: boolean, token: string): Promise<{ ok: boolean }> =>
+  apiFetch(`/api/baskets/${basketId}/visibility`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_public: isPublic }),
+  }, token);
+
 // ── Profile endpoints ─────────────────────────────────────────────────────────
 
 export const getMyProfile = (token: string): Promise<UserProfile> =>

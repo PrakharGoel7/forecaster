@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import GridOverlay from "@/components/GridOverlay";
 import Header from "@/components/Header";
-import { getBasket, getMarkets, listBaskets, listEventCategories, saveManualBasket, searchEvents, streamTradingAnalysis, tradingChat } from "@/lib/api";
+import { getBasket, getMarkets, listBaskets, listEventCategories, saveManualBasket, searchEvents, setBasketVisibility, streamTradingAnalysis, tradingChat } from "@/lib/api";
+import { createClient } from "@/lib/supabase";
 import { addMarketToManualBasketDraft, clearManualBasketDraft, loadManualBasketDraft, saveManualBasketDraft } from "@/lib/manualBasketDraft";
 import type { BeliefAnalysis, BeliefSummary, DomainAnalysis, KalshiEvent, KalshiMarket, ManualBasketDraftHolding, PredictionBasket, SavedBasket } from "@/lib/types";
 
@@ -26,8 +27,10 @@ interface ManualEventModalState {
 export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const supabase = createClient();
   const initialBelief = searchParams.get("belief") ?? "";
   const basketParam = searchParams.get("basket");
+  const [token, setToken] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("thinking");
   const [stage, setStage] = useState<Stage>("idle");
   const [input, setInput] = useState(initialBelief);
@@ -57,10 +60,23 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const [progressLabel, setProgressLabel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isPublished, setIsPublished] = useState(false);
+  const [publishLoading, setPublishLoading] = useState(false);
+  const [manualIsPublic, setManualIsPublic] = useState(true);
   const bootstrapped = useRef(false);
 
   useEffect(() => {
-    listBaskets(20).then(setSavedBaskets).catch(() => {});
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => setToken(data.session?.access_token ?? null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setToken(session?.access_token ?? null);
+    });
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    listBaskets(20, token ?? undefined).then(setSavedBaskets).catch(() => {});
     if (buildPath === "manual") {
       listEventCategories().then(setEventCategories).catch(() => {});
       void runEventSearch();
@@ -96,14 +112,15 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
 
   useEffect(() => {
     if (!basketId) return;
-    getBasket(basketId).then((saved) => {
+    getBasket(basketId, token ?? undefined).then((saved) => {
       setBeliefSummary(JSON.parse(saved.belief_summary_json));
       setAnalysis(JSON.parse(saved.analysis_json));
       setBasket(JSON.parse(saved.basket_json));
       setMode(saved.mode === "manual" ? "thinking" : saved.mode);
+      setIsPublished(saved.is_public ?? true);
       setStage("done");
     }).catch(() => {});
-  }, [basketId]);
+  }, [basketId, token]);
 
   useEffect(() => {
     if (buildPath !== "ai") return;
@@ -156,6 +173,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
 
   function startAnalysis(summary: BeliefSummary) {
     setStage("analyzing");
+    setIsPublished(false);
     streamTradingAnalysis(summary, mode, (msg) => {
       if (msg.type === "progress") setProgressLabel(msg.label);
       else if (msg.type === "analyst_done") setAnalysis(msg.analysis);
@@ -163,16 +181,29 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       else if (msg.type === "basket_done") {
         setBasket(msg.basket);
         setBasketId(msg.basket_id ?? null);
+        setIsPublished(false);
         setStage("done");
         setProgressLabel("");
         if (msg.basket_id) router.replace(`${routeBase}?basket=${msg.basket_id}`, { scroll: false });
-        listBaskets(20).then(setSavedBaskets).catch(() => {});
+        listBaskets(20, token ?? undefined).then(setSavedBaskets).catch(() => {});
       } else if (msg.type === "error") {
         setError(msg.message);
         setStage("error");
         setProgressLabel("");
       }
-    });
+    }, token ?? undefined);
+  }
+
+  async function publishBasket() {
+    if (!basketId || !token) return;
+    setPublishLoading(true);
+    try {
+      await setBasketVisibility(basketId, true, token);
+      setIsPublished(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not publish basket");
+    }
+    setPublishLoading(false);
   }
 
   async function sendMessage(message: string, history: Record<string, unknown>[]) {
@@ -299,11 +330,13 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
           weight_dollars: Number((((holding.weight_percent || 0) / totalPercent) * 100).toFixed(2)),
           role: "direct",
         })),
-      });
+        is_public: manualIsPublic,
+      }, token ?? undefined);
       setBasket(JSON.parse(result.basket.basket_json));
       setBeliefSummary(JSON.parse(result.basket.belief_summary_json));
       setAnalysis(JSON.parse(result.basket.analysis_json));
       setBasketId(result.basket_id);
+      setIsPublished(manualIsPublic);
       setStage("done");
       clearManualBasketDraft();
       setManualHoldings([]);
@@ -451,7 +484,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     )
                   )}
 
-                  {basket && <BasketView basket={basket} basketId={basketId} />}
+                  {basket && <BasketView basket={basket} basketId={basketId} isPublished={isPublished} publishLoading={publishLoading} onPublish={token ? publishBasket : undefined} />}
 
                   {error && (
                     <Card>
@@ -495,6 +528,8 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
           setManualSummary={setManualSummary}
           manualTimeframe={manualTimeframe}
           setManualTimeframe={setManualTimeframe}
+          isPublic={manualIsPublic}
+          setIsPublic={setManualIsPublic}
           loading={loading}
           onClose={() => setSaveModalOpen(false)}
           onSave={saveManual}
@@ -1224,13 +1259,15 @@ function SaveManualBasketModal(props: {
   setManualSummary: (value: string) => void;
   manualTimeframe: string;
   setManualTimeframe: (value: string) => void;
+  isPublic: boolean;
+  setIsPublic: (v: boolean) => void;
   loading: boolean;
   onClose: () => void;
   onSave: () => void;
 }) {
   const {
     manualTitle, setManualTitle, manualSummary, setManualSummary, manualTimeframe, setManualTimeframe,
-    loading, onClose, onSave,
+    isPublic, setIsPublic, loading, onClose, onSave,
   } = props;
   return (
     <div style={{
@@ -1267,6 +1304,18 @@ function SaveManualBasketModal(props: {
           <textarea value={manualSummary} onChange={(e) => setManualSummary(e.target.value)} rows={4} placeholder="What bet on the future is this basket representing?" style={{ ...textareaStyle, minHeight: 120 }} />
           <input value={manualTimeframe} onChange={(e) => setManualTimeframe(e.target.value)} placeholder="Timeframe (optional)" style={inputStyle} />
         </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginTop: 14, padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(0,0,0,0.07)", background: isPublic ? "rgba(79,70,229,0.04)" : "rgba(0,0,0,0.02)" }}>
+          <input
+            type="checkbox"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.target.checked)}
+            style={{ accentColor: "#4f46e5", width: 15, height: 15, cursor: "pointer" }}
+          />
+          <div>
+            <div style={{ color: "#1c1814", fontSize: 13, fontWeight: 600 }}>Share with the Prism community</div>
+            <div style={{ color: "#6e675f", fontSize: 12, lineHeight: 1.5 }}>Your basket will appear on the public feed.</div>
+          </div>
+        </label>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
           <button onClick={onClose} style={ghostButtonStyle}>Cancel</button>
           <button onClick={onSave} style={{ ...primaryButtonStyle, opacity: loading ? 0.7 : 1 }}>
@@ -1540,7 +1589,13 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
   );
 }
 
-function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: number | null }) {
+function BasketView({ basket, basketId, isPublished, publishLoading, onPublish }: {
+  basket: PredictionBasket;
+  basketId: number | null;
+  isPublished?: boolean;
+  publishLoading?: boolean;
+  onPublish?: () => void;
+}) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const bucketDefinitions = basket.basket_buckets ?? [];
@@ -1625,6 +1680,43 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
           </button>
         </div>
       </div>
+
+      {/* Publish prompt */}
+      {onPublish && !isPublished && basketId && (
+        <div style={{
+          background: "rgba(79,70,229,0.05)",
+          border: "1px solid rgba(79,70,229,0.2)",
+          borderRadius: 18,
+          padding: "16px 20px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 16,
+          flexWrap: "wrap",
+          marginBottom: 4,
+        }}>
+          <div>
+            <div style={{ color: "#1c1814", fontWeight: 600, fontSize: 15, marginBottom: 3 }}>Share with the community?</div>
+            <div style={{ color: "#6e675f", fontSize: 13 }}>Your basket is saved privately. Publish it so others can see your thesis.</div>
+          </div>
+          <button onClick={onPublish} disabled={publishLoading} style={{ ...primaryButtonStyle, whiteSpace: "nowrap", flexShrink: 0 }}>
+            {publishLoading ? "Publishing…" : "Publish basket →"}
+          </button>
+        </div>
+      )}
+
+      {isPublished && basketId && (
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 7,
+          background: "rgba(22,163,74,0.07)",
+          border: "1px solid rgba(22,163,74,0.2)",
+          borderRadius: 999, padding: "6px 14px",
+          color: "#15803d", fontSize: 13, fontWeight: 600,
+          marginBottom: 4,
+        }}>
+          <span style={{ fontSize: 7 }}>●</span> Live on the community feed
+        </div>
+      )}
 
       <div style={{ display: "grid", gap: 16 }}>
         {grouped.map((group) => (

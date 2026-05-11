@@ -432,3 +432,20 @@ def username_taken(username: str) -> bool:
         return cur.fetchone() is not None
     finally:
         conn.close()
+
+
+def update_basket_visibility(basket_id: int, user_id: str, is_public: bool) -> bool:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        val = is_public if _use_pg() else (1 if is_public else 0)
+        cur.execute(
+            f"UPDATE baskets SET is_public = {p} WHERE id = {p} AND user_id = {p}",
+            (val, basket_id, user_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
