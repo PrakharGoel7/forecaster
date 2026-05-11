@@ -25,7 +25,7 @@ export default function HomePage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#080808", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "#f8f6f2", position: "relative" }}>
       <Header />
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, maxWidth: 1140, margin: "0 auto", padding: "110px 24px 80px" }}>
@@ -33,10 +33,10 @@ export default function HomePage() {
           <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
             Prism
           </div>
-          <h1 style={{ color: "#ede9e3", fontSize: "clamp(38px, 6vw, 72px)", lineHeight: 0.98, letterSpacing: "-0.06em", margin: "0 0 14px" }}>
+          <h1 style={{ color: "#1c1814", fontSize: "clamp(38px, 6vw, 72px)", lineHeight: 0.98, letterSpacing: "-0.06em", margin: "0 0 14px" }}>
             Build prediction market ETFs from your future theses.
           </h1>
-          <p style={{ color: "#948c84", fontSize: 19, lineHeight: 1.65, margin: 0 }}>
+          <p style={{ color: "#6e675f", fontSize: 19, lineHeight: 1.65, margin: 0 }}>
             Start from a belief about the future. Prism clarifies the theme, maps the implications, and builds a weighted basket of Kalshi contracts around it.
           </p>
         </div>
@@ -56,7 +56,7 @@ export default function HomePage() {
               style={textareaStyle}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
-              <div style={{ color: "#7e766d", fontSize: 13 }}>Instant and thinking modes available inside the builder.</div>
+              <div style={{ color: "#9b9390", fontSize: 13 }}>Instant and thinking modes available inside the builder.</div>
               <button
                 onClick={() => router.push(belief.trim() ? `/trading?belief=${encodeURIComponent(belief.trim())}` : "/trading")}
                 style={primaryButtonStyle}
@@ -72,7 +72,7 @@ export default function HomePage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 20, gap: 16 }}>
               <div>
                 <div style={eyebrowStyle}>Community</div>
-                <div style={{ color: "#ede9e3", fontSize: 26, fontWeight: 600, letterSpacing: "-0.035em" }}>
+                <div style={{ color: "#1c1814", fontSize: 26, fontWeight: 600, letterSpacing: "-0.035em" }}>
                   Public baskets
                 </div>
               </div>
@@ -120,11 +120,11 @@ export default function HomePage() {
 }
 
 const cardStyle: React.CSSProperties = {
-  background: "linear-gradient(180deg, rgba(18,18,18,0.97), rgba(12,12,12,0.98))",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background: "#ffffff",
+  border: "1px solid rgba(0,0,0,0.08)",
   borderRadius: 24,
   padding: 24,
-  boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
+  boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
 };
 
 const eyebrowStyle: React.CSSProperties = {
@@ -137,7 +137,7 @@ const eyebrowStyle: React.CSSProperties = {
 };
 
 const titleStyle: React.CSSProperties = {
-  color: "#ede9e3",
+  color: "#1c1814",
   fontSize: 28,
   fontWeight: 600,
   letterSpacing: "-0.04em",
@@ -145,7 +145,7 @@ const titleStyle: React.CSSProperties = {
 };
 
 const bodyStyle: React.CSSProperties = {
-  color: "#948c84",
+  color: "#6e675f",
   fontSize: 15,
   lineHeight: 1.65,
   margin: "0 0 16px",
@@ -153,11 +153,11 @@ const bodyStyle: React.CSSProperties = {
 
 const textareaStyle: React.CSSProperties = {
   width: "100%",
-  background: "rgba(255,255,255,0.03)",
-  border: "1px solid rgba(255,255,255,0.09)",
+  background: "#ffffff",
+  border: "1px solid rgba(0,0,0,0.09)",
   borderRadius: 16,
   padding: "16px 18px",
-  color: "#ede9e3",
+  color: "#1c1814",
   fontSize: 15,
   lineHeight: 1.6,
   resize: "vertical",
@@ -177,8 +177,8 @@ const primaryButtonStyle: React.CSSProperties = {
 
 const arrowButtonStyle: React.CSSProperties = {
   background: "transparent",
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "#8d857d",
+  border: "1px solid rgba(0,0,0,0.08)",
+  color: "#6e675f",
   borderRadius: 999,
   width: 36,
   height: 36,
@@ -192,8 +192,8 @@ const arrowButtonStyle: React.CSSProperties = {
 
 const ghostButtonLinkStyle: React.CSSProperties = {
   background: "transparent",
-  color: "#8d857d",
-  border: "1px solid rgba(255,255,255,0.08)",
+  color: "#6e675f",
+  border: "1px solid rgba(0,0,0,0.08)",
   borderRadius: 12,
   padding: "8px 14px",
   cursor: "pointer",

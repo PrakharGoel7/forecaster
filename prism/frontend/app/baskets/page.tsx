@@ -23,24 +23,24 @@ export default function BasketsPage() {
   const visible = baskets.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#080808", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "#f8f6f2", position: "relative" }}>
       <Header />
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, maxWidth: 1200, margin: "0 auto", padding: "110px 24px 80px" }}>
         <div style={{ marginBottom: 36 }}>
           <div style={eyebrowStyle}>Community</div>
-          <h1 style={{ color: "#ede9e3", fontSize: "clamp(32px, 5vw, 56px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 12px" }}>
+          <h1 style={{ color: "#1c1814", fontSize: "clamp(32px, 5vw, 56px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 12px" }}>
             Public Baskets
           </h1>
-          <p style={{ color: "#948c84", fontSize: 17, lineHeight: 1.65, margin: 0, maxWidth: 600 }}>
+          <p style={{ color: "#6e675f", fontSize: 17, lineHeight: 1.65, margin: 0, maxWidth: 600 }}>
             Prediction market baskets built by the Prism community. Click any basket to inspect the thesis and holdings.
           </p>
         </div>
 
         {loading ? (
-          <div style={{ color: "#6f6861", fontSize: 15 }}>Loading baskets…</div>
+          <div style={{ color: "#9b9390", fontSize: 15 }}>Loading baskets…</div>
         ) : !baskets.length ? (
-          <div style={{ color: "#6f6861", fontSize: 15 }}>No public baskets yet. Be the first to build one.</div>
+          <div style={{ color: "#9b9390", fontSize: 15 }}>No public baskets yet. Be the first to build one.</div>
         ) : (
           <>
             <div style={{
@@ -55,7 +55,7 @@ export default function BasketsPage() {
 
             {totalPages > 1 && (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 28, gap: 12 }}>
-                <div style={{ color: "#7f776f", fontSize: 13 }}>
+                <div style={{ color: "#9b9390", fontSize: 13 }}>
                   Page {currentPage} of {totalPages} · {baskets.length} baskets
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
@@ -94,8 +94,8 @@ const eyebrowStyle: React.CSSProperties = {
 
 const ghostButtonStyle: React.CSSProperties = {
   background: "transparent",
-  color: "#8d857d",
-  border: "1px solid rgba(255,255,255,0.08)",
+  color: "#6e675f",
+  border: "1px solid rgba(0,0,0,0.08)",
   borderRadius: 12,
   padding: "10px 16px",
   cursor: "pointer",

@@ -3,20 +3,27 @@
 import Link from "next/link";
 import type { PredictionBasket, SavedBasket } from "@/lib/types";
 
-function modeLabel(mode: string): string {
-  if (mode === "instant") return "Quick Build";
-  if (mode === "thinking") return "Deep Build";
-  return "Manual";
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function qualityLabel(quality?: PredictionBasket["basket_quality"]): string {
-  switch (quality) {
-    case "direct": return "Direct";
-    case "strong_proxy": return "Strong proxy";
-    case "mixed_proxy": return "Mixed proxy";
-    case "thin_market_coverage": return "Thin coverage";
-    default: return "";
-  }
+function avatarColor(seed: number): string {
+  const palette = ["#e36438", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
+  return palette[seed % palette.length];
+}
+
+function modeLabel(mode: string): string {
+  if (mode === "instant") return "Quick";
+  if (mode === "thinking") return "Deep";
+  return "Manual";
 }
 
 export function BasketCard({ basket }: { basket: SavedBasket }) {
@@ -25,63 +32,95 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
   })();
   const holdingsCount = parsed?.holdings?.length ?? 0;
   const quality = parsed?.basket_quality;
-  const qualityText = qualityLabel(quality);
+  const color = avatarColor(basket.id);
 
   return (
-    <Link href={`/baskets/${basket.id}`} style={{ textDecoration: "none", display: "block", height: "100%" }}>
-      <div style={{
-        background: "linear-gradient(180deg, rgba(18,18,18,0.97), rgba(12,12,12,0.98))",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 20,
-        padding: 20,
-        height: "100%",
-        boxSizing: "border-box",
-        display: "grid",
-        gridTemplateRows: "auto 1fr auto",
-        gap: 10,
-      }}>
-        <div>
-          <div style={{
-            color: "#e36438",
-            fontSize: 10,
-            textTransform: "uppercase",
-            letterSpacing: "0.14em",
+    <Link href={`/baskets/${basket.id}`} style={{ textDecoration: "none", display: "block" }}>
+      <article style={{
+        background: "#ffffff",
+        border: "1px solid rgba(0,0,0,0.07)",
+        borderRadius: 16,
+        padding: "18px 20px",
+        transition: "box-shadow 0.15s, border-color 0.15s",
+        cursor: "pointer",
+      }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)";
+          (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,0,0,0.12)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.boxShadow = "none";
+          (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,0,0,0.07)";
+        }}
+      >
+        {/* Author row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%",
+              background: color,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}>
+              <span style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>P</span>
+            </div>
+            <div>
+              <div style={{ color: "#1c1814", fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>Prism</div>
+              <div style={{ color: "#a8a29a", fontSize: 11, lineHeight: 1.2 }}>{timeAgo(basket.created_at)}</div>
+            </div>
+          </div>
+          <span style={{
             fontFamily: "var(--font-mono), monospace",
-            marginBottom: 8,
+            fontSize: 10,
+            color: "#e36438",
+            border: "1px solid rgba(227,100,56,0.2)",
+            borderRadius: 999,
+            padding: "3px 8px",
+            background: "rgba(227,100,56,0.06)",
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
           }}>
             {modeLabel(basket.mode)}
-          </div>
-          <div style={{
-            color: "#ede9e3",
-            fontSize: 17,
-            fontWeight: 600,
-            lineHeight: 1.3,
-            letterSpacing: "-0.02em",
-          }}>
-            {basket.title}
-          </div>
+          </span>
         </div>
 
+        {/* Title */}
         <div style={{
-          color: "#948c84",
+          color: "#1c1814",
+          fontSize: 16,
+          fontWeight: 600,
+          lineHeight: 1.35,
+          letterSpacing: "-0.01em",
+          marginBottom: 8,
+        }}>
+          {basket.title}
+        </div>
+
+        {/* Summary */}
+        <div style={{
+          color: "#6e675f",
           fontSize: 13,
           lineHeight: 1.6,
+          marginBottom: 14,
           overflow: "hidden",
           display: "-webkit-box",
-          WebkitLineClamp: 3,
+          WebkitLineClamp: 2,
           WebkitBoxOrient: "vertical",
         }}>
           {basket.summary}
         </div>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+        {/* Footer tags */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           <span style={tagStyle}>{holdingsCount} positions</span>
           {(basket.timeframe_end || basket.time_horizon) && (
             <span style={tagStyle}>{basket.timeframe_end || basket.time_horizon}</span>
           )}
-          {qualityText && <span style={tagStyle}>{qualityText}</span>}
+          {quality && (
+            <span style={{ ...tagStyle, color: "#6e675f" }}>{quality.replace(/_/g, " ")}</span>
+          )}
         </div>
-      </div>
+      </article>
     </Link>
   );
 }
@@ -89,10 +128,10 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
 const tagStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  padding: "4px 8px",
+  padding: "3px 8px",
   borderRadius: 999,
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "#a09890",
+  border: "1px solid rgba(0,0,0,0.08)",
+  color: "#9b9390",
   fontSize: 11,
-  background: "rgba(255,255,255,0.03)",
+  background: "rgba(0,0,0,0.03)",
 };

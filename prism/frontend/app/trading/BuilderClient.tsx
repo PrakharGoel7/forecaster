@@ -329,7 +329,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#080808", position: "relative" }}>
+    <div style={{ minHeight: "100vh", background: "#f8f6f2", position: "relative" }}>
       <Header />
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, paddingTop: 56 }}>
@@ -370,7 +370,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
                           AI Build
                         </div>
-                        <div style={{ color: "#ede9e3", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em" }}>
+                        <div style={{ color: "#1c1814", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em" }}>
                           Turn your take into a market basket.
                         </div>
                       </div>
@@ -382,7 +382,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace" }}>
                           Prediction Market Basket Builder
                         </div>
-                        <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.03em" }}>
+                        <div style={{ color: "#1c1814", fontSize: 28, fontWeight: 600, letterSpacing: "-0.03em" }}>
                           Build manually
                         </div>
                       </div>
@@ -396,8 +396,8 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                         <Card>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, marginBottom: 14 }}>
                             <div>
-                              <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Sharpening your thesis</div>
-                              <div style={{ color: "#8f877e", fontSize: 13 }}>
+                              <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Sharpening your thesis</div>
+                              <div style={{ color: "#6e675f", fontSize: 13 }}>
                                 {stage === "chatting" ? "Prism needs one detail" : `Built in ${mode === "instant" ? "Quick Build" : "Deep Build"} mode`}
                               </div>
                             </div>
@@ -406,7 +406,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                           <ChatThread messages={chatMessages} />
                           {stage === "chatting" && (
                             <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-                              <div style={{ color: "#8f877e", fontSize: 12, fontWeight: 600 }}>Answer to continue</div>
+                              <div style={{ color: "#6e675f", fontSize: 12, fontWeight: 600 }}>Answer to continue</div>
                               <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "stretch" }}>
                                 <input
                                   value={input}
@@ -433,8 +433,8 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                   {progressLabel && stage === "analyzing" && (
                     buildPath === "ai" ? (
                       <Card>
-                        <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, marginBottom: 6 }}>Building your basket</div>
-                        <div style={{ color: "#8f877e", fontSize: 14 }}>
+                        <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 600, marginBottom: 6 }}>Building your basket</div>
+                        <div style={{ color: "#6e675f", fontSize: 14 }}>
                           Prism is turning your take into selected market positions.
                         </div>
                       </Card>
@@ -443,8 +443,8 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                         <div style={{ color: "#e36438", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
                           Build progress
                         </div>
-                        <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{progressCopy}</div>
-                        <div style={{ color: "#8f877e", fontSize: 14 }}>
+                        <div style={{ color: "#1c1814", fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{progressCopy}</div>
+                        <div style={{ color: "#6e675f", fontSize: 14 }}>
                           Saving your manual basket.
                         </div>
                       </Card>
@@ -455,8 +455,8 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
 
                   {error && (
                     <Card>
-                      <div style={{ color: "#ff8f74", fontWeight: 600, marginBottom: 6 }}>Build failed</div>
-                      <div style={{ color: "#d8d0c8" }}>{error}</div>
+                      <div style={{ color: "#dc2626", fontWeight: 600, marginBottom: 6 }}>Build failed</div>
+                      <div style={{ color: "#2e2924" }}>{error}</div>
                     </Card>
                   )}
                 </div>
@@ -533,10 +533,10 @@ function AIBuildComposer({ mode, setMode, input, setInput, onSubmit }: {
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           AI Build
         </div>
-        <h1 style={{ color: "#ede9e3", fontSize: "clamp(28px, 3vw, 40px)", lineHeight: 1.04, letterSpacing: "-0.045em", margin: "0 0 10px" }}>
+        <h1 style={{ color: "#1c1814", fontSize: "clamp(28px, 3vw, 40px)", lineHeight: 1.04, letterSpacing: "-0.045em", margin: "0 0 10px" }}>
           Turn your take into a market basket.
         </h1>
-        <p style={{ color: "#9b938b", fontSize: 16, lineHeight: 1.7, margin: 0, maxWidth: 760 }}>
+        <p style={{ color: "#6e675f", fontSize: 16, lineHeight: 1.7, margin: 0, maxWidth: 760 }}>
           Describe a future you believe in. Prism finds the prediction-market positions that express it.
         </p>
       </div>
@@ -544,12 +544,12 @@ function AIBuildComposer({ mode, setMode, input, setInput, onSubmit }: {
         border: "1px solid rgba(255,255,255,0.07)",
         borderRadius: 24,
         padding: 20,
-        background: "linear-gradient(180deg, rgba(18,18,18,0.96), rgba(11,11,11,0.98))",
-        boxShadow: "0 22px 56px rgba(0,0,0,0.34)",
+        background: "#ffffff",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
         display: "grid",
         gap: 16,
       }}>
-        <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600, letterSpacing: "-0.03em" }}>
+        <div style={{ color: "#1c1814", fontSize: 20, fontWeight: 600, letterSpacing: "-0.03em" }}>
           What future are you betting on?
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -559,8 +559,8 @@ function AIBuildComposer({ mode, setMode, input, setInput, onSubmit }: {
               onClick={() => setMode(value)}
               style={{
                 ...ghostButtonStyle,
-                borderColor: mode === value ? "rgba(227,100,56,0.6)" : "rgba(255,255,255,0.08)",
-                color: mode === value ? "#ede9e3" : "#8d857d",
+                borderColor: mode === value ? "rgba(227,100,56,0.6)" : "rgba(0,0,0,0.08)",
+                color: mode === value ? "#1c1814" : "#6e675f",
                 background: mode === value ? "rgba(227,100,56,0.12)" : "transparent",
               }}
             >
@@ -568,7 +568,7 @@ function AIBuildComposer({ mode, setMode, input, setInput, onSubmit }: {
             </button>
           ))}
         </div>
-        <div style={{ color: "#8f877e", fontSize: 13, lineHeight: 1.6 }}>
+        <div style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.6 }}>
           {mode === "instant"
             ? "Build a basket fast with minimal back-and-forth."
             : "Talk with Prism to dig deeper into your thesis before building."}
@@ -631,10 +631,10 @@ function ManualBuildComposer(props: {
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
           Basket Studio
         </div>
-        <h1 style={{ color: "#ede9e3", fontSize: "clamp(28px, 3vw, 40px)", lineHeight: 1.04, letterSpacing: "-0.045em", margin: "0 0 10px" }}>
+        <h1 style={{ color: "#1c1814", fontSize: "clamp(28px, 3vw, 40px)", lineHeight: 1.04, letterSpacing: "-0.045em", margin: "0 0 10px" }}>
           Build a basket around your market convictions.
         </h1>
-        <p style={{ color: "#9b938b", fontSize: 16, lineHeight: 1.7, margin: 0, maxWidth: 760 }}>
+        <p style={{ color: "#6e675f", fontSize: 16, lineHeight: 1.7, margin: 0, maxWidth: 760 }}>
           Search markets, choose contracts, size your exposure, and save a themed prediction-market basket.
         </p>
       </div>
@@ -643,8 +643,8 @@ function ManualBuildComposer(props: {
         border: "1px solid rgba(255,255,255,0.07)",
         borderRadius: 24,
         padding: 20,
-        background: "linear-gradient(180deg, rgba(18,18,18,0.96), rgba(11,11,11,0.98))",
-        boxShadow: "0 22px 56px rgba(0,0,0,0.34)",
+        background: "#ffffff",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
         display: "grid",
         gap: 16,
       }}>
@@ -675,9 +675,9 @@ function ManualBuildComposer(props: {
                 onClick={() => setEventCategory(chip === "All" ? "" : chip)}
                 style={{
                   borderRadius: 999,
-                  border: `1px solid ${isActive ? "rgba(227,100,56,0.42)" : "rgba(255,255,255,0.08)"}`,
-                  background: isActive ? "rgba(227,100,56,0.13)" : "rgba(255,255,255,0.02)",
-                  color: isActive ? "#f3e8df" : "#a79f97",
+                  border: `1px solid ${isActive ? "rgba(227,100,56,0.42)" : "rgba(0,0,0,0.08)"}`,
+                  background: isActive ? "rgba(227,100,56,0.13)" : "rgba(0,0,0,0.02)",
+                  color: isActive ? "#1c1814" : "#6e675f",
                   padding: "9px 14px",
                   fontSize: 13,
                   fontWeight: 600,
@@ -695,8 +695,8 @@ function ManualBuildComposer(props: {
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 16 }}>
-          <div style={{ color: "#ede9e3", fontSize: 20, fontWeight: 600 }}>Browse markets</div>
-          <div style={{ color: "#8f877e", fontSize: 13 }}>{browseEvents.length} events</div>
+          <div style={{ color: "#1c1814", fontSize: 20, fontWeight: 600 }}>Browse markets</div>
+          <div style={{ color: "#6e675f", fontSize: 13 }}>{browseEvents.length} events</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 18 }}>
           {paginatedEvents.map((event) => {
@@ -709,8 +709,8 @@ function ManualBuildComposer(props: {
                   borderRadius: 22,
                   padding: 20,
                   minHeight: 276,
-                  background: "linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015))",
-                  boxShadow: "0 18px 42px rgba(0,0,0,0.22)",
+                  background: "rgba(0,0,0,0.02)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
                 }}
               >
                 <EventScopeCard
@@ -724,7 +724,7 @@ function ManualBuildComposer(props: {
         </div>
         {browseEvents.length > pageSize && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 16 }}>
-            <div style={{ color: "#7f776f", fontSize: 13 }}>
+            <div style={{ color: "#9b9390", fontSize: 13 }}>
               Page {currentPage} of {totalPages}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
@@ -745,7 +745,7 @@ function ManualBuildComposer(props: {
             </div>
           </div>
         )}
-        {!browseEvents.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No events match the current search and filters.</div>}
+        {!browseEvents.length && <div style={{ color: "#9b9390", fontSize: 13 }}>No events match the current search and filters.</div>}
       </Card>
     </div>
   );
@@ -783,12 +783,12 @@ function EventScopeCard({
         }}>
           {event.category || "Event"}
         </div>
-        <div style={{ color: "#8f877e", fontSize: 12, textAlign: "right", lineHeight: 1.4 }}>
+        <div style={{ color: "#6e675f", fontSize: 12, textAlign: "right", lineHeight: 1.4 }}>
           {deadline ? `Closes ${deadline}` : event.event_ticker}
         </div>
       </div>
 
-      <div style={{ color: "#ede9e3", fontWeight: 600, lineHeight: 1.35, fontSize: 18, letterSpacing: "-0.02em" }}>
+      <div style={{ color: "#1c1814", fontWeight: 600, lineHeight: 1.35, fontSize: 18, letterSpacing: "-0.02em" }}>
         {event.title}
       </div>
 
@@ -796,12 +796,12 @@ function EventScopeCard({
         border: "1px solid rgba(255,255,255,0.05)",
         borderRadius: 16,
         padding: 14,
-        background: "rgba(8,8,8,0.26)",
+        background: "rgba(0,0,0,0.03)",
         display: "grid",
         alignContent: "start",
         gap: 10,
       }}>
-        <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace" }}>
+        <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace" }}>
           Contract preview
         </div>
         {shownMarkets.length > 0 ? (
@@ -816,14 +816,14 @@ function EventScopeCard({
                 <EventOptionLine key={market.ticker} label={market.yes_sub_title || market.ticker} price={market.mid_price} />
               ))}
               {extraMarkets > 0 && (
-                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: "#6f6861", marginTop: 2 }}>
+                <div style={{ fontFamily: "var(--font-mono), monospace", fontSize: 10, color: "#9b9390", marginTop: 2 }}>
                   +{extraMarkets} more options
                 </div>
               )}
             </>
           )
         ) : (
-          <div style={{ color: "#6f6861", fontSize: 12 }}>Open the event to inspect its markets.</div>
+          <div style={{ color: "#9b9390", fontSize: 12 }}>Open the event to inspect its markets.</div>
         )}
       </div>
 
@@ -851,7 +851,7 @@ function EventOptionLine({ label, price }: { label: string; price: number }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
       <div style={{
         fontSize: 12,
-        color: "#b8b0a8",
+        color: "#6e675f",
         lineHeight: 1.35,
         overflow: "hidden",
         textOverflow: "ellipsis",
@@ -912,7 +912,7 @@ function ManualEventModal(props: {
       position: "fixed",
       inset: 0,
       zIndex: 140,
-      background: "rgba(3,3,3,0.78)",
+      background: "rgba(0,0,0,0.45)",
       backdropFilter: "blur(12px)",
       WebkitBackdropFilter: "blur(12px)",
       display: "flex",
@@ -926,13 +926,13 @@ function ManualEventModal(props: {
         overflowY: "auto",
         borderRadius: 28,
         border: "1px solid rgba(255,255,255,0.08)",
-        background: "linear-gradient(180deg, rgba(18,18,18,0.98), rgba(9,9,9,0.99))",
-        boxShadow: "0 36px 110px rgba(0,0,0,0.56)",
+        background: "#ffffff",
+        boxShadow: "0 8px 40px rgba(0,0,0,0.12)",
         padding: 28,
       }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "start", marginBottom: 20 }}>
           <div>
-            <div style={{ color: "#ede9e3", fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.04em", maxWidth: 760 }}>
+            <div style={{ color: "#1c1814", fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.04em", maxWidth: 760 }}>
               {event.title}
             </div>
           </div>
@@ -942,7 +942,7 @@ function ManualEventModal(props: {
             style={{
               background: "transparent",
               border: "1px solid rgba(255,255,255,0.08)",
-              color: "#9b938b",
+              color: "#6e675f",
               width: 38,
               height: 38,
               borderRadius: 999,
@@ -960,11 +960,11 @@ function ManualEventModal(props: {
             border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 22,
             padding: 22,
-            background: "rgba(255,255,255,0.02)",
+            background: "rgba(0,0,0,0.02)",
             display: "grid",
             gap: 18,
           }}>
-            <div style={{ color: "#ede9e3", fontSize: 19, fontWeight: 600 }}>
+            <div style={{ color: "#1c1814", fontSize: 19, fontWeight: 600 }}>
               Event details
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }}>
@@ -976,10 +976,10 @@ function ManualEventModal(props: {
                 borderTop: "1px solid rgba(255,255,255,0.08)",
                 paddingTop: 18,
               }}>
-                <div style={{ color: "#ede9e3", fontSize: 17, fontWeight: 600, marginBottom: 10 }}>
+                <div style={{ color: "#1c1814", fontSize: 17, fontWeight: 600, marginBottom: 10 }}>
                   Resolution rule
                 </div>
-                <div style={{ color: "#9b938b", fontSize: 14, lineHeight: 1.75 }}>
+                <div style={{ color: "#6e675f", fontSize: 14, lineHeight: 1.75 }}>
                   {leadMarket.rules_primary}
                 </div>
               </div>
@@ -990,19 +990,19 @@ function ManualEventModal(props: {
             border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 22,
             padding: 22,
-            background: "rgba(255,255,255,0.02)",
+            background: "rgba(0,0,0,0.02)",
           }}>
-            <div style={{ color: "#ede9e3", fontSize: 21, fontWeight: 600, marginBottom: 8 }}>
+            <div style={{ color: "#1c1814", fontSize: 21, fontWeight: 600, marginBottom: 8 }}>
               Choose contract
             </div>
-            <div style={{ color: "#8f877e", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
+            <div style={{ color: "#6e675f", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
               Pick the expression of this market conviction you want in your basket.
             </div>
 
             {loading ? (
-              <div style={{ color: "#8f877e", fontSize: 14 }}>Loading options...</div>
+              <div style={{ color: "#6e675f", fontSize: 14 }}>Loading options...</div>
             ) : !sortedMarkets.length ? (
-              <div style={{ color: "#8f877e", fontSize: 14 }}>No markets available for this event.</div>
+              <div style={{ color: "#6e675f", fontSize: 14 }}>No markets available for this event.</div>
             ) : isBinary && leadMarket ? (
               <div style={{ display: "grid", gap: 12 }}>
                 <ContractChoiceCard
@@ -1069,11 +1069,11 @@ function ContractChoiceCard({
       border: "1px solid rgba(255,255,255,0.08)",
       borderRadius: 18,
       padding: "14px 16px",
-      background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))",
+      background: "rgba(0,0,0,0.02)",
     }}>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 14, alignItems: "center" }}>
         <div>
-          <div style={{ color: "#ede9e3", fontSize: 17, fontWeight: 600, lineHeight: 1.3 }}>
+          <div style={{ color: "#1c1814", fontSize: 17, fontWeight: 600, lineHeight: 1.3 }}>
             {title}
           </div>
         </div>
@@ -1091,10 +1091,10 @@ function ContractChoiceCard({
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ color: "#7b746d", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: "5px" }}>
+      <div style={{ color: "#9b9390", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: "5px" }}>
         {label}
       </div>
-      <div style={{ color: "#e1dbd3", fontSize: "14px", lineHeight: 1.6 }}>
+      <div style={{ color: "#2e2924", fontSize: "14px", lineHeight: 1.6 }}>
         {value}
       </div>
     </div>
@@ -1104,10 +1104,10 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 function EditorialField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ color: "#7b746d", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
+      <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
         {label}
       </div>
-      <div style={{ color: "#e5dfd7", fontSize: 15, lineHeight: 1.7 }}>
+      <div style={{ color: "#2e2924", fontSize: 15, lineHeight: 1.7 }}>
         {value}
       </div>
     </div>
@@ -1159,10 +1159,10 @@ function ManualBasketSidebar(props: {
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           Basket draft
         </div>
-        <div style={{ color: "#ede9e3", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
+        <div style={{ color: "#1c1814", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
           Your basket
         </div>
-        <div style={{ color: "#948c84", fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
+        <div style={{ color: "#6e675f", fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
           Curate positions, size your exposure, and save when the basket reflects your thesis.
         </div>
       </Card>
@@ -1170,8 +1170,8 @@ function ManualBasketSidebar(props: {
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 14 }}>
           <div>
-            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 4 }}>Your Basket</div>
-            <div style={{ color: "#8f877e", fontSize: 13 }}>
+            <div style={{ color: "#1c1814", fontWeight: 600, marginBottom: 4 }}>Your Basket</div>
+            <div style={{ color: "#6e675f", fontSize: 13 }}>
               {manualHoldings.length} {manualHoldings.length === 1 ? "position" : "positions"} · {manualHoldings.reduce((sum, holding) => sum + (holding.weight_percent || 0), 0).toFixed(0)}% drafted
             </div>
           </div>
@@ -1191,10 +1191,10 @@ function ManualBasketSidebar(props: {
               border: "1px dashed rgba(255,255,255,0.10)",
               borderRadius: 18,
               padding: 18,
-              color: "#8c847c",
+              color: "#6e675f",
               fontSize: 14,
               lineHeight: 1.6,
-              background: "rgba(255,255,255,0.015)",
+              background: "rgba(0,0,0,0.015)",
             }}>
               No positions yet. Inspect a market and add a contract to start your basket.
             </div>
@@ -1228,7 +1228,7 @@ function SaveManualBasketModal(props: {
       position: "fixed",
       inset: 0,
       zIndex: 120,
-      background: "rgba(4,4,4,0.78)",
+      background: "rgba(0,0,0,0.45)",
       backdropFilter: "blur(10px)",
       WebkitBackdropFilter: "blur(10px)",
       display: "flex",
@@ -1240,17 +1240,17 @@ function SaveManualBasketModal(props: {
         width: "min(100%, 560px)",
         borderRadius: 24,
         border: "1px solid rgba(255,255,255,0.08)",
-        background: "linear-gradient(180deg, rgba(17,17,17,0.98), rgba(10,10,10,0.99))",
-        boxShadow: "0 30px 90px rgba(0,0,0,0.55)",
+        background: "#ffffff",
+        boxShadow: "0 8px 40px rgba(0,0,0,0.12)",
         padding: 24,
       }}>
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           Save Basket
         </div>
-        <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
+        <div style={{ color: "#1c1814", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
           Save your basket
         </div>
-        <div style={{ color: "#948c84", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
+        <div style={{ color: "#6e675f", fontSize: 14, lineHeight: 1.6, marginBottom: 18 }}>
           Give your basket a title and capture the thesis behind it before saving.
         </div>
         <div style={{ display: "grid", gap: 10 }}>
@@ -1276,10 +1276,10 @@ function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; 
         <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           How It Works
         </div>
-        <div style={{ color: "#ede9e3", fontSize: 18, fontWeight: 600, marginBottom: 10 }}>
+        <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 600, marginBottom: 10 }}>
           {buildPath === "ai" ? "From belief to basket" : "From market picker to basket"}
         </div>
-        <ul style={{ margin: 0, paddingLeft: 18, color: "#9c948c", lineHeight: 1.7, fontSize: 14 }}>
+        <ul style={{ margin: 0, paddingLeft: 18, color: "#6e675f", lineHeight: 1.7, fontSize: 14 }}>
           {buildPath === "ai" ? (
             <>
               <li>Clarify the future theme.</li>
@@ -1313,14 +1313,14 @@ function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; 
                 border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 14,
                 padding: 14,
-                background: "rgba(255,255,255,0.02)",
+                background: "rgba(0,0,0,0.02)",
               }}
             >
-              <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 6 }}>{saved.title}</div>
-              <div style={{ color: "#938b83", fontSize: 13, lineHeight: 1.5 }}>{saved.summary}</div>
+              <div style={{ color: "#1c1814", fontWeight: 600, marginBottom: 6 }}>{saved.title}</div>
+              <div style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.5 }}>{saved.summary}</div>
             </Link>
           ))}
-          {!savedBaskets.length && <div style={{ color: "#7d756d", fontSize: 13 }}>No saved baskets yet.</div>}
+          {!savedBaskets.length && <div style={{ color: "#9b9390", fontSize: 13 }}>No saved baskets yet.</div>}
         </div>
       </Card>
     </>
@@ -1336,17 +1336,17 @@ function ChatThread({ messages }: { messages: ChatMsg[] }) {
           style={{
             padding: "12px 14px",
             borderRadius: 18,
-            background: message.role === "user" ? "rgba(227,100,56,0.1)" : "rgba(255,255,255,0.02)",
+            background: message.role === "user" ? "rgba(227,100,56,0.1)" : "rgba(0,0,0,0.02)",
             border: message.role === "user" ? "1px solid rgba(227,100,56,0.2)" : "1px solid rgba(255,255,255,0.05)",
-            color: "#ede9e3",
+            color: "#1c1814",
             maxWidth: message.role === "user" ? "92%" : "100%",
             justifySelf: message.role === "user" ? "end" : "start",
           }}
         >
-          <div style={{ color: message.role === "user" ? "#f19977" : "#8b837c", fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ color: message.role === "user" ? "#d4520e" : "#8b837c", fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
             {message.role === "user" ? "Your answer" : "Prism"}
           </div>
-          <div style={{ lineHeight: 1.6, color: "#ddd6ce" }}>{message.content}</div>
+          <div style={{ lineHeight: 1.6, color: "#2e2924" }}>{message.content}</div>
         </div>
       ))}
     </div>
@@ -1360,7 +1360,7 @@ function BeliefBrief({ summary }: { summary: BeliefSummary }) {
       <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
         Thesis snapshot
       </div>
-      <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", lineHeight: 1.12, maxWidth: 760, marginBottom: 12 }}>
+      <div style={{ color: "#1c1814", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", lineHeight: 1.12, maxWidth: 760, marginBottom: 12 }}>
         {summary.core_belief}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 18, marginBottom: 14 }}>
@@ -1369,7 +1369,7 @@ function BeliefBrief({ summary }: { summary: BeliefSummary }) {
       </div>
       {!!summary.key_drivers?.length && (
         <div>
-          <div style={{ color: "#d8d0c8", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Likely consequences</div>
+          <div style={{ color: "#2e2924", fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Likely consequences</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {summary.key_drivers.slice(0, 4).map((driver) => (
               <Tag key={driver}>{driver}</Tag>
@@ -1446,13 +1446,13 @@ function HoldingGroup({ title, holdings, totalNotional }: { title: string; holdi
   if (!holdings.length) return null;
   return (
     <section>
-      <div style={{ color: "#d8d0c8", fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{title}</div>
+      <div style={{ color: "#2e2924", fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{title}</div>
       <div style={{ display: "grid", gap: 10 }}>
         {holdings.map((holding) => (
-          <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 16, background: "rgba(255,255,255,0.02)" }}>
+          <div key={holding.ticker} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 16, background: "rgba(0,0,0,0.02)" }}>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 120px", gap: 16, alignItems: "start" }}>
               <div>
-                <div style={{ color: "#ede9e3", fontSize: 17, fontWeight: 600, marginBottom: 6 }}>
+                <div style={{ color: "#1c1814", fontSize: 17, fontWeight: 600, marginBottom: 6 }}>
                   {holding.event_title || holding.question}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
@@ -1462,31 +1462,31 @@ function HoldingGroup({ title, holdings, totalNotional }: { title: string; holdi
                   {holding.fit_type && <Tag>{holding.fit_type.replace(/_/g, " ")}</Tag>}
                   {holding.fit_confidence && <Tag>{holding.fit_confidence} confidence</Tag>}
                 </div>
-                <div style={{ color: "#9b938c", fontSize: 14, lineHeight: 1.6, marginBottom: 6 }}>
-                  <strong style={{ color: "#d8d0c8" }}>Why it&apos;s here:</strong> {holding.rationale || "Included as a direct expression of the thesis."}
+                <div style={{ color: "#6e675f", fontSize: 14, lineHeight: 1.6, marginBottom: 6 }}>
+                  <strong style={{ color: "#2e2924" }}>Why it&apos;s here:</strong> {holding.rationale || "Included as a direct expression of the thesis."}
                 </div>
                 {holding.bucket_thesis && (
                   <div style={{ color: "#9f968e", fontSize: 13, lineHeight: 1.5, marginBottom: 6 }}>
-                    <strong style={{ color: "#d8d0c8" }}>Bucket view:</strong> {holding.bucket_thesis}
+                    <strong style={{ color: "#2e2924" }}>Bucket view:</strong> {holding.bucket_thesis}
                   </div>
                 )}
-                <div style={{ color: "#7f776f", fontSize: 13, lineHeight: 1.5 }}>
-                  <strong style={{ color: "#c5bcb4" }}>Main risk:</strong> {holding.main_risk || "The thesis resolves differently than expected."}
+                <div style={{ color: "#9b9390", fontSize: 13, lineHeight: 1.5 }}>
+                  <strong style={{ color: "#3a3530" }}>Main risk:</strong> {holding.main_risk || "The thesis resolves differently than expected."}
                 </div>
                 {holding.fit_warning && (
-                  <div style={{ color: "#b9a48f", fontSize: 13, lineHeight: 1.5, marginTop: 8 }}>
-                    <strong style={{ color: "#d8d0c8" }}>Fit note:</strong> {holding.fit_warning}
+                  <div style={{ color: "#92735a", fontSize: 13, lineHeight: 1.5, marginTop: 8 }}>
+                    <strong style={{ color: "#2e2924" }}>Fit note:</strong> {holding.fit_warning}
                   </div>
                 )}
                 {holding.proxy_reason && (
-                  <div style={{ color: "#8f877f", fontSize: 13, lineHeight: 1.5, marginTop: 6 }}>
-                    <strong style={{ color: "#c5bcb4" }}>Proxy reason:</strong> {holding.proxy_reason}
+                  <div style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.5, marginTop: 6 }}>
+                    <strong style={{ color: "#3a3530" }}>Proxy reason:</strong> {holding.proxy_reason}
                   </div>
                 )}
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ color: "#8f877f", fontSize: 12, marginBottom: 6 }}>Weight</div>
-                <div style={{ color: "#ede9e3", fontSize: 28, fontWeight: 600 }}>
+                <div style={{ color: "#6e675f", fontSize: 12, marginBottom: 6 }}>Weight</div>
+                <div style={{ color: "#1c1814", fontSize: 28, fontWeight: 600 }}>
                   {Math.round((holding.weight_dollars / totalNotional) * 100)}%
                 </div>
               </div>
@@ -1507,11 +1507,11 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
       </div>
       <div style={{ display: "grid", gap: 10 }}>
         {topDomains.slice(0, 4).map((domain) => (
-          <div key={domain.domain} style={{ borderRadius: 16, padding: 14, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 6 }}>
+          <div key={domain.domain} style={{ borderRadius: 16, padding: 14, background: "rgba(0,0,0,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ color: "#1c1814", fontWeight: 600, marginBottom: 6 }}>
               {consequenceLabel(domain)}
             </div>
-            <div style={{ color: "#a79f97", fontSize: 13, marginBottom: 8 }}>
+            <div style={{ color: "#6e675f", fontSize: 13, marginBottom: 8 }}>
               {consequenceLine(domain)}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -1523,7 +1523,7 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
         ))}
       </div>
       {!!screenedCount && (
-        <div style={{ color: "#938b83", fontSize: 13, marginTop: 14 }}>
+        <div style={{ color: "#6e675f", fontSize: 13, marginTop: 14 }}>
           Prism scanned {screenedCount} relevant events to shape this basket.
         </div>
       )}
@@ -1585,10 +1585,10 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
           <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
             Prediction Market Basket
           </div>
-          <div style={{ color: "#ede9e3", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
+          <div style={{ color: "#1c1814", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
             {basket.basket_title}
           </div>
-          <div style={{ color: "#958d86", fontSize: 15, lineHeight: 1.6, maxWidth: 700 }}>
+          <div style={{ color: "#6e675f", fontSize: 15, lineHeight: 1.6, maxWidth: 700 }}>
             {basket.basket_summary}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
@@ -1596,7 +1596,7 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
             <Tag>{basket.holdings.length} positions</Tag>
             {basket.basket_quality && <Tag>{basketQualityLabel(basket.basket_quality)}</Tag>}
           </div>
-          <div style={{ color: "#9b938c", fontSize: 14, lineHeight: 1.6, marginTop: 10, maxWidth: 720 }}>
+          <div style={{ color: "#6e675f", fontSize: 14, lineHeight: 1.6, marginTop: 10, maxWidth: 720 }}>
             {basket.basket_quality_explanation || basketQualityCopy(basket.basket_quality)}
           </div>
         </div>
@@ -1622,7 +1622,7 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
           <div key={group.name}>
             <HoldingGroup title={group.name} holdings={group.holdings} totalNotional={basket.total_notional} />
             {group.description && (
-              <div style={{ color: "#8f877f", fontSize: 13, lineHeight: 1.5, marginTop: -12 }}>
+              <div style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.5, marginTop: -12 }}>
                 {group.description}
               </div>
             )}
@@ -1630,7 +1630,7 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
         ))}
       </div>
 
-      <div style={{ marginTop: 18, color: "#8f877f", fontSize: 14, lineHeight: 1.6 }}>
+      <div style={{ marginTop: 18, color: "#6e675f", fontSize: 14, lineHeight: 1.6 }}>
         {basket.construction_notes}
       </div>
     </Card>
@@ -1639,26 +1639,26 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
 
 function ManualMarketCard({ market, onAdd }: { market: KalshiMarket; onAdd: () => void }) {
   return (
-    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: 16, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))" }}>
+    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: 16, background: "rgba(0,0,0,0.02)" }}>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 16, alignItems: "start" }}>
         <div>
-          <div style={{ color: "#7f776f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+          <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
             {market.category || "Market"}{market.event_title ? ` · ${market.event_title}` : ""}
           </div>
-          <div style={{ color: "#ede9e3", fontWeight: 600, marginBottom: 8, lineHeight: 1.45, fontSize: 16 }}>{market.question}</div>
+          <div style={{ color: "#1c1814", fontWeight: 600, marginBottom: 8, lineHeight: 1.45, fontSize: 16 }}>{market.question}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
             <Tag>{Math.round(market.mid_price * 100)}% market odds</Tag>
             <Tag>{market.close_date}</Tag>
             <Tag>${Math.round(market.volume).toLocaleString()} vol</Tag>
           </div>
           {market.rules_primary && (
-            <div style={{ color: "#8c847c", fontSize: 13, lineHeight: 1.55 }}>
+            <div style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.55 }}>
               {market.rules_primary.length > 180 ? `${market.rules_primary.slice(0, 180)}...` : market.rules_primary}
             </div>
           )}
         </div>
         <div style={{ display: "grid", justifyItems: "end", gap: 10, minWidth: 132 }}>
-          <div style={{ color: "#9f978f", fontSize: 12 }}>Ticker {market.ticker}</div>
+          <div style={{ color: "#6e675f", fontSize: 12 }}>Ticker {market.ticker}</div>
           <button onClick={onAdd} style={{ ...ghostButtonStyle, minWidth: 132 }}>Add to basket</button>
         </div>
       </div>
@@ -1713,11 +1713,11 @@ function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
   const selectedChoice = `${holding.ticker}:${holding.side}`;
 
   return (
-    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, background: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))" }}>
+    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 14, background: "rgba(0,0,0,0.02)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12, marginBottom: 10 }}>
         <div>
-          <div style={{ color: "#ede9e3", fontWeight: 600, lineHeight: 1.45, marginBottom: 4 }}>{holding.event_title || holding.question}</div>
-          <div style={{ color: "#8f877e", fontSize: 13 }}>
+          <div style={{ color: "#1c1814", fontWeight: 600, lineHeight: 1.45, marginBottom: 4 }}>{holding.event_title || holding.question}</div>
+          <div style={{ color: "#6e675f", fontSize: 13 }}>
             Current price {Math.round(holding.market_price * 100)}%
           </div>
         </div>
@@ -1727,7 +1727,7 @@ function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
           style={{
             background: "transparent",
             border: "none",
-            color: "#8f877e",
+            color: "#6e675f",
             fontSize: 18,
             lineHeight: 1,
             cursor: "pointer",
@@ -1779,11 +1779,11 @@ function ManualHoldingCard({ holding, onUpdate, onRemove, markets }: {
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      background: "linear-gradient(180deg, rgba(18,18,18,0.97), rgba(12,12,12,0.98))",
+      background: "#ffffff",
       border: "1px solid rgba(255,255,255,0.08)",
       borderRadius: 22,
       padding: 22,
-      boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
       ...style,
     }}>
       {children}
@@ -1799,9 +1799,9 @@ function Tag({ children }: { children: React.ReactNode }) {
       padding: "5px 9px",
       borderRadius: 999,
       border: "1px solid rgba(255,255,255,0.08)",
-      color: "#c9c0b7",
+      color: "#3a3530",
       fontSize: 12,
-      background: "rgba(255,255,255,0.03)",
+      background: "rgba(0,0,0,0.02)",
     }}>
       {children}
     </span>
@@ -1810,11 +1810,11 @@ function Tag({ children }: { children: React.ReactNode }) {
 
 const textareaStyle: React.CSSProperties = {
   width: "100%",
-  background: "rgba(255,255,255,0.03)",
-  border: "1px solid rgba(255,255,255,0.09)",
+  background: "rgba(0,0,0,0.02)",
+  border: "1px solid rgba(0,0,0,0.09)",
   borderRadius: 16,
   padding: "16px 18px",
-  color: "#ede9e3",
+  color: "#1c1814",
   fontSize: 16,
   lineHeight: 1.6,
   resize: "vertical",
@@ -1824,17 +1824,17 @@ const textareaStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  background: "rgba(255,255,255,0.03)",
-  border: "1px solid rgba(255,255,255,0.09)",
+  background: "rgba(0,0,0,0.02)",
+  border: "1px solid rgba(0,0,0,0.09)",
   borderRadius: 12,
   padding: "12px 14px",
-  color: "#ede9e3",
+  color: "#1c1814",
   fontSize: 14,
   outline: "none",
 };
 
 const miniLabelStyle: React.CSSProperties = {
-  color: "#7b746d",
+  color: "#9b9390",
   fontSize: 11,
   textTransform: "uppercase",
   letterSpacing: "0.12em",
@@ -1854,7 +1854,7 @@ const primaryButtonStyle: React.CSSProperties = {
 
 const ghostButtonStyle: React.CSSProperties = {
   background: "transparent",
-  color: "#8d857d",
+  color: "#6e675f",
   border: "1px solid rgba(255,255,255,0.08)",
   borderRadius: 12,
   padding: "10px 14px",
