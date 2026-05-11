@@ -383,7 +383,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                           Prediction Market Basket Builder
                         </div>
                         <div style={{ color: "#1c1814", fontSize: 28, fontWeight: 600, letterSpacing: "-0.03em" }}>
-                          Build manually
+                          Basket Studio
                         </div>
                       </div>
                       <button onClick={resetFlow} style={ghostButtonStyle}>New basket</button>
