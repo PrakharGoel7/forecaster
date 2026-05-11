@@ -28,7 +28,7 @@ function formatTimeframe(value: string): string {
 }
 
 function avatarColor(seed: number): string {
-  const palette = ["#e36438", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
+  const palette = ["#4f46e5", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
   return palette[seed % palette.length];
 }
 

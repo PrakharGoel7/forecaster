@@ -160,10 +160,10 @@ export default function Header() {
           >
             <div style={{
               width: "28px", height: "28px", borderRadius: "7px",
-              background: "linear-gradient(135deg, #fff4ef 0%, #ffe8de 100%)",
-              border: "1px solid rgba(227,100,56,0.2)", display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: "13px", color: "#e36438",
-              boxShadow: "0 0 12px rgba(227,100,56,0.1)",
+              background: "linear-gradient(135deg, #f0f0fe 0%, #e0e0fc 100%)",
+              border: "1px solid rgba(79,70,229,0.2)", display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: "13px", color: "#4f46e5",
+              boxShadow: "0 0 12px rgba(79,70,229,0.1)",
             }}>◈</div>
             <span style={{
               fontFamily: "var(--font-mono), monospace", fontWeight: 700,
@@ -214,7 +214,7 @@ export default function Header() {
               fontFamily: "var(--font-mono), monospace",
               fontSize: "9px", color: "#c8c2bc", letterSpacing: "0.12em",
             }}>
-              <span className="blink" style={{ color: "#e36438", fontSize: "7px" }}>●</span>
+              <span className="blink" style={{ color: "#4f46e5", fontSize: "7px" }}>●</span>
               LIVE
             </div>
 
@@ -226,7 +226,7 @@ export default function Header() {
                     onClick={e => { e.preventDefault(); hardNavigate(`/users/${profile.username}`); }}
                     style={{
                       fontFamily: "var(--font-mono), monospace", fontSize: "11px",
-                      color: "#e36438", letterSpacing: "0.04em", textDecoration: "none",
+                      color: "#4f46e5", letterSpacing: "0.04em", textDecoration: "none",
                       fontWeight: 600,
                     }}
                   >
@@ -245,7 +245,7 @@ export default function Header() {
                   fontFamily: "var(--font-mono), monospace", fontSize: "10px",
                   fontWeight: 600, letterSpacing: "0.08em",
                   color: "#a8a29a", background: "transparent",
-                  border: "1px solid rgba(227,100,56,0.2)", borderRadius: "6px",
+                  border: "1px solid rgba(79,70,229,0.2)", borderRadius: "6px",
                   padding: "5px 12px", cursor: "pointer",
                   transition: "color 0.15s, border-color 0.15s",
                 }}
@@ -260,7 +260,7 @@ export default function Header() {
                 fontFamily: "var(--font-mono), monospace", fontSize: "10px",
                 fontWeight: 600, letterSpacing: "0.08em",
                 color: "#a8a29a", background: "transparent",
-                border: "1px solid rgba(227,100,56,0.2)", borderRadius: "6px",
+                border: "1px solid rgba(79,70,229,0.2)", borderRadius: "6px",
                 padding: "5px 12px", cursor: "pointer",
                 transition: "color 0.15s, border-color 0.15s",
               }}
@@ -287,7 +287,7 @@ export default function Header() {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: "#ffffff", border: "1px solid rgba(227,100,56,0.2)",
+              background: "#ffffff", border: "1px solid rgba(79,70,229,0.2)",
               borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "380px",
               boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
             }}
@@ -369,7 +369,7 @@ export default function Header() {
                   return (
                 <button onClick={submit} disabled={loading || !ready}
                   style={{
-                    width: "100%", background: ready ? "#e36438" : "#f0ede9",
+                    width: "100%", background: ready ? "#4f46e5" : "#f0ede9",
                     color: "#fff", border: "none", borderRadius: "8px",
                     padding: "10px", fontSize: "12px",
                     fontFamily: "var(--font-mono), monospace",
@@ -378,8 +378,8 @@ export default function Header() {
                     opacity: ready ? 1 : 0.4,
                     transition: "background 0.15s",
                   }}
-                  onMouseEnter={e => { if (ready) e.currentTarget.style.background = "#c4421a"; }}
-                  onMouseLeave={e => { if (ready) e.currentTarget.style.background = "#e36438"; }}
+                  onMouseEnter={e => { if (ready) e.currentTarget.style.background = "#4338ca"; }}
+                  onMouseLeave={e => { if (ready) e.currentTarget.style.background = "#4f46e5"; }}
                 >
                   {loading ? "…" : mode === "signin" ? "Sign in →" : "Create account →"}
                 </button>
@@ -402,13 +402,13 @@ export default function Header() {
         >
           <div
             style={{
-              background: "#ffffff", border: "1px solid rgba(227,100,56,0.2)",
+              background: "#ffffff", border: "1px solid rgba(79,70,229,0.2)",
               borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "380px",
               boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
             }}
           >
             <div style={{ marginBottom: 20 }}>
-              <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+              <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
                 One more step
               </div>
               <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 6 }}>
@@ -451,7 +451,7 @@ export default function Header() {
               disabled={usernameLoading || usernameInput.length < 3}
               style={{
                 width: "100%",
-                background: usernameInput.length >= 3 ? "#e36438" : "#f0ede9",
+                background: usernameInput.length >= 3 ? "#4f46e5" : "#f0ede9",
                 color: "#fff", border: "none", borderRadius: "8px",
                 padding: "10px", fontSize: "12px",
                 fontFamily: "var(--font-mono), monospace",
@@ -460,8 +460,8 @@ export default function Header() {
                 opacity: usernameInput.length >= 3 ? 1 : 0.4,
                 transition: "background 0.15s",
               }}
-              onMouseEnter={e => { if (usernameInput.length >= 3) e.currentTarget.style.background = "#c4421a"; }}
-              onMouseLeave={e => { if (usernameInput.length >= 3) e.currentTarget.style.background = "#e36438"; }}
+              onMouseEnter={e => { if (usernameInput.length >= 3) e.currentTarget.style.background = "#4338ca"; }}
+              onMouseLeave={e => { if (usernameInput.length >= 3) e.currentTarget.style.background = "#4f46e5"; }}
             >
               {usernameLoading ? "…" : "Set username →"}
             </button>

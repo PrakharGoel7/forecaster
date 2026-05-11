@@ -1,0 +1,174 @@
+{
+  "generated_at": "2026-05-05T22:08:32.696072+00:00",
+  "config": {
+    "model": "openai/gpt-4o",
+    "num_ov_agents": 3,
+    "max_ov_iterations": 3,
+    "num_iv_agents": 3,
+    "max_iv_iterations": 4,
+    "num_ensemble_runs": 1
+  },
+  "results": [
+    {
+      "ticker": "KXFDATYPE1DIABETES-33",
+      "started_at": "2026-05-05T22:07:24.849639+00:00",
+      "success": true,
+      "total_duration_ms": 67847.94,
+      "market": {
+        "ticker": "KXFDATYPE1DIABETES-33",
+        "event_ticker": "KXFDATYPE1DIABETES-33",
+        "question": "Will Before 2033?",
+        "mid_price": 0.405,
+        "close_time": "2033-01-01T04:59:00Z"
+      },
+      "memo_summary": {
+        "final_probability": 0.21322890992700855,
+        "raw_probability": 0.32,
+        "num_agents": 6,
+        "num_ensemble_runs": 1
+      },
+      "timings": {
+        "by_name_ms": {
+          "Question Parser": 2886.21,
+          "Run 1 \u00b7 Agent 1/3": 16493.69,
+          "Run 1 \u00b7 Agent 2/3": 37217.62,
+          "Run 1 \u00b7 Agent 3/3": 25027.34,
+          "Run 1 \u00b7 OV Agent A": 16400.69,
+          "Run 1 \u00b7 OV Agent B": 16593.98,
+          "Run 1 \u00b7 OV Agent C": 11351.11,
+          "Run 1 \u00b7 OV Reconciler": 5787.5,
+          "Run 1 \u00b7 Supervisor": 5355.53
+        },
+        "by_bucket_ms": {
+          "question_parser": 2886.21,
+          "outside_view_agents": 44345.78,
+          "outside_view_reconciler": 5787.5,
+          "inside_view_agents": 78738.65,
+          "supervisor": 5355.53
+        }
+      },
+      "events": [
+        {
+          "name": "Question Parser",
+          "status": "running",
+          "elapsed_ms": 0.12,
+          "logged_at": "2026-05-05T22:07:24.849758+00:00"
+        },
+        {
+          "name": "Question Parser",
+          "status": "done",
+          "elapsed_ms": 2886.33,
+          "logged_at": "2026-05-05T22:07:27.735898+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 OV Agent A",
+          "status": "running",
+          "elapsed_ms": 2886.58,
+          "logged_at": "2026-05-05T22:07:27.736132+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 OV Agent B",
+          "status": "running",
+          "elapsed_ms": 2887.6,
+          "logged_at": "2026-05-05T22:07:27.737156+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 OV Agent C",
+          "status": "running",
+          "elapsed_ms": 2888.69,
+          "logged_at": "2026-05-05T22:07:27.738244+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 OV Agent C",
+          "status": "done",
+          "elapsed_ms": 14239.8,
+          "logged_at": "2026-05-05T22:07:39.089007+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 OV Agent A",
+          "status": "done",
+          "elapsed_ms": 19287.27,
+          "logged_at": "2026-05-05T22:07:44.136323+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 OV Agent B",
+          "status": "done",
+          "elapsed_ms": 19481.58,
+          "logged_at": "2026-05-05T22:07:44.330620+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 OV Reconciler",
+          "status": "running",
+          "elapsed_ms": 19481.89,
+          "logged_at": "2026-05-05T22:07:44.330928+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 OV Reconciler",
+          "status": "done",
+          "elapsed_ms": 25269.39,
+          "logged_at": "2026-05-05T22:07:50.118290+00:00"
+        },
+        {
+          "name": "OV Phase",
+          "status": "complete",
+          "elapsed_ms": 25269.59,
+          "logged_at": "2026-05-05T22:07:50.118443+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 Agent 1/3",
+          "status": "running",
+          "elapsed_ms": 25269.91,
+          "logged_at": "2026-05-05T22:07:50.118771+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 Agent 2/3",
+          "status": "running",
+          "elapsed_ms": 25271.46,
+          "logged_at": "2026-05-05T22:07:50.120317+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 Agent 3/3",
+          "status": "running",
+          "elapsed_ms": 25271.94,
+          "logged_at": "2026-05-05T22:07:50.120801+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 Agent 1/3",
+          "status": "done",
+          "elapsed_ms": 41763.6,
+          "logged_at": "2026-05-05T22:08:06.611989+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 Agent 3/3",
+          "status": "done",
+          "elapsed_ms": 50299.28,
+          "logged_at": "2026-05-05T22:08:15.147374+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 Agent 2/3",
+          "status": "done",
+          "elapsed_ms": 62489.08,
+          "logged_at": "2026-05-05T22:08:27.336801+00:00"
+        },
+        {
+          "name": "IV Phase",
+          "status": "complete",
+          "elapsed_ms": 62489.55,
+          "logged_at": "2026-05-05T22:08:27.337257+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 Supervisor",
+          "status": "running",
+          "elapsed_ms": 62489.58,
+          "logged_at": "2026-05-05T22:08:27.337285+00:00"
+        },
+        {
+          "name": "Run 1 \u00b7 Supervisor",
+          "status": "done",
+          "elapsed_ms": 67845.11,
+          "logged_at": "2026-05-05T22:08:32.692662+00:00"
+        }
+      ]
+    }
+  ]
+}

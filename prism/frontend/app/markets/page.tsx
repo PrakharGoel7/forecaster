@@ -62,7 +62,7 @@ export default function MarketsPage() {
         <div style={{ marginBottom: "28px" }}>
           <div style={{
             fontFamily: "var(--font-mono), monospace", fontSize: "9px", fontWeight: 700,
-            textTransform: "uppercase", letterSpacing: "0.2em", color: "#e36438", marginBottom: "8px",
+            textTransform: "uppercase", letterSpacing: "0.2em", color: "#4f46e5", marginBottom: "8px",
           }}>
             <span className="blink" style={{ fontSize: "7px", marginRight: "8px" }}>●</span>
             Live Markets
@@ -101,14 +101,14 @@ export default function MarketsPage() {
             >clear</button>
           )}
           <button onClick={runSearch} disabled={searching} style={{
-            background: searching ? "#181818" : "#e36438", color: "#fff",
+            background: searching ? "#181818" : "#4f46e5", color: "#fff",
             border: "none", borderRadius: "8px", padding: "8px 18px",
             fontSize: "11px", fontFamily: "var(--font-mono), monospace",
             fontWeight: 600, letterSpacing: "0.06em", cursor: "pointer",
             opacity: searching ? 0.5 : 1, transition: "background 0.15s",
           }}
-            onMouseEnter={e => { if (!searching) e.currentTarget.style.background = "#c4421a"; }}
-            onMouseLeave={e => { if (!searching) e.currentTarget.style.background = "#e36438"; }}
+            onMouseEnter={e => { if (!searching) e.currentTarget.style.background = "#4338ca"; }}
+            onMouseLeave={e => { if (!searching) e.currentTarget.style.background = "#4f46e5"; }}
           >
             {searching ? "…" : "search →"}
           </button>

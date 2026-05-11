@@ -10,7 +10,7 @@ import { getUserPage } from "@/lib/api";
 import type { SavedBasket, UserProfile } from "@/lib/types";
 
 function avatarColor(seed: string): string {
-  const palette = ["#e36438", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
+  const palette = ["#4f46e5", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
   let hash = 0;
   for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   return palette[Math.abs(hash) % palette.length];
@@ -53,7 +53,7 @@ export default function UserProfilePage() {
         <GridOverlay />
         <div style={{ position: "relative", zIndex: 10, maxWidth: 900, margin: "0 auto", padding: "120px 24px" }}>
           <div style={{ color: "#9b9390", fontSize: 15 }}>User not found.</div>
-          <Link href="/baskets" style={{ color: "#e36438", fontSize: 13, textDecoration: "none", display: "inline-block", marginTop: 12 }}>
+          <Link href="/baskets" style={{ color: "#4f46e5", fontSize: 13, textDecoration: "none", display: "inline-block", marginTop: 12 }}>
             ← Browse baskets
           </Link>
         </div>
@@ -115,7 +115,7 @@ export default function UserProfilePage() {
         ) : (
           <>
             <div style={{
-              color: "#e36438", fontSize: 11, textTransform: "uppercase",
+              color: "#4f46e5", fontSize: 11, textTransform: "uppercase",
               letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace",
               marginBottom: 16,
             }}>

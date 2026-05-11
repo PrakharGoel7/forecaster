@@ -367,7 +367,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                   {buildPath === "ai" ? (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
                       <div>
-                        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
+                        <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
                           AI Build
                         </div>
                         <div style={{ color: "#1c1814", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em" }}>
@@ -379,7 +379,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                   ) : (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace" }}>
+                        <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace" }}>
                           Prediction Market Basket Builder
                         </div>
                         <div style={{ color: "#1c1814", fontSize: 28, fontWeight: 600, letterSpacing: "-0.03em" }}>
@@ -440,7 +440,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                       </Card>
                     ) : (
                       <Card>
-                        <div style={{ color: "#e36438", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+                        <div style={{ color: "#4f46e5", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.15em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
                           Build progress
                         </div>
                         <div style={{ color: "#1c1814", fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{progressCopy}</div>
@@ -530,7 +530,7 @@ function AIBuildComposer({ mode, setMode, input, setInput, onSubmit }: {
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <div style={{ maxWidth: 760 }}>
-        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+        <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           AI Build
         </div>
         <h1 style={{ color: "#1c1814", fontSize: "clamp(28px, 3vw, 40px)", lineHeight: 1.04, letterSpacing: "-0.045em", margin: "0 0 10px" }}>
@@ -559,9 +559,9 @@ function AIBuildComposer({ mode, setMode, input, setInput, onSubmit }: {
               onClick={() => setMode(value)}
               style={{
                 ...ghostButtonStyle,
-                borderColor: mode === value ? "rgba(227,100,56,0.6)" : "rgba(0,0,0,0.08)",
+                borderColor: mode === value ? "rgba(79,70,229,0.6)" : "rgba(0,0,0,0.08)",
                 color: mode === value ? "#1c1814" : "#6e675f",
-                background: mode === value ? "rgba(227,100,56,0.12)" : "transparent",
+                background: mode === value ? "rgba(79,70,229,0.12)" : "transparent",
               }}
             >
               {value === "instant" ? "Quick Build" : "Deep Build"}
@@ -628,7 +628,7 @@ function ManualBuildComposer(props: {
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <div>
-        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
+        <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
           Basket Studio
         </div>
         <h1 style={{ color: "#1c1814", fontSize: "clamp(28px, 3vw, 40px)", lineHeight: 1.04, letterSpacing: "-0.045em", margin: "0 0 10px" }}>
@@ -675,8 +675,8 @@ function ManualBuildComposer(props: {
                 onClick={() => setEventCategory(chip === "All" ? "" : chip)}
                 style={{
                   borderRadius: 999,
-                  border: `1px solid ${isActive ? "rgba(227,100,56,0.42)" : "rgba(0,0,0,0.08)"}`,
-                  background: isActive ? "rgba(227,100,56,0.13)" : "rgba(0,0,0,0.04)",
+                  border: `1px solid ${isActive ? "rgba(79,70,229,0.42)" : "rgba(0,0,0,0.08)"}`,
+                  background: isActive ? "rgba(79,70,229,0.13)" : "rgba(0,0,0,0.04)",
                   color: isActive ? "#1c1814" : "#6e675f",
                   padding: "9px 14px",
                   fontSize: 13,
@@ -885,7 +885,7 @@ function categoryAccent(category: string): string {
   if (c.includes("tech") || c.includes("ai") || c.includes("sci")) return "#2dd4bf";
   if (c.includes("weather") || c.includes("climate")) return "#7dd3fc";
   if (c.includes("entertain") || c.includes("award") || c.includes("oscar") || c.includes("music")) return "#f472b6";
-  return "#e36438";
+  return "#4f46e5";
 }
 
 function priceColor(price: number): string {
@@ -1158,11 +1158,11 @@ function ManualBasketSidebar(props: {
   }, [manualHoldings, holdingMarkets]);
 
   const totalWeight = manualHoldings.reduce((sum, h) => sum + (h.weight_percent || 0), 0);
-  const sliceColors = ["#e36438", "#c4421a", "#f08a60", "#993010", "#f5b090", "#d06030"];
+  const sliceColors = ["#4f46e5", "#4338ca", "#7c73f0", "#312e9e", "#a5a0f4", "#6159eb"];
 
   return (
     <Card>
-      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+      <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
         Basket draft
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
@@ -1253,7 +1253,7 @@ function SaveManualBasketModal(props: {
         boxShadow: "0 8px 40px rgba(0,0,0,0.12)",
         padding: 24,
       }}>
-        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+        <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           Save Basket
         </div>
         <div style={{ color: "#1c1814", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
@@ -1282,7 +1282,7 @@ function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; 
   return (
     <>
       <Card>
-        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+        <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           How It Works
         </div>
         <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 600, marginBottom: 10 }}>
@@ -1308,7 +1308,7 @@ function HowItWorksSidebar({ buildPath, savedBaskets }: { buildPath: BuildPath; 
       </Card>
 
       <Card>
-        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+        <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
           Saved baskets
         </div>
         <div style={{ display: "grid", gap: 10 }}>
@@ -1345,8 +1345,8 @@ function ChatThread({ messages }: { messages: ChatMsg[] }) {
           style={{
             padding: "12px 14px",
             borderRadius: 18,
-            background: message.role === "user" ? "rgba(227,100,56,0.1)" : "rgba(0,0,0,0.02)",
-            border: message.role === "user" ? "1px solid rgba(227,100,56,0.2)" : "1px solid rgba(0,0,0,0.05)",
+            background: message.role === "user" ? "rgba(79,70,229,0.1)" : "rgba(0,0,0,0.02)",
+            border: message.role === "user" ? "1px solid rgba(79,70,229,0.2)" : "1px solid rgba(0,0,0,0.05)",
             color: "#1c1814",
             maxWidth: message.role === "user" ? "92%" : "100%",
             justifySelf: message.role === "user" ? "end" : "start",
@@ -1366,7 +1366,7 @@ function BeliefBrief({ summary }: { summary: BeliefSummary }) {
   const mechanismText = Array.isArray(summary.mechanism) ? summary.mechanism.join(" • ") : (summary.mechanism || "Not specified");
   return (
     <Card>
-      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+      <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
         Thesis snapshot
       </div>
       <div style={{ color: "#1c1814", fontSize: 28, fontWeight: 600, letterSpacing: "-0.04em", lineHeight: 1.12, maxWidth: 760, marginBottom: 12 }}>
@@ -1511,7 +1511,7 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
   const topDomains = analysis.affected_domains.filter((d) => d.relevance !== "low").slice(0, 6);
   return (
     <Card>
-      <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+      <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
         If your thesis is right...
       </div>
       <div style={{ display: "grid", gap: 10 }}>
@@ -1591,7 +1591,7 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}>
         <div>
-          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
+          <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10 }}>
             Prediction Market Basket
           </div>
           <div style={{ color: "#1c1814", fontSize: 30, fontWeight: 600, letterSpacing: "-0.04em", marginBottom: 8 }}>
@@ -1612,7 +1612,7 @@ function BasketView({ basket, basketId }: { basket: PredictionBasket; basketId: 
         <div style={{ minWidth: 180, display: "grid", gap: 10, justifyItems: "end" }}>
           {basketId && (
             <>
-              <Link href={`/baskets/${basketId}`} style={{ color: "#fff", background: "#e36438", fontSize: 13, textDecoration: "none", padding: "11px 14px", borderRadius: 12, fontWeight: 600, display: "inline-block" }}>
+              <Link href={`/baskets/${basketId}`} style={{ color: "#fff", background: "#4f46e5", fontSize: 13, textDecoration: "none", padding: "11px 14px", borderRadius: 12, fontWeight: 600, display: "inline-block" }}>
                 Open share page
               </Link>
               <button onClick={copyLink} style={ghostButtonStyle}>
@@ -1727,7 +1727,7 @@ function ManualHoldingCard({ holding, accentColor, onUpdate, onRemove, markets }
       borderTop: "1px solid rgba(0,0,0,0.08)",
       borderRight: "1px solid rgba(0,0,0,0.08)",
       borderBottom: "1px solid rgba(0,0,0,0.08)",
-      borderLeft: `3px solid ${accentColor ?? "#e36438"}`,
+      borderLeft: `3px solid ${accentColor ?? "#4f46e5"}`,
       borderRadius: 16,
       padding: 14,
       background: "rgba(0,0,0,0.02)",
@@ -1863,7 +1863,7 @@ const miniLabelStyle: React.CSSProperties = {
 };
 
 const primaryButtonStyle: React.CSSProperties = {
-  background: "#e36438",
+  background: "#4f46e5",
   color: "#fff",
   border: "none",
   borderRadius: 12,

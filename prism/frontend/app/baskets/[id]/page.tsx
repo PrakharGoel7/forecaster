@@ -45,7 +45,7 @@ export default function BasketSharePage() {
         <Link href="/baskets" style={{ color: "#9b9390", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 20 }}>
           ← Back to baskets
         </Link>
-        <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 14 }}>
+        <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 14 }}>
           Shared Prediction Market ETF
         </div>
         <h1 style={{ color: "#1c1814", fontSize: "clamp(34px, 5vw, 56px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 10px" }}>
@@ -53,7 +53,7 @@ export default function BasketSharePage() {
         </h1>
         {basket.username && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#e36438", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <span style={{ color: "#fff", fontSize: 9, fontWeight: 700 }}>◈</span>
             </div>
             <Link href={`/users/${basket.username}`} style={{ color: "#6e675f", fontSize: 13, textDecoration: "none", fontFamily: "var(--font-mono), monospace" }}>
@@ -115,7 +115,7 @@ export default function BasketSharePage() {
 
         <div style={{ marginTop: 28, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <Link href={`/trading?basket=${basket.id}`} style={{
-            background: "#e36438",
+            background: "#4f46e5",
             color: "#fff",
             padding: "10px 18px",
             borderRadius: 12,
@@ -153,7 +153,7 @@ const sectionStyle: React.CSSProperties = {
 };
 
 const sectionTitleStyle: React.CSSProperties = {
-  color: "#e36438",
+  color: "#4f46e5",
   fontSize: 11,
   textTransform: "uppercase",
   letterSpacing: "0.16em",

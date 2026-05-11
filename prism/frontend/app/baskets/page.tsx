@@ -110,7 +110,7 @@ export default function BasketsPage() {
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  color: "#e36438",
+  color: "#4f46e5",
   fontSize: 11,
   textTransform: "uppercase",
   letterSpacing: "0.16em",

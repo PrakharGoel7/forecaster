@@ -1,0 +1,3 @@
+{"phase": "request", "call_id": "logger_smoke-001-637ebf3c", "client_name": "logger_smoke", "model": "openai/gpt-4o", "force_tool": false, "system": "system prompt", "messages": [{"role": "user", "content": "hello"}], "tools": [], "logged_at": "2026-05-05T17:50:50.378501+00:00"}
+{"phase": "response", "call_id": "logger_smoke-001-637ebf3c", "client_name": "logger_smoke", "assistant_text": "ok", "tool_blocks": [], "raw_response": {"mocked": true}, "logged_at": "2026-05-05T17:50:50.379192+00:00"}
+{"phase": "tool_results", "client_name": "logger_smoke", "assistant_message": {"role": "assistant", "content": "ok"}, "tool_results": [], "logged_at": "2026-05-05T17:50:50.379368+00:00"}

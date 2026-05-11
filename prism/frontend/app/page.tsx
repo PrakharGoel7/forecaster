@@ -31,7 +31,7 @@ export default function HomePage() {
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, maxWidth: 1140, margin: "0 auto", padding: "110px 24px 80px" }}>
         <div style={{ maxWidth: 760, marginBottom: 34 }}>
-          <div style={{ color: "#e36438", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
+          <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
             Prism
           </div>
           <h1 style={{ color: "#1c1814", fontSize: "clamp(38px, 6vw, 72px)", lineHeight: 0.98, letterSpacing: "-0.06em", margin: "0 0 14px" }}>
@@ -52,7 +52,7 @@ export default function HomePage() {
               placeholder="Example: I think tighter export controls will reshape AI hardware supply chains over the next 12 months."
               style={{
                 ...textareaStyle,
-                border: textareaFocused ? "1px solid rgba(227,100,56,0.4)" : "1px solid rgba(0,0,0,0.12)",
+                border: textareaFocused ? "1px solid rgba(79,70,229,0.4)" : "1px solid rgba(0,0,0,0.12)",
               }}
               onFocus={() => setTextareaFocused(true)}
               onBlur={() => setTextareaFocused(false)}
@@ -137,7 +137,7 @@ const cardStyle: React.CSSProperties = {
 };
 
 const eyebrowStyle: React.CSSProperties = {
-  color: "#e36438",
+  color: "#4f46e5",
   fontSize: 11,
   textTransform: "uppercase",
   letterSpacing: "0.16em",
@@ -159,7 +159,7 @@ const textareaStyle: React.CSSProperties = {
 };
 
 const primaryButtonStyle: React.CSSProperties = {
-  background: "#e36438",
+  background: "#4f46e5",
   color: "#fff",
   border: "none",
   borderRadius: 12,

@@ -5,7 +5,7 @@ const ETF_STEPS = [
   {
     id: "01",
     title: "Belief Elicitor",
-    color: "#e36438",
+    color: "#4f46e5",
     description: "Clarifies the user's future thesis in instant or thinking mode, producing a structured brief with a resolution target, timeframe, mechanism, and key drivers.",
   },
   {

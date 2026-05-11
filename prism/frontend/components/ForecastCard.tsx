@@ -42,17 +42,17 @@ export default function ForecastCard({ forecast: f, index, onSelect, featured }:
       style={{
         width: "100%", textAlign: "left", position: "relative", overflow: "hidden",
         background: featured ? "rgba(22,13,8,0.98)" : "rgba(18,18,18,0.98)",
-        border: featured ? "1px solid rgba(227,100,56,0.25)" : "1px solid #272727",
+        border: featured ? "1px solid rgba(79,70,229,0.25)" : "1px solid #272727",
         borderRadius: "14px",
         padding: featured ? "26px 24px" : "18px 20px",
         transition: "border-color 0.2s, box-shadow 0.2s",
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.borderColor = featured ? "rgba(227,100,56,0.38)" : "rgba(227,100,56,0.22)";
+        e.currentTarget.style.borderColor = featured ? "rgba(79,70,229,0.38)" : "rgba(79,70,229,0.22)";
         e.currentTarget.style.boxShadow = "0 12px 40px rgba(0,0,0,0.7)";
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = featured ? "rgba(227,100,56,0.25)" : "#272727";
+        e.currentTarget.style.borderColor = featured ? "rgba(79,70,229,0.25)" : "#272727";
         e.currentTarget.style.boxShadow = "none";
       }}
     >
@@ -60,7 +60,7 @@ export default function ForecastCard({ forecast: f, index, onSelect, featured }:
       {featured && (
         <div style={{
           position: "absolute", top: 0, left: 0, right: 0, height: "2px",
-          background: "linear-gradient(90deg, #e36438 0%, #5b9cf6 60%, transparent 100%)",
+          background: "linear-gradient(90deg, #4f46e5 0%, #5b9cf6 60%, transparent 100%)",
         }} />
       )}
 
@@ -68,7 +68,7 @@ export default function ForecastCard({ forecast: f, index, onSelect, featured }:
         <div style={{
           fontFamily: "var(--font-mono), monospace", fontSize: "9px",
           fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em",
-          color: "#e36438", marginBottom: "8px",
+          color: "#4f46e5", marginBottom: "8px",
         }}>
           {f.category}
         </div>
