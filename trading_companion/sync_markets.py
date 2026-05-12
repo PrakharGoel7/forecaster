@@ -127,6 +127,19 @@ def sync(verbose: bool = True) -> int:
 
     _write_cache(all_markets)
 
+    # Archive daily price snapshot for performance tracking
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).parent.parent / "forecaster"))
+        import db as _forecaster_db
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        saved = _forecaster_db.save_price_snapshots(all_markets, today)
+        if verbose:
+            print(f"Archived {saved} price snapshots for {today}")
+    except Exception as _exc:
+        if verbose:
+            print(f"[warn] price snapshot archiving skipped: {_exc}")
+
     if verbose:
         print(f"\nSynced {len(all_markets)} open markets → {CACHE_FILE}")
 

@@ -872,6 +872,15 @@ async def get_basket(basket_id: int, request: Request):
     return basket
 
 
+@app.get("/api/baskets/{basket_id}/performance")
+async def get_basket_performance(basket_id: int, request: Request):
+    user_id = _get_user_id(request)
+    basket = db.get_basket(basket_id, user_id=user_id)
+    if not basket:
+        raise HTTPException(status_code=404, detail="Basket not found")
+    return db.get_basket_performance(basket_id)
+
+
 class VisibilityRequest(BaseModel):
     is_public: bool
 

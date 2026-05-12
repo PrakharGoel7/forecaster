@@ -114,6 +114,15 @@ def _init():
                     created_at TEXT NOT NULL
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS price_snapshots (
+                    id            SERIAL PRIMARY KEY,
+                    snapshot_date TEXT   NOT NULL,
+                    ticker        TEXT   NOT NULL,
+                    mid_price     REAL   NOT NULL,
+                    UNIQUE (snapshot_date, ticker)
+                )
+            """)
             # Safe migrations for existing tables
             for stmt in [
                 "ALTER TABLE forecasts ADD COLUMN IF NOT EXISTS user_id TEXT",
@@ -188,6 +197,15 @@ def _init():
                     user_id    TEXT PRIMARY KEY,
                     username   TEXT UNIQUE NOT NULL,
                     created_at TEXT NOT NULL
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS price_snapshots (
+                    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    snapshot_date TEXT    NOT NULL,
+                    ticker        TEXT    NOT NULL,
+                    mid_price     REAL    NOT NULL,
+                    UNIQUE (snapshot_date, ticker)
                 )
             """)
             for col in ["user_id"]:
@@ -447,5 +465,113 @@ def update_basket_visibility(basket_id: int, user_id: str, is_public: bool) -> b
         )
         conn.commit()
         return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def save_price_snapshots(markets: list[dict], snapshot_date: str) -> int:
+    """Archive daily mid_price for each ticker. Called by the nightly sync job."""
+    if not markets:
+        return 0
+    _init()
+    p = _ph()
+    conn = _conn()
+    count = 0
+    try:
+        cur = conn.cursor()
+        for m in markets:
+            ticker = m.get("ticker")
+            mid = m.get("mid_price")
+            if not ticker or mid is None:
+                continue
+            try:
+                if _use_pg():
+                    cur.execute(
+                        f"INSERT INTO price_snapshots (snapshot_date, ticker, mid_price) "
+                        f"VALUES ({p},{p},{p}) ON CONFLICT (snapshot_date, ticker) DO NOTHING",
+                        (snapshot_date, ticker, float(mid)),
+                    )
+                else:
+                    cur.execute(
+                        f"INSERT OR IGNORE INTO price_snapshots (snapshot_date, ticker, mid_price) "
+                        f"VALUES ({p},{p},{p})",
+                        (snapshot_date, ticker, float(mid)),
+                    )
+                count += 1
+            except Exception:
+                pass
+        conn.commit()
+    finally:
+        conn.close()
+    return count
+
+
+def get_basket_performance(basket_id: int) -> dict:
+    """Return a daily time-series of portfolio value indexed to 100 at creation.
+
+    For each date we have price snapshots, computes a weighted portfolio value
+    where 100 = break-even, >100 = gain, <100 = loss.
+    """
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"SELECT created_at FROM baskets WHERE id = {p}", (basket_id,))
+        row = cur.fetchone()
+        if not row:
+            return {"dates": [], "values": [], "current_return": None}
+        created_date = _rows_to_dicts([row], cur)[0]["created_at"][:10]
+
+        cur.execute(
+            f"SELECT ticker, side, weight_dollars, market_price_at_create "
+            f"FROM basket_holdings WHERE basket_id = {p} AND market_price_at_create IS NOT NULL",
+            (basket_id,),
+        )
+        holdings = _rows_to_dicts(cur.fetchall(), cur)
+        if not holdings:
+            return {"dates": [], "values": [], "current_return": None}
+
+        tickers = [h["ticker"] for h in holdings]
+        total_weight = sum(h["weight_dollars"] for h in holdings) or 1.0
+
+        ph_list = ",".join([p] * len(tickers))
+        cur.execute(
+            f"SELECT snapshot_date, ticker, mid_price FROM price_snapshots "
+            f"WHERE ticker IN ({ph_list}) AND snapshot_date >= {p} "
+            f"ORDER BY snapshot_date ASC",
+            (*tickers, created_date),
+        )
+        snapshot_rows = _rows_to_dicts(cur.fetchall(), cur)
+
+        from collections import defaultdict
+        by_date: dict[str, dict[str, float]] = defaultdict(dict)
+        for r in snapshot_rows:
+            by_date[r["snapshot_date"]][r["ticker"]] = r["mid_price"]
+
+        dates = sorted(by_date.keys())
+        values: list[float] = []
+        for date in dates:
+            prices = by_date[date]
+            portfolio_value = 0.0
+            covered_weight = 0.0
+            for h in holdings:
+                entry = h["market_price_at_create"]
+                current = prices.get(h["ticker"])
+                if current is None or not entry:
+                    continue
+                w = h["weight_dollars"] / total_weight
+                if h["side"] == "YES":
+                    portfolio_value += w * (current / entry)
+                else:
+                    entry_no = max(1.0 - entry, 0.001)
+                    current_no = max(1.0 - current, 0.001)
+                    portfolio_value += w * (current_no / entry_no)
+                covered_weight += w
+            if covered_weight > 0:
+                values.append(round((portfolio_value / covered_weight) * 100, 2))
+
+        current_return = round(values[-1] - 100.0, 2) if values else None
+        return {"dates": dates, "values": values, "current_return": current_return}
     finally:
         conn.close()

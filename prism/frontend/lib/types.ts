@@ -250,6 +250,12 @@ export interface PredictionBasket {
   total_notional: number;
 }
 
+export interface BasketPerformance {
+  dates: string[];
+  values: number[];
+  current_return: number | null;
+}
+
 export interface TradingChatResponse {
   status: "asking" | "finalized";
   agent_message: string | null;

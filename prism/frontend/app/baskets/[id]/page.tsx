@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
-import { getBasket, getUserPage } from "@/lib/api";
+import { getBasket, getBasketPerformance, getUserPage } from "@/lib/api";
 import { BasketCard } from "@/components/BasketCard";
-import type { BeliefAnalysis, BeliefSummary, PredictionBasket, SavedBasket } from "@/lib/types";
+import type { BasketPerformance, BeliefAnalysis, BeliefSummary, PredictionBasket, SavedBasket } from "@/lib/types";
 
 export default function BasketSharePage() {
   const params = useParams<{ id: string }>();
@@ -17,6 +17,9 @@ export default function BasketSharePage() {
   const [copied, setCopied] = useState(false);
   const [authorBaskets, setAuthorBaskets] = useState<SavedBasket[]>([]);
   const [generatingImage, setGeneratingImage] = useState(false);
+  const [showPerformance, setShowPerformance] = useState(false);
+  const [performance, setPerformance] = useState<BasketPerformance | null>(null);
+  const [perfLoading, setPerfLoading] = useState(false);
 
   useEffect(() => {
     if (!params?.id) return;
@@ -71,6 +74,23 @@ export default function BasketSharePage() {
       }
     } finally {
       setGeneratingImage(false);
+    }
+  }
+
+  async function togglePerformance() {
+    if (!basket) return;
+    const next = !showPerformance;
+    setShowPerformance(next);
+    if (next && !performance) {
+      setPerfLoading(true);
+      try {
+        const data = await getBasketPerformance(basket.id);
+        setPerformance(data);
+      } catch {
+        setPerformance({ dates: [], values: [], current_return: null });
+      } finally {
+        setPerfLoading(false);
+      }
     }
   }
 
@@ -189,6 +209,43 @@ export default function BasketSharePage() {
           </section>
         )}
 
+        {showPerformance && (
+          <section style={sectionStyle}>
+            <div style={sectionTitleStyle}>Portfolio Performance</div>
+            {perfLoading ? (
+              <div style={{ color: "#9b9390", fontSize: 14, padding: "20px 0" }}>Loading…</div>
+            ) : !performance || performance.dates.length < 2 ? (
+              <div style={{ color: "#9b9390", fontSize: 14, lineHeight: 1.7 }}>
+                No price history yet. Performance data is captured daily — check back after the next market sync.
+                {performance?.dates.length === 1 && " (1 data point so far — need at least 2 to draw a chart.)"}
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: "flex", gap: 24, marginBottom: 18, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 4 }}>Since creation</div>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: (performance.current_return ?? 0) >= 0 ? "#16a34a" : "#dc2626" }}>
+                      {(performance.current_return ?? 0) >= 0 ? "+" : ""}{performance.current_return?.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 4 }}>Data points</div>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: "#1c1814" }}>{performance.dates.length}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 4 }}>Latest</div>
+                    <div style={{ fontSize: 18, fontWeight: 600, color: "#1c1814", paddingTop: 5 }}>{performance.dates[performance.dates.length - 1]}</div>
+                  </div>
+                </div>
+                <PerformanceChart dates={performance.dates} values={performance.values} />
+                <div style={{ color: "#9b9390", fontSize: 11, marginTop: 8, fontFamily: "var(--font-mono), monospace" }}>
+                  Indexed to 100 at creation · YES positions show probability change · NO positions inverted
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
         <div style={{ marginTop: 28, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           {beliefSummary?.core_belief && (
             <Link href={`/trading?belief=${encodeURIComponent(beliefSummary.core_belief)}`} style={{
@@ -241,6 +298,21 @@ export default function BasketSharePage() {
             }}
           >
             {copied ? "Copied ✓" : "Copy link"}
+          </button>
+          <button
+            onClick={togglePerformance}
+            style={{
+              background: showPerformance ? "#4f46e5" : "transparent",
+              color: showPerformance ? "#fff" : "#6e675f",
+              border: "1px solid " + (showPerformance ? "#4f46e5" : "rgba(0,0,0,0.12)"),
+              padding: "10px 18px",
+              borderRadius: 12,
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            Price tracking
           </button>
         </div>
         <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -316,6 +388,66 @@ function Tag({ children }: { children: React.ReactNode }) {
     }}>
       {children}
     </span>
+  );
+}
+
+function PerformanceChart({ dates, values }: { dates: string[]; values: number[] }) {
+  const W = 560, H = 160, PL = 44, PR = 16, PT = 16, PB = 28;
+  const cW = W - PL - PR, cH = H - PT - PB;
+  const n = values.length;
+
+  const minV = Math.min(...values, 92);
+  const maxV = Math.max(...values, 108);
+  const range = maxV - minV || 1;
+
+  const toX = (i: number) => PL + (i / (n - 1)) * cW;
+  const toY = (v: number) => PT + cH - ((v - minV) / range) * cH;
+
+  const baseY = Math.min(Math.max(toY(100), PT), PT + cH);
+  const lastVal = values[n - 1];
+  const color = lastVal >= 100 ? "#16a34a" : "#dc2626";
+
+  const pts = values.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
+  const linePath = values.map((v, i) => `${i === 0 ? "M" : "L"}${toX(i)} ${toY(v)}`).join(" ");
+  const areaPath = `${linePath} L${toX(n - 1)} ${baseY} L${toX(0)} ${baseY} Z`;
+
+  // Y-axis labels (100 + one tick above/below)
+  const yLabels = Array.from(new Set([100, Math.round(minV + range * 0.25), Math.round(maxV - range * 0.25)])).sort((a, b) => b - a);
+
+  // X-axis: show ~4 date labels
+  const xIdxs = [0, Math.floor(n * 0.33), Math.floor(n * 0.66), n - 1].filter((v, i, a) => a.indexOf(v) === i);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
+      {/* Grid lines */}
+      {yLabels.map((v) => (
+        <line key={v} x1={PL} y1={toY(v)} x2={W - PR} y2={toY(v)}
+          stroke={v === 100 ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.06)"}
+          strokeWidth={v === 100 ? 1.5 : 1}
+          strokeDasharray={v === 100 ? "4 3" : "2 3"} />
+      ))}
+
+      {/* Area fill */}
+      <path d={areaPath} fill={color} opacity={0.1} />
+
+      {/* Line */}
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+
+      {/* Last dot */}
+      <circle cx={toX(n - 1)} cy={toY(lastVal)} r={4} fill={color} />
+
+      {/* Y labels */}
+      {yLabels.map((v) => (
+        <text key={v} x={PL - 4} y={toY(v) + 4} textAnchor="end" fontSize={9} fill="#9b9390" fontFamily="monospace">{v}</text>
+      ))}
+
+      {/* X labels */}
+      {xIdxs.map((i) => (
+        <text key={i} x={toX(i)} y={H - 4} textAnchor="middle" fontSize={9} fill="#9b9390" fontFamily="monospace">
+          {dates[i].slice(5)}
+        </text>
+      ))}
+    </svg>
   );
 }
 

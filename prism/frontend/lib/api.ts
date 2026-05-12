@@ -10,6 +10,7 @@ import type {
   OraclePipelineMessage,
   KalshiEvent,
   KalshiMarket,
+  BasketPerformance,
 } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -99,6 +100,9 @@ export const listPublicBaskets = (limit = 48): Promise<SavedBasket[]> =>
 
 export const getBasket = (basketId: number, token?: string): Promise<SavedBasket> =>
   apiFetch(`/api/baskets/${basketId}`, undefined, token);
+
+export const getBasketPerformance = (basketId: number, token?: string): Promise<BasketPerformance> =>
+  apiFetch(`/api/baskets/${basketId}/performance`, undefined, token);
 
 export async function saveManualBasket(
   body: {
