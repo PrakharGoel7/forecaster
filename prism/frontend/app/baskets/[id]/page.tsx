@@ -128,6 +128,9 @@ export default function BasketSharePage() {
               <div key={holding.ticker} style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 18, padding: 18, background: "rgba(0,0,0,0.03)" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 100px", gap: 16 }}>
                   <div>
+                    {holding.event_title && holding.event_title !== holding.question && (
+                      <div style={{ color: "#9c8f85", fontSize: 13, marginBottom: 4 }}>{holding.event_title}</div>
+                    )}
                     <div style={{ color: "#1c1814", fontWeight: 600, fontSize: 18, marginBottom: 8 }}>{holding.question}</div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                       <Tag>{holding.side}</Tag>
