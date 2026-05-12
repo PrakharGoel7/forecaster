@@ -852,6 +852,23 @@ async def get_basket(basket_id: int, request: Request):
     basket = db.get_basket(basket_id, user_id=user_id)
     if not basket:
         raise HTTPException(status_code=404, detail="Basket not found")
+    # Enrich basket_json holdings with event_title if missing (legacy baskets)
+    try:
+        import json as _json
+        basket_json = _json.loads(basket.get("basket_json") or "{}")
+        holdings = basket_json.get("holdings", [])
+        missing = [h.get("event_ticker", "") for h in holdings if not h.get("event_title") and h.get("event_ticker")]
+        if missing:
+            from event_cache_db import get_event_lookup
+            evt_lookup = get_event_lookup(missing)
+            for h in holdings:
+                if not h.get("event_title") and h.get("event_ticker"):
+                    evt = evt_lookup.get(h["event_ticker"], {})
+                    h["event_title"] = evt.get("title", "")
+            basket_json["holdings"] = holdings
+            basket["basket_json"] = _json.dumps(basket_json)
+    except Exception:
+        pass
     return basket
 
 
@@ -918,6 +935,7 @@ class ManualBasketHoldingRequest(BaseModel):
     ticker: str
     event_ticker: str
     question: str
+    event_title: str | None = None
     market_price: float
     close_date: str
     side: str
@@ -1505,6 +1523,7 @@ async def create_manual_basket(req: ManualBasketRequest, request: Request):
             "ticker": holding.ticker,
             "event_ticker": holding.event_ticker,
             "question": holding.question,
+            "event_title": holding.event_title or "",
             "market_price": holding.market_price,
             "close_date": holding.close_date,
             "side": holding.side,
