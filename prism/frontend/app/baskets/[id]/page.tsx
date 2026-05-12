@@ -16,6 +16,7 @@ export default function BasketSharePage() {
   const [analysis, setAnalysis] = useState<BeliefAnalysis | null>(null);
   const [copied, setCopied] = useState(false);
   const [authorBaskets, setAuthorBaskets] = useState<SavedBasket[]>([]);
+  const [generatingImage, setGeneratingImage] = useState(false);
 
   useEffect(() => {
     if (!params?.id) return;
@@ -38,6 +39,39 @@ export default function BasketSharePage() {
     await navigator.clipboard.writeText(`${window.location.origin}/baskets/${basket.id}`);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  function shareToX() {
+    if (!basket) return;
+    const url = `${window.location.origin}/baskets/${basket.id}`;
+    const text = `"${basket.title}" — my prediction market portfolio on @prismforecaster`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank");
+  }
+
+  function shareToLinkedIn() {
+    if (!basket) return;
+    const url = `${window.location.origin}/baskets/${basket.id}`;
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, "_blank");
+  }
+
+  async function shareToInstagram() {
+    if (!basket || generatingImage) return;
+    setGeneratingImage(true);
+    try {
+      const blob = await generateShareImage(basket, JSON.parse(basket.basket_json));
+      const file = new File([blob], `prism-${basket.id}.png`, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: basket.title, text: `${basket.title} — prediction market portfolio` });
+      } else {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `prism-${(basket.title || "portfolio").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+    } finally {
+      setGeneratingImage(false);
+    }
   }
 
   if (!basket) {
@@ -209,6 +243,18 @@ export default function BasketSharePage() {
             {copied ? "Copied ✓" : "Copy link"}
           </button>
         </div>
+        <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ color: "#9b9390", fontSize: 12, fontFamily: "var(--font-mono), monospace", textTransform: "uppercase", letterSpacing: "0.1em", marginRight: 4 }}>Share</span>
+          <button onClick={shareToX} style={socialBtnStyle} title="Share on X">
+            <XIcon /> X
+          </button>
+          <button onClick={shareToLinkedIn} style={socialBtnStyle} title="Share on LinkedIn">
+            <LinkedInIcon /> LinkedIn
+          </button>
+          <button onClick={shareToInstagram} disabled={generatingImage} style={{ ...socialBtnStyle, opacity: generatingImage ? 0.6 : 1 }} title="Download image for Instagram">
+            <InstagramIcon /> {generatingImage ? "Generating…" : "Instagram"}
+          </button>
+        </div>
 
         {authorBaskets.length > 0 && basket.username && (
           <div style={{ marginTop: 40 }}>
@@ -271,4 +317,179 @@ function Tag({ children }: { children: React.ReactNode }) {
       {children}
     </span>
   );
+}
+
+const socialBtnStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  background: "transparent",
+  color: "#3a3530",
+  border: "1px solid rgba(0,0,0,0.12)",
+  padding: "8px 14px",
+  borderRadius: 10,
+  fontWeight: 500,
+  fontSize: 13,
+  cursor: "pointer",
+};
+
+function XIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function LinkedInIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+    </svg>
+  );
+}
+
+function InstagramIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+    </svg>
+  );
+}
+
+function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    const test = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+async function generateShareImage(basket: SavedBasket, parsedBasket: PredictionBasket): Promise<Blob> {
+  const W = 1080, H = 1080, PAD = 80;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  // Background
+  ctx.fillStyle = "#f8f6f2";
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  ctx.strokeStyle = "rgba(0,0,0,0.035)";
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= W; x += 54) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y <= H; y += 54) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  // Indigo left accent
+  ctx.fillStyle = "#4f46e5";
+  ctx.fillRect(PAD, PAD, 5, 52);
+
+  // PRISM header
+  ctx.fillStyle = "#4f46e5";
+  ctx.font = "bold 30px monospace";
+  ctx.fillText("◈  PRISM", PAD + 18, PAD + 33);
+  ctx.fillStyle = "#9b9390";
+  ctx.font = "20px monospace";
+  ctx.fillText("PREDICTION MARKET ETF", PAD + 18, PAD + 58);
+
+  // Divider
+  ctx.fillStyle = "rgba(0,0,0,0.08)";
+  ctx.fillRect(PAD, PAD + 72, W - PAD * 2, 1);
+
+  // Title
+  const titleSize = basket.title.length > 35 ? 56 : 68;
+  ctx.fillStyle = "#1c1814";
+  ctx.font = `bold ${titleSize}px Arial`;
+  const titleLines = wrapLines(ctx, basket.title, W - PAD * 2);
+  let curY = PAD + 72 + 70;
+  titleLines.slice(0, 3).forEach(line => { ctx.fillText(line, PAD, curY); curY += titleSize * 1.15; });
+
+  // Summary
+  curY += 12;
+  ctx.fillStyle = "#6e675f";
+  ctx.font = "27px Arial";
+  const summLines = wrapLines(ctx, basket.summary || "", W - PAD * 2);
+  summLines.slice(0, 2).forEach(line => { ctx.fillText(line, PAD, curY); curY += 38; });
+
+  // Holdings
+  const holdings = parsedBasket.holdings;
+  const total = parsedBasket.total_notional || holdings.reduce((s, h) => s + h.weight_dollars, 0) || 1;
+  const colors = ["#4f46e5", "#4338ca", "#7c73f0", "#312e9e", "#a5a0f4"];
+
+  curY = Math.max(curY + 36, 620);
+
+  // Allocation bar
+  const barTotalW = W - PAD * 2;
+  let barX = PAD;
+  holdings.slice(0, 6).forEach((h, i) => {
+    const segW = Math.max((h.weight_dollars / total) * barTotalW - 3, 4);
+    rrect(ctx, barX, curY, segW, 14, 4);
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fill();
+    barX += segW + 3;
+  });
+  curY += 30;
+
+  // Holdings label
+  ctx.fillStyle = "#4f46e5";
+  ctx.font = "bold 18px monospace";
+  ctx.fillText("HOLDINGS", PAD, curY);
+  curY += 26;
+
+  holdings.slice(0, 5).forEach((h, i) => {
+    const pct = Math.round((h.weight_dollars / total) * 100);
+    const fillW = Math.max((pct / 100) * 440, 8);
+
+    // Track background
+    rrect(ctx, PAD, curY, 440, 34, 7);
+    ctx.fillStyle = "rgba(0,0,0,0.05)";
+    ctx.fill();
+    // Track fill
+    rrect(ctx, PAD, curY, fillW, 34, 7);
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fill();
+
+    // Pct label
+    ctx.fillStyle = "#1c1814";
+    ctx.font = "bold 22px monospace";
+    ctx.fillText(`${pct}%`, PAD + 452, curY + 23);
+
+    // Market label
+    ctx.fillStyle = "#2e2924";
+    ctx.font = "22px Arial";
+    const label = (h.event_title && h.event_title !== h.question ? h.event_title : h.question) || "";
+    const truncated = label.length > 28 ? label.slice(0, 27) + "…" : label;
+    ctx.fillText(truncated, PAD + 510, curY + 23);
+
+    curY += 50;
+  });
+
+  // Footer URL
+  ctx.fillStyle = "#9b9390";
+  ctx.font = "22px monospace";
+  const host = typeof window !== "undefined" ? window.location.host : "prism.markets";
+  const hostW = ctx.measureText(host).width;
+  ctx.fillText(host, W - PAD - hostW, H - PAD + 20);
+
+  return new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
 }
