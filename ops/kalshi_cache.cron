@@ -12,3 +12,6 @@
 
 # One-off extra refresh for 2026-05-12 at 2:15 PM PT.
 15 14 12 5 * [ "$(/bin/date +\%Y-\%m-\%d)" = "2026-05-12" ] && cd /Users/PrakharGoel/Desktop/Stanford/Classes/Junior/Spring/BUSGEN116/claude_code/forecaster && /usr/bin/env python3 trading_companion/sync_caches.py >> /tmp/kalshi_cache_sync.log 2>&1
+
+# One-off extra refresh for 2026-05-12 at 2:55 PM PT.
+55 14 12 5 * [ "$(/bin/date +\%Y-\%m-\%d)" = "2026-05-12" ] && cd /Users/PrakharGoel/Desktop/Stanford/Classes/Junior/Spring/BUSGEN116/claude_code/forecaster && /usr/bin/env python3 trading_companion/sync_caches.py >> /tmp/kalshi_cache_sync.log 2>&1
