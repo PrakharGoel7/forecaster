@@ -36,6 +36,10 @@ from pydantic import BaseModel, Field
 # ── Supabase JWT verification ─────────────────────────────────────────────────
 
 _SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
+_SUPABASE_URL = (
+    os.environ.get("SUPABASE_URL", "")
+    or os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
+).rstrip("/")
 _KALSHI_API_LOG_FILE = (_REPO_ROOT / os.environ.get("KALSHI_API_LOG_FILE", "runtime_logs/kalshi_api_log.csv")).resolve()
 _TRADING_PIPELINE_DEBUG_DIR = (_REPO_ROOT / os.environ.get("TRADING_PIPELINE_DEBUG_DIR", "runtime_logs/trading_pipeline_runs")).resolve()
 _PACIFIC_TZ = ZoneInfo("America/Los_Angeles")
@@ -44,21 +48,59 @@ _cache_refresh_logger = logging.getLogger("prism.cache_refresh")
 _cache_refresh_lock = asyncio.Lock()
 _cache_refresh_task: asyncio.Task | None = None
 
+_jwks_cache: list | None = None
+
+def _get_jwks_keys() -> list:
+    global _jwks_cache
+    if _jwks_cache is not None:
+        return _jwks_cache
+    if not _SUPABASE_URL:
+        return []
+    try:
+        import urllib.request
+        url = f"{_SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            _jwks_cache = json.loads(resp.read()).get("keys", [])
+            return _jwks_cache
+    except Exception:
+        return []
+
 def _get_user_id(request: Request) -> str | None:
-    """Extract and verify Supabase JWT; return user_id (sub) or None."""
+    """Extract and verify Supabase JWT; return user_id (sub) or None.
+    Supports both HS256 (legacy projects) and ES256/RS256 (new projects via JWKS)."""
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         return None
     token = auth[7:]
-    if not _SUPABASE_JWT_SECRET:
-        return None
     try:
         from jose import jwt
-        payload = jwt.decode(token, _SUPABASE_JWT_SECRET, algorithms=["HS256"],
-                             options={"verify_aud": False})
-        return payload.get("sub")
+        # Try HS256 with shared secret first (legacy Supabase projects)
+        if _SUPABASE_JWT_SECRET:
+            try:
+                payload = jwt.decode(token, _SUPABASE_JWT_SECRET, algorithms=["HS256"],
+                                     options={"verify_aud": False})
+                return payload.get("sub")
+            except Exception:
+                pass
+        # Fall back to asymmetric verification via JWKS (ES256/RS256 — newer projects)
+        header = jwt.get_unverified_header(token)
+        alg = header.get("alg", "ES256")
+        kid = header.get("kid")
+        keys = _get_jwks_keys()
+        if kid:
+            matched = [k for k in keys if k.get("kid") == kid]
+            if matched:
+                keys = matched
+        for key in keys:
+            try:
+                payload = jwt.decode(token, key, algorithms=[alg],
+                                     options={"verify_aud": False})
+                return payload.get("sub")
+            except Exception:
+                continue
     except Exception:
-        return None
+        pass
+    return None
 
 from forecaster.kalshi import KalshiClient
 from forecaster.config import ForecasterConfig
