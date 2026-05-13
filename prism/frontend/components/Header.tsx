@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { getMyProfile, createProfile } from "@/lib/api";
 import type { User } from "@supabase/supabase-js";
@@ -42,15 +42,11 @@ export default function Header() {
   const [usernameSignup, setUsernameSignup] = useState("");
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [welcomeUsername, setWelcomeUsername] = useState("");
-  // Prevents onAuthStateChange from racing with the active signup flow
-  const isSigningUp = useRef(false);
 
   useEffect(() => {
     if (!supabase) return;
 
     const checkProfile = async (token: string) => {
-      // If submit() is mid-flight creating a profile, don't interfere
-      if (isSigningUp.current) return;
       try {
         const p = await getMyProfile(token);
         setProfile(p);
@@ -88,7 +84,6 @@ export default function Header() {
       return;
     }
     if (!email.trim() || !password.trim()) return;
-    if (mode === "signup" && usernameSignup.length < 3) return;
     setLoading(true);
     setError("");
     setSuccess("");
@@ -97,31 +92,15 @@ export default function Header() {
       if (e) setError(e.message);
       else setShowModal(false);
     } else {
-      isSigningUp.current = true;
       const { data, error: e } = await supabase.auth.signUp({ email, password });
       if (e) {
-        isSigningUp.current = false;
         setError(e.message);
       } else if (data.session) {
-        // No email confirmation required — create profile immediately
-        try {
-          const p = await createProfile(usernameSignup.trim().toLowerCase(), data.session.access_token);
-          setProfile(p);
-          setShowModal(false);
-          setWelcomeUsername(p.username);
-          setShowWelcomeModal(true);
-        } catch (err) {
-          // Surface the real error so the user knows what went wrong
-          setError(err instanceof Error ? err.message : "Failed to create profile. Check your connection and try again.");
-        } finally {
-          isSigningUp.current = false;
-        }
+        // Session available immediately — onAuthStateChange will fire and
+        // checkProfile will show the username modal automatically
+        setShowModal(false);
       } else {
-        isSigningUp.current = false;
-        // Email confirmation required — stash username for when they sign in
-        if (usernameSignup.trim()) {
-          localStorage.setItem("prism_pending_username", usernameSignup.trim().toLowerCase());
-        }
+        // Email confirmation required — show success and wait
         setSuccess("Account created! Check your email to confirm, then sign in.");
       }
     }
@@ -278,7 +257,7 @@ export default function Header() {
                 </button>
               </div>
             ) : (
-              <button onClick={() => { setShowModal(true); setMode("signin"); setEmail(""); setPassword(""); setUsernameSignup(""); setError(""); setSuccess(""); }} style={{
+              <button onClick={() => { setShowModal(true); setMode("signin"); setEmail(""); setPassword(""); setError(""); setSuccess(""); }} style={{
                 fontFamily: "var(--font-mono), monospace", fontSize: "10px",
                 fontWeight: 600, letterSpacing: "0.08em",
                 color: "#a8a29a", background: "transparent",
@@ -317,7 +296,7 @@ export default function Header() {
             {/* Mode toggle */}
             <div style={{ display: "flex", gap: "4px", marginBottom: "24px", background: "rgba(0,0,0,0.04)", borderRadius: "8px", padding: "4px" }}>
               {(["signin", "signup"] as const).map(m => (
-                <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); setUsernameSignup(""); }}
+                <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }}
                   style={{
                     flex: 1, padding: "7px", border: "none", borderRadius: "6px",
                     fontFamily: "var(--font-mono), monospace", fontSize: "11px",
@@ -359,35 +338,9 @@ export default function Header() {
                     outline: "none", marginBottom: "8px",
                   }}
                 />
-                {mode === "signup" && (
-                  <div style={{ position: "relative", marginBottom: "12px" }}>
-                    <span style={{
-                      position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
-                      color: "#a8a29a", fontSize: 13,
-                      fontFamily: "var(--font-mono), monospace",
-                      pointerEvents: "none",
-                    }}>@</span>
-                    <input
-                      type="text"
-                      placeholder="username"
-                      value={usernameSignup}
-                      onChange={e => setUsernameSignup(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                      onKeyDown={e => { if (e.key === "Enter") submit(); }}
-                      maxLength={24}
-                      style={{
-                        width: "100%", boxSizing: "border-box",
-                        background: "#f8f6f2", border: "1px solid rgba(0,0,0,0.1)",
-                        borderRadius: "8px", padding: "10px 14px 10px 28px",
-                        fontSize: "13px", color: "#1c1814",
-                        fontFamily: "var(--font-mono), monospace",
-                        outline: "none",
-                      }}
-                    />
-                  </div>
-                )}
                 {error && <div style={{ fontSize: "12px", color: "#dc2626", marginBottom: "10px" }}>{error}</div>}
                 {(() => {
-                  const ready = !!(email.trim() && password.trim() && (mode === "signin" || usernameSignup.length >= 3));
+                  const ready = !!(email.trim() && password.trim());
                   return (
                 <button onClick={submit} disabled={loading || !ready}
                   style={{
