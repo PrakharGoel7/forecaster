@@ -269,6 +269,7 @@ export interface SavedBasket {
   created_at: string;
   title: string;
   summary: string;
+  thesis_notes?: string;
   core_belief: string;
   mode: "instant" | "thinking" | "manual";
   time_horizon: string;
@@ -287,12 +288,41 @@ export interface SavedBasket {
   user_id?: string;
   username?: string;
   holdings?: BasketHolding[];
+  is_bookmarked?: boolean;
+  resolved_at?: string;
+  resolution_note?: string;
 }
 
 export interface UserProfile {
   user_id: string;
   username: string;
   created_at: string;
+  bio?: string;
+  domain_tags?: string[];
+  twitter?: string;
+  substack?: string;
+  follower_count?: number;
+  following_count?: number;
+  basket_count?: number;
+}
+
+export interface Creator {
+  user_id: string;
+  username: string;
+  created_at: string;
+  bio?: string;
+  domain_tags?: string[];
+  twitter?: string;
+  substack?: string;
+  follower_count: number;
+  following_count: number;
+  basket_count: number;
+}
+
+export interface FollowStatus {
+  is_following: boolean;
+  follower_count: number;
+  following_count: number;
 }
 
 export interface ManualBasketDraftHolding {

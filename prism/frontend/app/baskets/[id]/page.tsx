@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
-import { getBasket, getBasketPerformance, getUserPage } from "@/lib/api";
+import { getBasket, getBasketPerformance, getUserPage, bookmarkBasket, unbookmarkBasket, resolveBasket } from "@/lib/api";
+import { createClient } from "@/lib/supabase";
 import { BasketCard } from "@/components/BasketCard";
 import type { BasketPerformance, BeliefAnalysis, BeliefSummary, PredictionBasket, SavedBasket } from "@/lib/types";
 
@@ -20,11 +21,28 @@ export default function BasketSharePage() {
   const [showPerformance, setShowPerformance] = useState(false);
   const [performance, setPerformance] = useState<BasketPerformance | null>(null);
   const [perfLoading, setPerfLoading] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const [myToken, setMyToken] = useState<string | null>(null);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [showResolveModal, setShowResolveModal] = useState(false);
+  const [resolveNote, setResolveNote] = useState("");
+  const [resolveLoading, setResolveLoading] = useState(false);
+  const supabase = createClient();
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => {
+      setMyToken(data.session?.access_token ?? null);
+      setMyUserId(data.session?.user?.id ?? null);
+    });
+  }, [supabase]);
 
   useEffect(() => {
     if (!params?.id) return;
     getBasket(Number(params.id)).then((saved) => {
       setBasket(saved);
+      setBookmarked(saved.is_bookmarked ?? false);
       setBeliefSummary(JSON.parse(saved.belief_summary_json));
       setAnalysis(JSON.parse(saved.analysis_json));
     }).catch(() => {});
@@ -77,6 +95,36 @@ export default function BasketSharePage() {
     }
   }
 
+  async function toggleBookmark() {
+    if (!myToken || !basket) return;
+    setBookmarkLoading(true);
+    try {
+      if (bookmarked) {
+        await unbookmarkBasket(basket.id, myToken);
+        setBookmarked(false);
+      } else {
+        await bookmarkBasket(basket.id, myToken);
+        setBookmarked(true);
+      }
+    } catch {
+      // ignore
+    }
+    setBookmarkLoading(false);
+  }
+
+  async function submitResolve() {
+    if (!myToken || !basket) return;
+    setResolveLoading(true);
+    try {
+      await resolveBasket(basket.id, resolveNote, myToken);
+      setBasket(b => b ? { ...b, resolved_at: new Date().toISOString(), resolution_note: resolveNote } : b);
+      setShowResolveModal(false);
+    } catch {
+      // ignore
+    }
+    setResolveLoading(false);
+  }
+
   async function togglePerformance() {
     if (!basket) return;
     const next = !showPerformance;
@@ -114,10 +162,21 @@ export default function BasketSharePage() {
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, maxWidth: 960, margin: "0 auto", padding: "110px 24px 80px" }}>
         <Link href="/baskets" style={{ color: "#9b9390", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 20 }}>
-          ← Back to baskets
+          ← Back to theses
         </Link>
-        <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 14 }}>
-          Shared Prediction Market ETF
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+          <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace" }}>
+            Prediction Market Thesis
+          </div>
+          {basket.resolved_at && (
+            <span style={{
+              background: "#dcfce7", color: "#15803d",
+              fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 999,
+              fontFamily: "var(--font-mono), monospace", textTransform: "uppercase", letterSpacing: "0.1em",
+            }}>
+              ✓ Resolved
+            </span>
+          )}
         </div>
         <h1 style={{ color: "#1c1814", fontSize: "clamp(34px, 5vw, 56px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 10px" }}>
           {basket.title}
@@ -206,6 +265,29 @@ export default function BasketSharePage() {
           <section style={sectionStyle}>
             <div style={sectionTitleStyle}>What Could Change It</div>
             <div style={{ color: "#6e675f", lineHeight: 1.7 }}>{analysis.most_surprising_connection}</div>
+          </section>
+        )}
+
+        {basket.thesis_notes && (
+          <section style={sectionStyle}>
+            <div style={sectionTitleStyle}>Creator&apos;s Notes</div>
+            <div style={{ color: "#3a3530", lineHeight: 1.8, whiteSpace: "pre-wrap", fontSize: 15 }}>
+              {basket.thesis_notes}
+            </div>
+          </section>
+        )}
+
+        {basket.resolved_at && (
+          <section style={{ ...sectionStyle, borderColor: "#bbf7d0", background: "#f0fdf4" }}>
+            <div style={{ ...sectionTitleStyle, color: "#15803d" }}>Resolution</div>
+            <div style={{ color: "#166534", fontSize: 13, marginBottom: basket.resolution_note ? 8 : 0 }}>
+              Marked resolved on {new Date(basket.resolved_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            </div>
+            {basket.resolution_note && (
+              <div style={{ color: "#3a3530", lineHeight: 1.75, whiteSpace: "pre-wrap" }}>
+                {basket.resolution_note}
+              </div>
+            )}
           </section>
         )}
 
@@ -314,6 +396,37 @@ export default function BasketSharePage() {
           >
             Price tracking
           </button>
+          {myToken && (
+            <button
+              onClick={toggleBookmark}
+              disabled={bookmarkLoading}
+              style={{
+                background: bookmarked ? "#fffbeb" : "transparent",
+                color: bookmarked ? "#d97706" : "#6e675f",
+                border: "1px solid " + (bookmarked ? "#fde68a" : "rgba(0,0,0,0.12)"),
+                padding: "10px 18px",
+                borderRadius: 12,
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              {bookmarkLoading ? "…" : bookmarked ? "★ Saved" : "☆ Save"}
+            </button>
+          )}
+          {myToken && myUserId && basket.user_id === myUserId && !basket.resolved_at && (
+            <button
+              onClick={() => setShowResolveModal(true)}
+              style={{
+                background: "transparent", color: "#6e675f",
+                border: "1px solid rgba(0,0,0,0.12)",
+                padding: "10px 18px", borderRadius: 12,
+                fontWeight: 600, fontSize: 14, cursor: "pointer",
+              }}
+            >
+              Mark resolved
+            </button>
+          )}
         </div>
         <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ color: "#9b9390", fontSize: 12, fontFamily: "var(--font-mono), monospace", textTransform: "uppercase", letterSpacing: "0.1em", marginRight: 4 }}>Share</span>
@@ -339,6 +452,75 @@ export default function BasketSharePage() {
           </div>
         )}
       </div>
+
+      {/* Resolve modal */}
+      {showResolveModal && (
+        <div
+          onClick={() => setShowResolveModal(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "#ffffff", border: "1px solid rgba(0,0,0,0.12)",
+              borderRadius: 20, padding: "28px", width: "100%", maxWidth: 440,
+              boxShadow: "0 24px 80px rgba(0,0,0,0.2)",
+            }}
+          >
+            <div style={{ color: "#15803d", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+              Resolve thesis
+            </div>
+            <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 6 }}>
+              How did it play out?
+            </div>
+            <div style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
+              Write a retrospective — what happened, what you got right or wrong.
+            </div>
+            <textarea
+              value={resolveNote}
+              onChange={e => setResolveNote(e.target.value)}
+              rows={5}
+              placeholder="The thesis played out because…"
+              style={{
+                width: "100%", boxSizing: "border-box",
+                background: "#f8f6f2", border: "1px solid rgba(0,0,0,0.1)",
+                borderRadius: 8, padding: "10px 12px", fontSize: 13,
+                color: "#1c1814", outline: "none", resize: "vertical",
+                marginBottom: 14,
+                fontFamily: "var(--font-jakarta), system-ui, sans-serif",
+              }}
+            />
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={submitResolve}
+                disabled={resolveLoading}
+                style={{
+                  flex: 1, background: "#16a34a", color: "#fff", border: "none",
+                  borderRadius: 10, padding: "11px", fontSize: 13, fontWeight: 700,
+                  cursor: "pointer", opacity: resolveLoading ? 0.6 : 1,
+                  fontFamily: "var(--font-mono), monospace", letterSpacing: "0.06em",
+                }}
+              >
+                {resolveLoading ? "Saving…" : "Mark as resolved →"}
+              </button>
+              <button
+                onClick={() => setShowResolveModal(false)}
+                style={{
+                  background: "transparent", color: "#9b9390",
+                  border: "1px solid rgba(0,0,0,0.1)", borderRadius: 10,
+                  padding: "11px 16px", fontSize: 13, cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

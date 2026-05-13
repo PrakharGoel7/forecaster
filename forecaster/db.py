@@ -123,11 +123,34 @@ def _init():
                     UNIQUE (snapshot_date, ticker)
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS follows (
+                    follower_id   TEXT NOT NULL,
+                    following_id  TEXT NOT NULL,
+                    created_at    TEXT NOT NULL,
+                    PRIMARY KEY (follower_id, following_id)
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS bookmarks (
+                    user_id    TEXT    NOT NULL,
+                    basket_id  INTEGER NOT NULL,
+                    created_at TEXT    NOT NULL,
+                    PRIMARY KEY (user_id, basket_id)
+                )
+            """)
             # Safe migrations for existing tables
             for stmt in [
                 "ALTER TABLE forecasts ADD COLUMN IF NOT EXISTS user_id TEXT",
                 "ALTER TABLE baskets ADD COLUMN IF NOT EXISTS user_id TEXT",
                 "ALTER TABLE baskets ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE",
+                "ALTER TABLE baskets ADD COLUMN IF NOT EXISTS thesis_notes TEXT",
+                "ALTER TABLE baskets ADD COLUMN IF NOT EXISTS resolved_at TEXT",
+                "ALTER TABLE baskets ADD COLUMN IF NOT EXISTS resolution_note TEXT",
+                "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bio TEXT",
+                "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS domain_tags TEXT",
+                "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS twitter TEXT",
+                "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS substack TEXT",
             ]:
                 try:
                     cur.execute(stmt)
@@ -208,6 +231,22 @@ def _init():
                     UNIQUE (snapshot_date, ticker)
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS follows (
+                    follower_id   TEXT NOT NULL,
+                    following_id  TEXT NOT NULL,
+                    created_at    TEXT NOT NULL,
+                    PRIMARY KEY (follower_id, following_id)
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS bookmarks (
+                    user_id    TEXT    NOT NULL,
+                    basket_id  INTEGER NOT NULL,
+                    created_at TEXT    NOT NULL,
+                    PRIMARY KEY (user_id, basket_id)
+                )
+            """)
             for col in ["user_id"]:
                 try:
                     cur.execute(f"ALTER TABLE forecasts ADD COLUMN {col} TEXT")
@@ -217,9 +256,17 @@ def _init():
                 "user_id TEXT",
                 "is_public INTEGER NOT NULL DEFAULT 1",
                 "screened_count INTEGER",
+                "thesis_notes TEXT",
+                "resolved_at TEXT",
+                "resolution_note TEXT",
             ]:
                 try:
                     cur.execute(f"ALTER TABLE baskets ADD COLUMN {col_def}")
+                except Exception:
+                    pass
+            for col_def in ["bio TEXT", "domain_tags TEXT", "twitter TEXT", "substack TEXT"]:
+                try:
+                    cur.execute(f"ALTER TABLE profiles ADD COLUMN {col_def}")
                 except Exception:
                     pass
         conn.commit()
@@ -281,7 +328,8 @@ def get_forecasts(limit: int = 48, user_id: str | None = None):
 def save_basket(*, title, summary, core_belief, mode, time_horizon, timeframe_start,
                 timeframe_end, resolution_target, mechanism, scope, key_drivers,
                 belief_summary, analysis, basket, total_notional, screened_count,
-                holdings, is_public: bool = True, user_id: str | None = None) -> int:
+                holdings, is_public: bool = True, user_id: str | None = None,
+                thesis_notes: str | None = None) -> int:
     _init()
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     p = _ph()
@@ -292,7 +340,7 @@ def save_basket(*, title, summary, core_belief, mode, time_horizon, timeframe_st
             ts, title, summary, core_belief, mode, time_horizon, timeframe_start,
             timeframe_end, resolution_target, mechanism, scope, json.dumps(key_drivers),
             json.dumps(belief_summary), json.dumps(analysis), json.dumps(basket),
-            total_notional, screened_count, is_public, user_id,
+            total_notional, screened_count, is_public, user_id, thesis_notes,
         )
         if _use_pg():
             cur.execute(f"""
@@ -300,8 +348,8 @@ def save_basket(*, title, summary, core_belief, mode, time_horizon, timeframe_st
                     (created_at, title, summary, core_belief, mode, time_horizon,
                      timeframe_start, timeframe_end, resolution_target, mechanism, scope,
                      key_drivers_json, belief_summary_json, analysis_json, basket_json,
-                     total_notional, screened_count, is_public, user_id)
-                VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})
+                     total_notional, screened_count, is_public, user_id, thesis_notes)
+                VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})
                 RETURNING id
             """, basket_values)
             basket_id = cur.fetchone()[0]
@@ -311,8 +359,8 @@ def save_basket(*, title, summary, core_belief, mode, time_horizon, timeframe_st
                     (created_at, title, summary, core_belief, mode, time_horizon,
                      timeframe_start, timeframe_end, resolution_target, mechanism, scope,
                      key_drivers_json, belief_summary_json, analysis_json, basket_json,
-                     total_notional, screened_count, is_public, user_id)
-                VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})
+                     total_notional, screened_count, is_public, user_id, thesis_notes)
+                VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})
             """, basket_values)
             basket_id = cur.lastrowid
 
@@ -414,6 +462,32 @@ def save_profile(user_id: str, username: str) -> dict:
         conn.close()
 
 
+def _enrich_profile(profile: dict) -> dict:
+    if profile and profile.get("domain_tags"):
+        try:
+            profile["domain_tags"] = json.loads(profile["domain_tags"])
+        except Exception:
+            profile["domain_tags"] = []
+    counts = get_follow_counts(profile["user_id"]) if profile else {}
+    profile.update(counts)
+    profile["basket_count"] = _profile_basket_count(profile["user_id"])
+    return profile
+
+
+def _profile_basket_count(user_id: str) -> int:
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT COUNT(*) FROM baskets WHERE user_id = {p} AND is_public = {'TRUE' if _use_pg() else '1'}",
+            (user_id,),
+        )
+        return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+
 def get_profile(user_id: str) -> dict | None:
     _init()
     p = _ph()
@@ -422,7 +496,9 @@ def get_profile(user_id: str) -> dict | None:
         cur = conn.cursor()
         cur.execute(f"SELECT * FROM profiles WHERE user_id = {p}", (user_id,))
         row = cur.fetchone()
-        return _rows_to_dicts([row], cur)[0] if row else None
+        if not row:
+            return None
+        return _enrich_profile(_rows_to_dicts([row], cur)[0])
     finally:
         conn.close()
 
@@ -435,7 +511,9 @@ def get_profile_by_username(username: str) -> dict | None:
         cur = conn.cursor()
         cur.execute(f"SELECT * FROM profiles WHERE username = {p}", (username,))
         row = cur.fetchone()
-        return _rows_to_dicts([row], cur)[0] if row else None
+        if not row:
+            return None
+        return _enrich_profile(_rows_to_dicts([row], cur)[0])
     finally:
         conn.close()
 
@@ -504,6 +582,245 @@ def save_price_snapshots(markets: list[dict], snapshot_date: str) -> int:
     finally:
         conn.close()
     return count
+
+
+def update_profile(user_id: str, *, bio: str | None = None, domain_tags: list | None = None,
+                   twitter: str | None = None, substack: str | None = None) -> dict | None:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        sets = []
+        vals = []
+        if bio is not None:
+            sets.append(f"bio = {p}"); vals.append(bio)
+        if domain_tags is not None:
+            sets.append(f"domain_tags = {p}"); vals.append(json.dumps(domain_tags))
+        if twitter is not None:
+            sets.append(f"twitter = {p}"); vals.append(twitter)
+        if substack is not None:
+            sets.append(f"substack = {p}"); vals.append(substack)
+        if not sets:
+            return get_profile(user_id)
+        vals.append(user_id)
+        cur.execute(f"UPDATE profiles SET {', '.join(sets)} WHERE user_id = {p}", vals)
+        conn.commit()
+        return get_profile(user_id)
+    finally:
+        conn.close()
+
+
+def follow_user(follower_id: str, following_id: str) -> bool:
+    _init()
+    p = _ph()
+    conn = _conn()
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        cur = conn.cursor()
+        if _use_pg():
+            cur.execute(
+                f"INSERT INTO follows (follower_id, following_id, created_at) VALUES ({p},{p},{p}) "
+                f"ON CONFLICT DO NOTHING",
+                (follower_id, following_id, ts),
+            )
+        else:
+            cur.execute(
+                f"INSERT OR IGNORE INTO follows (follower_id, following_id, created_at) VALUES ({p},{p},{p})",
+                (follower_id, following_id, ts),
+            )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def unfollow_user(follower_id: str, following_id: str) -> bool:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"DELETE FROM follows WHERE follower_id = {p} AND following_id = {p}",
+            (follower_id, following_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def get_follow_counts(user_id: str) -> dict:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"SELECT COUNT(*) FROM follows WHERE following_id = {p}", (user_id,))
+        follower_count = cur.fetchone()[0]
+        cur.execute(f"SELECT COUNT(*) FROM follows WHERE follower_id = {p}", (user_id,))
+        following_count = cur.fetchone()[0]
+        return {"follower_count": follower_count, "following_count": following_count}
+    finally:
+        conn.close()
+
+
+def is_following(follower_id: str, following_id: str) -> bool:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT 1 FROM follows WHERE follower_id = {p} AND following_id = {p}",
+            (follower_id, following_id),
+        )
+        return cur.fetchone() is not None
+    finally:
+        conn.close()
+
+
+def get_feed(user_id: str, limit: int = 48) -> list[dict]:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT b.*, pr.username FROM baskets b "
+            f"JOIN profiles pr ON b.user_id = pr.user_id "
+            f"JOIN follows f ON f.following_id = b.user_id "
+            f"WHERE f.follower_id = {p} AND b.is_public = {'TRUE' if _use_pg() else '1'} "
+            f"ORDER BY b.created_at DESC LIMIT {p}",
+            (user_id, limit),
+        )
+        return _rows_to_dicts(cur.fetchall(), cur)
+    finally:
+        conn.close()
+
+
+def get_creators(limit: int = 50) -> list[dict]:
+    """Return profiles sorted by follower count, enriched with basket and follower counts."""
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT pr.*, "
+            f"COUNT(DISTINCT f.follower_id) AS follower_count, "
+            f"COUNT(DISTINCT b.id) AS basket_count "
+            f"FROM profiles pr "
+            f"LEFT JOIN follows f ON f.following_id = pr.user_id "
+            f"LEFT JOIN baskets b ON b.user_id = pr.user_id AND b.is_public = {'TRUE' if _use_pg() else '1'} "
+            f"GROUP BY pr.user_id "
+            f"ORDER BY follower_count DESC, basket_count DESC "
+            f"LIMIT {p}",
+            (limit,),
+        )
+        rows = _rows_to_dicts(cur.fetchall(), cur)
+        for r in rows:
+            if r.get("domain_tags"):
+                try:
+                    r["domain_tags"] = json.loads(r["domain_tags"])
+                except Exception:
+                    r["domain_tags"] = []
+        return rows
+    finally:
+        conn.close()
+
+
+def bookmark_basket(user_id: str, basket_id: int) -> bool:
+    _init()
+    p = _ph()
+    conn = _conn()
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        cur = conn.cursor()
+        if _use_pg():
+            cur.execute(
+                f"INSERT INTO bookmarks (user_id, basket_id, created_at) VALUES ({p},{p},{p}) "
+                f"ON CONFLICT DO NOTHING",
+                (user_id, basket_id, ts),
+            )
+        else:
+            cur.execute(
+                f"INSERT OR IGNORE INTO bookmarks (user_id, basket_id, created_at) VALUES ({p},{p},{p})",
+                (user_id, basket_id, ts),
+            )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def unbookmark_basket(user_id: str, basket_id: int) -> bool:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"DELETE FROM bookmarks WHERE user_id = {p} AND basket_id = {p}",
+            (user_id, basket_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def is_bookmarked(user_id: str, basket_id: int) -> bool:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT 1 FROM bookmarks WHERE user_id = {p} AND basket_id = {p}",
+            (user_id, basket_id),
+        )
+        return cur.fetchone() is not None
+    finally:
+        conn.close()
+
+
+def get_bookmarks(user_id: str, limit: int = 48) -> list[dict]:
+    _init()
+    p = _ph()
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT b.*, pr.username FROM baskets b "
+            f"JOIN bookmarks bk ON bk.basket_id = b.id "
+            f"LEFT JOIN profiles pr ON b.user_id = pr.user_id "
+            f"WHERE bk.user_id = {p} AND b.is_public = {'TRUE' if _use_pg() else '1'} "
+            f"ORDER BY bk.created_at DESC LIMIT {p}",
+            (user_id, limit),
+        )
+        return _rows_to_dicts(cur.fetchall(), cur)
+    finally:
+        conn.close()
+
+
+def resolve_basket(basket_id: int, user_id: str, resolution_note: str) -> bool:
+    _init()
+    p = _ph()
+    conn = _conn()
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE baskets SET resolved_at = {p}, resolution_note = {p} "
+            f"WHERE id = {p} AND user_id = {p}",
+            (ts, resolution_note, basket_id, user_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
 
 
 def get_basket_performance(basket_id: int) -> dict:

@@ -5,6 +5,8 @@ import type {
   BeliefSummary,
   SavedBasket,
   UserProfile,
+  Creator,
+  FollowStatus,
   ManualBasketDraftHolding,
   OracleTurnResponse,
   OraclePipelineMessage,
@@ -199,8 +201,61 @@ export const createProfile = (username: string, token: string): Promise<UserProf
     body: JSON.stringify({ username }),
   }, token);
 
-export const getUserPage = (username: string): Promise<{ profile: UserProfile; baskets: SavedBasket[] }> =>
-  apiFetch(`/api/users/${username}`);
+export const getUserPage = (username: string, token?: string): Promise<{ profile: UserProfile; baskets: SavedBasket[]; is_following: boolean }> =>
+  apiFetch(`/api/users/${username}`, undefined, token);
+
+// ── Social: Creators ──────────────────────────────────────────────────────────
+
+export const getCreators = (limit = 50): Promise<Creator[]> =>
+  apiFetch(`/api/creators?limit=${limit}`);
+
+// ── Social: Follows ───────────────────────────────────────────────────────────
+
+export const followUser = (username: string, token: string): Promise<FollowStatus & { ok: boolean }> =>
+  apiFetch(`/api/follows/${username}`, { method: "POST" }, token);
+
+export const unfollowUser = (username: string, token: string): Promise<FollowStatus & { ok: boolean }> =>
+  apiFetch(`/api/follows/${username}`, { method: "DELETE" }, token);
+
+export const getFollowStatus = (username: string, token?: string): Promise<FollowStatus> =>
+  apiFetch(`/api/follows/${username}`, undefined, token);
+
+// ── Social: Feed ──────────────────────────────────────────────────────────────
+
+export const getFeed = (token: string, limit = 48): Promise<SavedBasket[]> =>
+  apiFetch(`/api/feed?limit=${limit}`, undefined, token);
+
+// ── Social: Bookmarks ─────────────────────────────────────────────────────────
+
+export const bookmarkBasket = (basketId: number, token: string): Promise<{ ok: boolean; bookmarked: boolean }> =>
+  apiFetch(`/api/bookmarks/${basketId}`, { method: "POST" }, token);
+
+export const unbookmarkBasket = (basketId: number, token: string): Promise<{ ok: boolean; bookmarked: boolean }> =>
+  apiFetch(`/api/bookmarks/${basketId}`, { method: "DELETE" }, token);
+
+export const getBookmarks = (token: string, limit = 48): Promise<SavedBasket[]> =>
+  apiFetch(`/api/bookmarks?limit=${limit}`, undefined, token);
+
+// ── Profile update ────────────────────────────────────────────────────────────
+
+export const updateMyProfile = (
+  body: { bio?: string; domain_tags?: string[]; twitter?: string; substack?: string },
+  token: string,
+): Promise<UserProfile> =>
+  apiFetch("/api/profiles/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }, token);
+
+// ── Basket resolve ────────────────────────────────────────────────────────────
+
+export const resolveBasket = (basketId: number, resolutionNote: string, token: string): Promise<{ ok: boolean }> =>
+  apiFetch(`/api/baskets/${basketId}/resolve`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resolution_note: resolutionNote }),
+  }, token);
 
 // ── Legacy Oracle endpoints ───────────────────────────────────────────────────
 

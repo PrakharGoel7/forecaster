@@ -838,12 +838,157 @@ async def create_profile(req: ProfileRequest, request: Request):
     return db.save_profile(user_id, username)
 
 @app.get("/api/users/{username}")
-async def get_user_profile(username: str):
+async def get_user_profile(username: str, request: Request):
     profile = db.get_profile_by_username(username.lower())
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
     baskets = db.get_baskets(limit=48, by_username=username.lower())
-    return {"profile": profile, "baskets": baskets}
+    viewer_id = _get_user_id(request)
+    is_following = False
+    if viewer_id and viewer_id != profile["user_id"]:
+        is_following = db.is_following(viewer_id, profile["user_id"])
+    return {"profile": profile, "baskets": baskets, "is_following": is_following}
+
+
+# ── Social: Creators ──────────────────────────────────────────────────────────
+
+@app.get("/api/creators")
+async def list_creators(limit: int = 50):
+    try:
+        return db.get_creators(limit=limit)
+    except Exception as e:
+        return {"error": str(e), "items": []}
+
+
+# ── Social: Follows ───────────────────────────────────────────────────────────
+
+@app.post("/api/follows/{username}")
+async def follow_user(username: str, request: Request):
+    viewer_id = _get_user_id(request)
+    if not viewer_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    target = db.get_profile_by_username(username.lower())
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target["user_id"] == viewer_id:
+        raise HTTPException(status_code=400, detail="Cannot follow yourself")
+    db.follow_user(viewer_id, target["user_id"])
+    counts = db.get_follow_counts(target["user_id"])
+    return {"ok": True, **counts}
+
+
+@app.delete("/api/follows/{username}")
+async def unfollow_user(username: str, request: Request):
+    viewer_id = _get_user_id(request)
+    if not viewer_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    target = db.get_profile_by_username(username.lower())
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.unfollow_user(viewer_id, target["user_id"])
+    counts = db.get_follow_counts(target["user_id"])
+    return {"ok": True, **counts}
+
+
+@app.get("/api/follows/{username}")
+async def get_follow_status(username: str, request: Request):
+    target = db.get_profile_by_username(username.lower())
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    viewer_id = _get_user_id(request)
+    is_following = False
+    if viewer_id and viewer_id != target["user_id"]:
+        is_following = db.is_following(viewer_id, target["user_id"])
+    counts = db.get_follow_counts(target["user_id"])
+    return {"is_following": is_following, **counts}
+
+
+# ── Social: Feed ──────────────────────────────────────────────────────────────
+
+@app.get("/api/feed")
+async def get_feed(request: Request, limit: int = 48):
+    user_id = _get_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        return db.get_feed(user_id, limit=limit)
+    except Exception as e:
+        return {"error": str(e), "items": []}
+
+
+# ── Social: Bookmarks ─────────────────────────────────────────────────────────
+
+@app.post("/api/bookmarks/{basket_id}")
+async def bookmark_basket(basket_id: int, request: Request):
+    user_id = _get_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    basket = db.get_basket(basket_id, user_id=user_id)
+    if not basket:
+        raise HTTPException(status_code=404, detail="Basket not found")
+    db.bookmark_basket(user_id, basket_id)
+    return {"ok": True, "bookmarked": True}
+
+
+@app.delete("/api/bookmarks/{basket_id}")
+async def unbookmark_basket(basket_id: int, request: Request):
+    user_id = _get_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    db.unbookmark_basket(user_id, basket_id)
+    return {"ok": True, "bookmarked": False}
+
+
+@app.get("/api/bookmarks")
+async def list_bookmarks(request: Request, limit: int = 48):
+    user_id = _get_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        return db.get_bookmarks(user_id, limit=limit)
+    except Exception as e:
+        return {"error": str(e), "items": []}
+
+
+# ── Profile update ────────────────────────────────────────────────────────────
+
+class ProfileUpdateRequest(BaseModel):
+    bio: str | None = None
+    domain_tags: list[str] | None = None
+    twitter: str | None = None
+    substack: str | None = None
+
+@app.patch("/api/profiles/me")
+async def update_my_profile(req: ProfileUpdateRequest, request: Request):
+    user_id = _get_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    updated = db.update_profile(
+        user_id,
+        bio=req.bio,
+        domain_tags=req.domain_tags,
+        twitter=req.twitter,
+        substack=req.substack,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return updated
+
+
+# ── Basket resolve ────────────────────────────────────────────────────────────
+
+class ResolveRequest(BaseModel):
+    resolution_note: str = ""
+
+@app.patch("/api/baskets/{basket_id}/resolve")
+async def resolve_basket(basket_id: int, req: ResolveRequest, request: Request):
+    user_id = _get_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    updated = db.resolve_basket(basket_id, user_id, req.resolution_note)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Basket not found or not yours")
+    return {"ok": True}
 
 
 @app.get("/api/baskets/{basket_id}")
@@ -852,6 +997,7 @@ async def get_basket(basket_id: int, request: Request):
     basket = db.get_basket(basket_id, user_id=user_id)
     if not basket:
         raise HTTPException(status_code=404, detail="Basket not found")
+    basket["is_bookmarked"] = db.is_bookmarked(user_id, basket_id) if user_id else False
     # Enrich basket_json holdings with event_title if missing (legacy baskets)
     try:
         import json as _json
@@ -958,6 +1104,7 @@ class ManualBasketHoldingRequest(BaseModel):
 class ManualBasketRequest(BaseModel):
     title: str
     summary: str
+    thesis_notes: str = ""
     timeframe: str = ""
     holdings: list[ManualBasketHoldingRequest]
     is_public: bool = True
@@ -1587,6 +1734,7 @@ async def create_manual_basket(req: ManualBasketRequest, request: Request):
         holdings=normalized_holdings,
         is_public=req.is_public,
         user_id=_get_user_id(request),
+        thesis_notes=req.thesis_notes or None,
     )
     saved = db.get_basket(basket_id, user_id=_get_user_id(request))
     return {"basket_id": basket_id, "basket": saved}

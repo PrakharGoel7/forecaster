@@ -5,15 +5,24 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
 import { BasketCard } from "@/components/BasketCard";
-import { listPublicBaskets } from "@/lib/api";
-import type { SavedBasket } from "@/lib/types";
+import { listPublicBaskets, getCreators } from "@/lib/api";
+import type { SavedBasket, Creator } from "@/lib/types";
+
+function avatarColor(seed: string): string {
+  const palette = ["#4f46e5", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  return palette[Math.abs(hash) % palette.length];
+}
 
 export default function HomePage() {
   const [publicBaskets, setPublicBaskets] = useState<SavedBasket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creators, setCreators] = useState<Creator[]>([]);
 
   useEffect(() => {
     listPublicBaskets(9).then(setPublicBaskets).catch(() => {}).finally(() => setLoading(false));
+    getCreators(6).then(data => setCreators(Array.isArray(data) ? data.filter(c => (c.basket_count ?? 0) > 0).slice(0, 6) : [])).catch(() => {});
   }, []);
 
   return (
@@ -39,9 +48,12 @@ export default function HomePage() {
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Link href="/baskets" style={primaryLinkStyle}>
-              Browse baskets
+              Browse theses
             </Link>
-            <Link href="/build" style={ghostLinkStyle}>
+            <Link href="/creators" style={ghostLinkStyle}>
+              Follow experts
+            </Link>
+            <Link href="/build" style={{ ...ghostLinkStyle, color: "#9b9390" }}>
               Build your own
             </Link>
           </div>
@@ -50,7 +62,7 @@ export default function HomePage() {
         {/* ── Basket feed ── */}
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <div style={eyebrowStyle}>Latest from the community</div>
+            <div style={eyebrowStyle}>Latest theses from the community</div>
             <Link href="/baskets" style={{ color: "#6e675f", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               View all
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -69,9 +81,9 @@ export default function HomePage() {
               padding: "48px 32px",
               textAlign: "center",
             }}>
-              <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No baskets yet.</div>
+              <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No theses yet.</div>
               <div style={{ color: "#6e675f", fontSize: 14, marginBottom: 24 }}>Be the first to build and share one.</div>
-              <Link href="/trading" style={primaryLinkStyle}>Build a basket</Link>
+              <Link href="/trading" style={primaryLinkStyle}>Build a thesis</Link>
             </div>
           ) : (
             <div style={{
@@ -85,6 +97,56 @@ export default function HomePage() {
             </div>
           )}
         </div>
+
+        {/* ── Featured Creators ── */}
+        {creators.length > 0 && (
+          <div style={{ marginTop: 56 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={eyebrowStyle}>Featured experts</div>
+              <Link href="/creators" style={{ color: "#6e675f", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                All creators
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </Link>
+            </div>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+              gap: 14,
+            }}>
+              {creators.map(c => {
+                const color = avatarColor(c.username);
+                const tags: string[] = Array.isArray(c.domain_tags) ? c.domain_tags : [];
+                return (
+                  <Link key={c.user_id} href={`/users/${c.username}`} style={{ textDecoration: "none" }}>
+                    <div style={{
+                      background: "#ffffff", border: "1px solid rgba(0,0,0,0.07)",
+                      borderRadius: 14, padding: "16px 18px", cursor: "pointer",
+                      transition: "box-shadow 0.15s",
+                    }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.07)"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>◈</span>
+                        </div>
+                        <div>
+                          <div style={{ color: "#4f46e5", fontSize: 13, fontWeight: 700, fontFamily: "var(--font-mono), monospace" }}>@{c.username}</div>
+                          <div style={{ color: "#9b9390", fontSize: 11 }}>{c.follower_count} follower{c.follower_count !== 1 ? "s" : ""} · {c.basket_count} ths.</div>
+                        </div>
+                      </div>
+                      {tags.slice(0, 3).map(t => (
+                        <span key={t} style={{ display: "inline-block", background: "rgba(79,70,229,0.07)", color: "#4f46e5", fontSize: 10, padding: "2px 7px", borderRadius: 999, marginRight: 4, marginBottom: 2, fontWeight: 500 }}>{t}</span>
+                      ))}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Build CTA banner ── */}
         <div style={{

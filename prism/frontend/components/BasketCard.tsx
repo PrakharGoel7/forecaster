@@ -132,13 +132,16 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
         </div>
 
         {/* Footer tags */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          <span style={tagStyle}>{holdingsCount} positions</span>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+          <span style={tagStyle}>{holdingsCount} position{holdingsCount !== 1 ? "s" : ""}</span>
           {(basket.timeframe_end || basket.time_horizon) && (
             <span style={tagStyle}>{formatTimeframe(basket.timeframe_end || basket.time_horizon)}</span>
           )}
           {quality && (
             <span style={{ ...tagStyle, color: "#6e675f" }}>{quality.replace(/_/g, " ")}</span>
+          )}
+          {basket.resolved_at && (
+            <span style={{ ...tagStyle, background: "#dcfce7", color: "#15803d", borderColor: "#bbf7d0" }}>✓ resolved</span>
           )}
         </div>
       </article>

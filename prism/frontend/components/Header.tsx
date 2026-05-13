@@ -7,10 +7,18 @@ import { getMyProfile, createProfile } from "@/lib/api";
 import type { User } from "@supabase/supabase-js";
 import type { UserProfile } from "@/lib/types";
 
-const NAV = [
-  { href: "/",        label: "Home"    },
-  { href: "/build",   label: "Build"   },
-  { href: "/baskets", label: "Baskets" },
+const NAV_PUBLIC = [
+  { href: "/",          label: "Home"     },
+  { href: "/build",     label: "Build"    },
+  { href: "/baskets",   label: "Theses"   },
+  { href: "/creators",  label: "Creators" },
+];
+const NAV_AUTHED = [
+  { href: "/",          label: "Home"     },
+  { href: "/build",     label: "Build"    },
+  { href: "/baskets",   label: "Theses"   },
+  { href: "/creators",  label: "Creators" },
+  { href: "/feed",      label: "Feed"     },
 ];
 
 export default function Header() {
@@ -175,10 +183,11 @@ export default function Header() {
 
           {/* Nav links */}
           <nav style={{ display: "flex", alignItems: "center", gap: "2px", flex: 1 }}>
-            {NAV.map(({ href, label }) => {
+            {(user ? NAV_AUTHED : NAV_PUBLIC).map(({ href, label }) => {
               const active =
                 href === "/" ? path === "/" :
                 href === "/build" ? (path === "/build" || path.startsWith("/trading")) :
+                href === "/baskets" ? (path.startsWith("/baskets")) :
                 path.startsWith(href);
               const activeBorder = "1px solid rgba(0,0,0,0.1)";
               const navStyle = {
