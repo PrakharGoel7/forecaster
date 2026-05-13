@@ -62,6 +62,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   const [error, setError] = useState("");
   const [isPublished, setIsPublished] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
+  const [publishError, setPublishError] = useState("");
   const [manualIsPublic, setManualIsPublic] = useState(true);
   const bootstrapped = useRef(false);
 
@@ -197,11 +198,16 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   async function publishBasket() {
     if (!basketId || !token) return;
     setPublishLoading(true);
+    setPublishError("");
     try {
       await setBasketVisibility(basketId, true, token);
       setIsPublished(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not publish basket");
+      let msg = "Could not publish basket";
+      if (err instanceof Error) {
+        try { msg = JSON.parse(err.message).detail ?? err.message; } catch { msg = err.message; }
+      }
+      setPublishError(msg);
     }
     setPublishLoading(false);
   }
@@ -484,7 +490,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                     )
                   )}
 
-                  {basket && <BasketView basket={basket} basketId={basketId} isPublished={isPublished} publishLoading={publishLoading} onPublish={token ? publishBasket : undefined} />}
+                  {basket && <BasketView basket={basket} basketId={basketId} isPublished={isPublished} publishLoading={publishLoading} onPublish={token ? publishBasket : undefined} publishError={publishError} />}
 
                   {error && (
                     <Card>
@@ -1589,12 +1595,13 @@ function AnalysisSummary({ analysis, screenedCount }: { analysis: BeliefAnalysis
   );
 }
 
-function BasketView({ basket, basketId, isPublished, publishLoading, onPublish }: {
+function BasketView({ basket, basketId, isPublished, publishLoading, onPublish, publishError }: {
   basket: PredictionBasket;
   basketId: number | null;
   isPublished?: boolean;
   publishLoading?: boolean;
   onPublish?: () => void;
+  publishError?: string;
 }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -1683,25 +1690,31 @@ function BasketView({ basket, basketId, isPublished, publishLoading, onPublish }
 
       {/* Publish prompt */}
       {onPublish && !isPublished && basketId && (
-        <div style={{
-          background: "rgba(79,70,229,0.05)",
-          border: "1px solid rgba(79,70,229,0.2)",
-          borderRadius: 18,
-          padding: "16px 20px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 16,
-          flexWrap: "wrap",
-          marginBottom: 4,
-        }}>
-          <div>
-            <div style={{ color: "#1c1814", fontWeight: 600, fontSize: 15, marginBottom: 3 }}>Share with the community?</div>
-            <div style={{ color: "#6e675f", fontSize: 13 }}>Your basket is saved privately. Publish it so others can see your thesis.</div>
+        <div style={{ marginBottom: 4 }}>
+          <div style={{
+            background: "rgba(79,70,229,0.05)",
+            border: "1px solid rgba(79,70,229,0.2)",
+            borderRadius: 18,
+            padding: "16px 20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 16,
+            flexWrap: "wrap",
+          }}>
+            <div>
+              <div style={{ color: "#1c1814", fontWeight: 600, fontSize: 15, marginBottom: 3 }}>Share with the community?</div>
+              <div style={{ color: "#6e675f", fontSize: 13 }}>Your basket is saved privately. Publish it so others can see your thesis.</div>
+            </div>
+            <button onClick={onPublish} disabled={publishLoading} style={{ ...primaryButtonStyle, whiteSpace: "nowrap", flexShrink: 0 }}>
+              {publishLoading ? "Publishing…" : "Publish basket →"}
+            </button>
           </div>
-          <button onClick={onPublish} disabled={publishLoading} style={{ ...primaryButtonStyle, whiteSpace: "nowrap", flexShrink: 0 }}>
-            {publishLoading ? "Publishing…" : "Publish basket →"}
-          </button>
+          {publishError && (
+            <div style={{ marginTop: 8, padding: "10px 14px", background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 10, color: "#dc2626", fontSize: 13 }}>
+              {publishError}
+            </div>
+          )}
         </div>
       )}
 
