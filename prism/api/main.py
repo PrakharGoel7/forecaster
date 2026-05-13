@@ -444,6 +444,19 @@ async def debug_auth(request: Request):
         return {"step": "decode", "error": str(e), "error_type": type(e).__name__}
 
 
+@app.get("/api/debug/db")
+async def debug_db():
+    from forecaster.db import DATABASE_URL
+    masked = DATABASE_URL[:40] + "..." if len(DATABASE_URL) > 40 else DATABASE_URL
+    try:
+        import psycopg2
+        conn = psycopg2.connect(DATABASE_URL)
+        conn.close()
+        return {"url_prefix": masked, "connection": "ok"}
+    except Exception as e:
+        return {"url_prefix": masked, "connection": "failed", "error": str(e)}
+
+
 @app.get("/api/debug/kalshi-log")
 async def get_kalshi_log(limit: int = 200):
     rows = _read_kalshi_log_rows(limit)
