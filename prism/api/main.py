@@ -426,6 +426,24 @@ async def me(request: Request):
     return {"user_id": user_id, "error": None if user_id else "invalid or missing token"}
 
 
+@app.get("/api/debug/auth")
+async def debug_auth(request: Request):
+    """Debug: shows exactly why JWT verification is failing."""
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return {"step": "header", "error": "No Bearer token in Authorization header"}
+    token = auth[7:]
+    if not _SUPABASE_JWT_SECRET:
+        return {"step": "secret", "error": "SUPABASE_JWT_SECRET is not set on this server"}
+    try:
+        from jose import jwt
+        payload = jwt.decode(token, _SUPABASE_JWT_SECRET, algorithms=["HS256"],
+                             options={"verify_aud": False})
+        return {"step": "ok", "user_id": payload.get("sub"), "payload_keys": list(payload.keys())}
+    except Exception as e:
+        return {"step": "decode", "error": str(e), "error_type": type(e).__name__}
+
+
 @app.get("/api/debug/kalshi-log")
 async def get_kalshi_log(limit: int = 200):
     rows = _read_kalshi_log_rows(limit)
