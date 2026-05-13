@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { getMyProfile, createProfile } from "@/lib/api";
+import { getMyProfile, createProfile, ApiError } from "@/lib/api";
 import type { User } from "@supabase/supabase-js";
 import type { UserProfile } from "@/lib/types";
 
@@ -50,7 +50,12 @@ export default function Header() {
       try {
         const p = await getMyProfile(token);
         setProfile(p);
-      } catch {
+      } catch (err) {
+        // Only prompt for username if profile genuinely doesn't exist (404).
+        // Any other error (401 auth failure, 5xx, network) should fail silently
+        // — don't trap the user in a username modal they can't escape.
+        if (!(err instanceof ApiError) || err.status !== 404) return;
+
         // Check for a username saved during signup (email-confirm flow)
         const pending = typeof window !== "undefined" ? localStorage.getItem("prism_pending_username") : null;
         if (pending) {
@@ -434,6 +439,7 @@ export default function Header() {
       {/* Username setup modal */}
       {showUsernameModal && (
         <div
+          onClick={() => { setShowUsernameModal(false); setPendingToken(null); }}
           style={{
             position: "fixed", inset: 0, zIndex: 100,
             background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
@@ -441,6 +447,7 @@ export default function Header() {
           }}
         >
           <div
+            onClick={e => e.stopPropagation()}
             style={{
               background: "#ffffff", border: "1px solid rgba(79,70,229,0.2)",
               borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "380px",

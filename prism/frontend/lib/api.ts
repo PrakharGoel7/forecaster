@@ -17,13 +17,20 @@ import type {
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function apiFetch(path: string, init?: RequestInit, token?: string) {
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string> ?? {}),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${BASE}${path}`, { ...init, headers });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new ApiError(res.status, await res.text());
   return res.json();
 }
 
