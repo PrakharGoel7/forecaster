@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { getMyProfile, createProfile } from "@/lib/api";
 import type { User } from "@supabase/supabase-js";
@@ -42,11 +42,15 @@ export default function Header() {
   const [usernameSignup, setUsernameSignup] = useState("");
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [welcomeUsername, setWelcomeUsername] = useState("");
+  // Prevents onAuthStateChange from racing with the active signup flow
+  const isSigningUp = useRef(false);
 
   useEffect(() => {
     if (!supabase) return;
 
     const checkProfile = async (token: string) => {
+      // If submit() is mid-flight creating a profile, don't interfere
+      if (isSigningUp.current) return;
       try {
         const p = await getMyProfile(token);
         setProfile(p);
@@ -93,20 +97,27 @@ export default function Header() {
       if (e) setError(e.message);
       else setShowModal(false);
     } else {
+      isSigningUp.current = true;
       const { data, error: e } = await supabase.auth.signUp({ email, password });
       if (e) {
+        isSigningUp.current = false;
         setError(e.message);
       } else if (data.session) {
         // No email confirmation required — create profile immediately
         try {
           const p = await createProfile(usernameSignup.trim().toLowerCase(), data.session.access_token);
           setProfile(p);
-        } catch {
-          setPendingToken(data.session.access_token);
-          setShowUsernameModal(true);
+          setShowModal(false);
+          setWelcomeUsername(p.username);
+          setShowWelcomeModal(true);
+        } catch (err) {
+          // Surface the real error so the user knows what went wrong
+          setError(err instanceof Error ? err.message : "Failed to create profile. Check your connection and try again.");
+        } finally {
+          isSigningUp.current = false;
         }
-        setShowModal(false);
       } else {
+        isSigningUp.current = false;
         // Email confirmation required — stash username for when they sign in
         if (usernameSignup.trim()) {
           localStorage.setItem("prism_pending_username", usernameSignup.trim().toLowerCase());
