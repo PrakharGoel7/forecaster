@@ -241,6 +241,8 @@ async def _startup_cache_refresh_scheduler() -> None:
         _cache_refresh_logger.warning("Cache refresh scheduler already running")
         return
 
+    # Run immediately on startup so the cache is populated after every deploy
+    asyncio.create_task(_run_cache_refresh())
     _cache_refresh_task = asyncio.create_task(_cache_refresh_scheduler_loop())
 
 
@@ -484,6 +486,14 @@ async def debug_auth(request: Request):
         return {"step": "ok", "user_id": payload.get("sub"), "payload_keys": list(payload.keys())}
     except Exception as e:
         return {"step": "decode", "error": str(e), "error_type": type(e).__name__}
+
+
+@app.post("/api/admin/sync-cache")
+async def admin_sync_cache():
+    if not _TC_AVAILABLE:
+        raise HTTPException(status_code=503, detail="trading_companion not available")
+    asyncio.create_task(_run_cache_refresh())
+    return {"ok": True, "message": "Cache refresh started in background"}
 
 
 @app.get("/api/debug/db")
