@@ -821,8 +821,8 @@ async def list_baskets(request: Request, limit: int = 20):
 async def list_public_baskets(limit: int = 48):
     try:
         return db.get_baskets(limit=limit, public_only=True)
-    except Exception as e:
-        return {"error": str(e), "items": []}
+    except Exception:
+        return []
 
 
 # ── Profile endpoints ─────────────────────────────────────────────────────────
@@ -874,8 +874,8 @@ async def get_user_profile(username: str, request: Request):
 async def list_creators(limit: int = 50):
     try:
         return db.get_creators(limit=limit)
-    except Exception as e:
-        return {"error": str(e), "items": []}
+    except Exception:
+        return []
 
 
 # ── Social: Follows ───────────────────────────────────────────────────────────
