@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
 try:
     from .cache_paths import MARKETS_CACHE_DB_FILE
@@ -8,18 +9,19 @@ except ImportError:
     from cache_paths import MARKETS_CACHE_DB_FILE
 
 
-def _conn() -> sqlite3.Connection:
-    MARKETS_CACHE_DB_FILE.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(MARKETS_CACHE_DB_FILE))
+def _conn(db_file: Path | None = None) -> sqlite3.Connection:
+    path = db_file or MARKETS_CACHE_DB_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(path))
     conn.row_factory = sqlite3.Row
     return conn
 
 
-def init_market_cache_db() -> None:
-    conn = _conn()
+def init_market_cache_db(db_file: Path | None = None, *, staging: bool = False) -> None:
+    conn = _conn(db_file)
     try:
         cur = conn.cursor()
-        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute(f"PRAGMA journal_mode={'DELETE' if staging else 'WAL'}")
         cur.execute("DROP TABLE IF EXISTS markets")
         cur.execute("""
             CREATE TABLE markets (
@@ -46,7 +48,7 @@ def init_market_cache_db() -> None:
         conn.close()
 
 
-def append_markets_to_cache_db(markets: list[dict]) -> None:
+def append_markets_to_cache_db(markets: list[dict], db_file: Path | None = None) -> None:
     if not markets:
         return
     rows = [
@@ -69,7 +71,7 @@ def append_markets_to_cache_db(markets: list[dict]) -> None:
         )
         for m in markets
     ]
-    conn = _conn()
+    conn = _conn(db_file)
     try:
         cur = conn.cursor()
         cur.executemany(

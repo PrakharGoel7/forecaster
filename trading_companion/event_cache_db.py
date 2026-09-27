@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from pathlib import Path
 
 try:
     from .cache_paths import EVENTS_CACHE_DB_FILE
@@ -11,9 +12,10 @@ except ImportError:
 _TOKEN_RE = re.compile(r"[A-Za-z0-9]{3,}")
 
 
-def _conn() -> sqlite3.Connection:
-    EVENTS_CACHE_DB_FILE.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(EVENTS_CACHE_DB_FILE))
+def _conn(db_file: Path | None = None) -> sqlite3.Connection:
+    path = db_file or EVENTS_CACHE_DB_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(path))
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -67,11 +69,11 @@ def rebuild_event_cache_db(events: list[dict]) -> None:
         conn.close()
 
 
-def init_event_cache_db() -> None:
-    conn = _conn()
+def init_event_cache_db(db_file: Path | None = None, *, staging: bool = False) -> None:
+    conn = _conn(db_file)
     try:
         cur = conn.cursor()
-        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute(f"PRAGMA journal_mode={'DELETE' if staging else 'WAL'}")
         cur.execute("DROP TABLE IF EXISTS events")
         cur.execute("DROP TABLE IF EXISTS events_fts")
         cur.execute("""
@@ -98,7 +100,7 @@ def init_event_cache_db() -> None:
         conn.close()
 
 
-def append_events_to_cache_db(events: list[dict]) -> None:
+def append_events_to_cache_db(events: list[dict], db_file: Path | None = None) -> None:
     if not events:
         return
     rows = [
@@ -111,7 +113,7 @@ def append_events_to_cache_db(events: list[dict]) -> None:
         )
         for e in events
     ]
-    conn = _conn()
+    conn = _conn(db_file)
     try:
         cur = conn.cursor()
         cur.executemany(

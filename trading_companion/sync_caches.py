@@ -1,7 +1,7 @@
-"""Refresh the Kalshi caches used by product features.
+"""Atomically refresh the Kalshi caches used by product features.
 
-Runs the full open-markets sync first, then refreshes the lightweight event
-cache used by the screener and recommendation enrichment paths.
+Refreshes the lightweight event cache first, then the bounded non-combo market
+cache. Existing production caches remain available if either refresh fails.
 
 Usage:
     python sync_caches.py
@@ -22,11 +22,11 @@ from sync_markets import sync as sync_markets
 
 
 def main() -> int:
-    print("Refreshing full open-markets cache...")
-    market_count = sync_markets(verbose=True)
-
-    print("\nRefreshing event cache used by product screening...")
+    print("Refreshing event cache used by product screening...")
     event_count = sync_events(verbose=True)
+
+    print("\nRefreshing non-combo open-markets cache...")
+    market_count = sync_markets(verbose=True)
 
     print(
         f"\nCache refresh complete: {market_count} markets synced, "

@@ -3,6 +3,9 @@ Railway setup for unattended cache refresh
 Goal:
 - Refresh `markets_cache.json` and `events_cache.json` every day at 1:00 AM PT
 - Make the refreshed cache visible to the live Prism backend
+- Exclude Kalshi's generated multivariate combination markets
+- Retain a bounded set of the highest-volume regular markets
+- Publish new cache files only after a complete successful refresh
 
 Why local cron is not enough:
 - A laptop cron job only runs if the laptop is on and awake.

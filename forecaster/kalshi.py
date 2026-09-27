@@ -340,6 +340,7 @@ class KalshiClient:
         cursor: str | None = None,
         series_ticker: str | None = None,
         event_ticker: str | None = None,
+        mve_filter: str | None = None,
     ) -> tuple[list[KalshiMarket], str | None]:
         params: dict = {"limit": limit, "status": status}
         if cursor:
@@ -348,6 +349,8 @@ class KalshiClient:
             params["series_ticker"] = series_ticker
         if event_ticker:
             params["event_ticker"] = event_ticker
+        if mve_filter:
+            params["mve_filter"] = mve_filter
 
         self._log_request("/markets", params)
         resp = self._http.get("/markets", params=params)
