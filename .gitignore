@@ -1,13 +1,29 @@
+# Secrets and local configuration
 .env
-forecasts.db
-__pycache__/
-*.pyc
+.env.*
+!.env.example
+!**/.env.example
 *.pem
-.DS_Store
 .streamlit/secrets.toml
-# Private key file
 forecaster/agents/forecaster.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local databases, caches, and logs
+*.db
+runtime_logs/
+trading_companion/markets_cache.json
+
 # Next.js
 prism/frontend/.next/
 prism/frontend/node_modules/
-prism/frontend/.env.local
+
+# Local agent state and operating-system files
+.claude/
+.DS_Store

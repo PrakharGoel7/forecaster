@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { PredictionBasket, SavedBasket } from "@/lib/types";
 
 function timeAgo(dateStr: string): string {
@@ -39,6 +40,7 @@ function modeLabel(mode: string): string {
 }
 
 export function BasketCard({ basket }: { basket: SavedBasket }) {
+  const router = useRouter();
   const parsed: PredictionBasket | null = (() => {
     try { return JSON.parse(basket.basket_json); } catch { return null; }
   })();
@@ -69,7 +71,7 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div
             style={{ display: "flex", alignItems: "center", gap: 8 }}
-            onClick={basket.username ? (e) => { e.preventDefault(); window.location.href = `/users/${basket.username}`; } : undefined}
+            onClick={basket.username ? (e) => { e.preventDefault(); router.push(`/users/${basket.username}`); } : undefined}
           >
             <div style={{
               width: 28, height: 28, borderRadius: "50%",

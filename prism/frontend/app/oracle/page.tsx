@@ -59,7 +59,29 @@ export default function OraclePage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMsgs, isLoading]);
 
-  // ── Start: submit initial belief ───────────────────────────────────────────
+  // Pipeline
+  const startPipeline = useCallback((summary: Record<string, unknown>) => {
+    setPhase("pipeline");
+    streamOraclePipeline(summary, msg => {
+      if (msg.type === "stage") {
+        setStages(prev => ({ ...prev, [msg.stage]: msg.status }));
+        if (msg.status === "done" && msg.stage === "analyst" && msg.data) {
+          const d = msg.data as { domains: OracleDomain[]; insight: string };
+          setAnalystDomains(d.domains ?? []);
+          setAnalystInsight(d.insight ?? "");
+        }
+      } else if (msg.type === "complete") {
+        setRecommendations(msg.data.recommendations);
+        setAnalystDomains(msg.data.analysis.domains);
+        setAnalystInsight(msg.data.analysis.insight);
+        setPhase("results");
+      } else if (msg.type === "error") {
+        setPipelineError(msg.message);
+      }
+    });
+  }, []);
+
+  // Start: submit the initial belief.
   const submitBelief = useCallback(async () => {
     const text = belief.trim();
     if (!text || isLoading) return;
@@ -88,7 +110,7 @@ export default function OraclePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [belief, isLoading]);
+  }, [belief, isLoading, startPipeline]);
 
   // ── Chat: send follow-up ───────────────────────────────────────────────────
   const sendMessage = useCallback(async () => {
@@ -118,30 +140,9 @@ export default function OraclePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [chatInput, history, isLoading]);
+  }, [chatInput, history, isLoading, startPipeline]);
 
   // ── Pipeline ───────────────────────────────────────────────────────────────
-  const startPipeline = useCallback((summary: Record<string, unknown>) => {
-    setPhase("pipeline");
-    streamOraclePipeline(summary, msg => {
-      if (msg.type === "stage") {
-        setStages(prev => ({ ...prev, [msg.stage]: msg.status }));
-        if (msg.status === "done" && msg.stage === "analyst" && msg.data) {
-          const d = msg.data as { domains: OracleDomain[]; insight: string };
-          setAnalystDomains(d.domains ?? []);
-          setAnalystInsight(d.insight ?? "");
-        }
-      } else if (msg.type === "complete") {
-        setRecommendations(msg.data.recommendations);
-        setAnalystDomains(msg.data.analysis.domains);
-        setAnalystInsight(msg.data.analysis.insight);
-        setPhase("results");
-      } else if (msg.type === "error") {
-        setPipelineError(msg.message);
-      }
-    });
-  }, []);
-
   const onInputKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitBelief(); }
   };

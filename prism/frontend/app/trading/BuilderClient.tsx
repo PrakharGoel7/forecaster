@@ -93,16 +93,15 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
 
   useEffect(() => {
     if (buildPath !== "manual") return;
-    if (!eventResults.length) {
-      setEventMarkets([]);
-      return;
-    }
+    if (!eventResults.length) return;
     void loadVisiblePageMarkets();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildPath, eventResults, eventPage]);
 
   useEffect(() => {
     if (buildPath !== "manual") return;
+    // Restore the browser-only draft after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setManualHoldings(loadManualBasketDraft());
   }, [buildPath]);
 
@@ -945,7 +944,7 @@ function ManualEventModal(props: {
   onAddSelection: (market: KalshiMarket, selection: { side: "YES" | "NO"; label?: string; price?: number; contractLabel?: string }) => void;
 }) {
   const {
-    event, markets, mode, loading, notice, onClose, onAddSelection,
+    event, markets, loading, onClose, onAddSelection,
   } = props;
   const sortedMarkets = [...markets].sort((a, b) => b.mid_price - a.mid_price);
   const isBinary = sortedMarkets.length === 1;
@@ -1760,35 +1759,6 @@ function BasketView({ basket, basketId, isPublished, publishLoading, onPublish, 
         {basket.construction_notes}
       </div>
     </Card>
-  );
-}
-
-function ManualMarketCard({ market, onAdd }: { market: KalshiMarket; onAdd: () => void }) {
-  return (
-    <div style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 18, padding: 16, background: "rgba(0,0,0,0.02)" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 16, alignItems: "start" }}>
-        <div>
-          <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
-            {market.category || "Market"}{market.event_title ? ` · ${market.event_title}` : ""}
-          </div>
-          <div style={{ color: "#1c1814", fontWeight: 600, marginBottom: 8, lineHeight: 1.45, fontSize: 16 }}>{market.question}</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-            <Tag>{Math.round(market.mid_price * 100)}% market odds</Tag>
-            <Tag>{market.close_date}</Tag>
-            <Tag>${Math.round(market.volume).toLocaleString()} vol</Tag>
-          </div>
-          {market.rules_primary && (
-            <div style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.55 }}>
-              {market.rules_primary.length > 180 ? `${market.rules_primary.slice(0, 180)}...` : market.rules_primary}
-            </div>
-          )}
-        </div>
-        <div style={{ display: "grid", justifyItems: "end", gap: 10, minWidth: 132 }}>
-          <div style={{ color: "#6e675f", fontSize: 12 }}>Ticker {market.ticker}</div>
-          <button onClick={onAdd} style={{ ...ghostButtonStyle, minWidth: 132 }}>Add to basket</button>
-        </div>
-      </div>
-    </div>
   );
 }
 

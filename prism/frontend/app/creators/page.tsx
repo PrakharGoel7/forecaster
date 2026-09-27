@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
@@ -97,7 +97,6 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 export default function CreatorsPage() {
   const [creators, setCreators] = useState<Creator[]>([]);
-  const [filtered, setFiltered] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -105,18 +104,17 @@ export default function CreatorsPage() {
     getCreators(100).then(data => {
       const arr = Array.isArray(data) ? data : [];
       setCreators(arr);
-      setFiltered(arr);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) { setFiltered(creators); return; }
-    setFiltered(creators.filter(c =>
+    if (!q) return creators;
+    return creators.filter(c =>
       c.username.includes(q) ||
       (c.bio || "").toLowerCase().includes(q) ||
       (Array.isArray(c.domain_tags) ? c.domain_tags : []).some(t => t.toLowerCase().includes(q))
-    ));
+    );
   }, [search, creators]);
 
   return (

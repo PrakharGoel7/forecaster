@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import MarketCard from "@/components/MarketCard";
 import { searchEvents } from "@/lib/api";
@@ -11,12 +10,11 @@ export default function MarketsPage() {
   const router = useRouter();
   const [query, setQuery]       = useState("");
   const [events, setEvents]     = useState<KalshiEvent[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [searching, setSearching] = useState(true);
   const [searched, setSearched] = useState(false);
   const [error, setError]       = useState("");
 
   useEffect(() => {
-    setSearching(true);
     searchEvents("", 48)
       .then(e => { setEvents(e); setSearching(false); })
       .catch(() => setSearching(false));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
@@ -10,13 +10,13 @@ import { createClient } from "@/lib/supabase";
 import type { SavedBasket } from "@/lib/types";
 
 export default function FeedPage() {
+  const supabase = useMemo(() => createClient(), []);
   const [baskets, setBaskets] = useState<SavedBasket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [authed, setAuthed] = useState<boolean | null>(null);
-  const supabase = createClient();
+  const [loading, setLoading] = useState(() => Boolean(supabase));
+  const [authed, setAuthed] = useState<boolean | null>(() => supabase ? null : false);
 
   useEffect(() => {
-    if (!supabase) { setAuthed(false); setLoading(false); return; }
+    if (!supabase) return;
     supabase.auth.getSession().then(async ({ data }) => {
       const token = data.session?.access_token;
       if (!token) { setAuthed(false); setLoading(false); return; }

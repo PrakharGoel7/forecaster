@@ -39,7 +39,6 @@ export default function Header() {
   const [usernameError, setUsernameError] = useState("");
   const [usernameLoading, setUsernameLoading] = useState(false);
   const [pendingToken, setPendingToken] = useState<string | null>(null);
-  const [usernameSignup, setUsernameSignup] = useState("");
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [welcomeUsername, setWelcomeUsername] = useState("");
 

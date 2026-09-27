@@ -1,21 +1,21 @@
-# Prism — Next.js frontend
+# Prism application
 
-## Start the API
+Prism's product application is split into a FastAPI service in `api/` and a Next.js client in `frontend/`.
+
+For the product overview, architecture, setup guide, and configuration reference, see the [root README](../README.md).
+
+## API
 
 ```bash
-cd prism/api
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+uvicorn prism.api.main:app --reload --port 8000
 ```
 
-Credentials are read automatically from `../forecaster/.env`.
-
-## Start the frontend
+## Frontend
 
 ```bash
 cd prism/frontend
+npm ci
 npm run dev
 ```
 
-App → http://localhost:3000  
-API → http://localhost:8000
+The app runs at [http://localhost:3000](http://localhost:3000) and expects the API at [http://localhost:8000](http://localhost:8000) by default.
