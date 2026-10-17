@@ -396,6 +396,9 @@ export interface Portfolio {
     current_value_dollars: number | null;
     unrealized_pnl_dollars: number | null;
     kalshi_cash_balance_dollars: number | null;
+    valuation_status: "complete" | "partial";
+    position_count: number;
+    marked_position_count: number;
   };
   positions: {
     basket_id: number;
@@ -406,6 +409,7 @@ export interface Portfolio {
     invested_dollars: number;
     current_value_dollars: number | null;
     unrealized_pnl_dollars: number | null;
+    status: "open_marked" | "closed_unreconciled" | "quote_unavailable";
   }[];
   history: { date: string; invested_dollars: number; current_value_dollars: number | null }[];
 }

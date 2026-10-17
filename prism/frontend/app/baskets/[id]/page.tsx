@@ -139,7 +139,7 @@ export default function BasketSharePage() {
       setPerfLoading(true);
       setPerfError("");
       try {
-        const data = await getBasketPerformance(basket.id);
+        const data = await getBasketPerformance(basket.id, myToken ?? undefined);
         setPerformance(data);
       } catch {
         setPerformance(null);

@@ -131,7 +131,9 @@ export default function AccountPage() {
                 <Metric label="Unrealized P/L" value={money(portfolio?.summary.unrealized_pnl_dollars)} />
                 <Metric label="Kalshi cash balance" value={money(portfolio?.summary.kalshi_cash_balance_dollars)} />
               </div>
-              <div style={{ color: "#9b9390", fontSize: 11, marginTop: 12 }}>Values use confirmed fills and available market marks. They can differ from Kalshi&apos;s final settlement value.</div>
+              <div style={{ color: "#9b9390", fontSize: 11, marginTop: 12 }}>
+                {portfolio?.summary.valuation_status === "partial" ? `Valuation incomplete: ${portfolio.summary.marked_position_count} of ${portfolio.summary.position_count} positions currently marked. Closed markets awaiting settlement and unavailable quotes have no estimated value.` : "Values use confirmed fills and available market marks. They can differ from Kalshi's final settlement value."}
+              </div>
             </section>
             <section style={card}>
               <div style={eyebrow}>Performance over time</div>
@@ -143,8 +145,8 @@ export default function AccountPage() {
             <section style={card}>
               <div style={eyebrow}>Prism basket positions</div>
               {!portfolio?.positions.length ? <p style={{ color: "#6e675f", fontSize: 13, margin: 0 }}>No confirmed basket positions yet.</p> : (
-                <div style={{ overflowX: "auto" }}><table style={table}><thead><tr><th style={cell}>Basket / market</th><th style={cell}>Side</th><th style={cell}>Contracts</th><th style={cell}>Invested</th><th style={cell}>Current value</th><th style={cell}>Unrealized P/L</th></tr></thead><tbody>
-                  {portfolio.positions.map((p, i) => <tr key={`${p.basket_id}-${p.ticker}-${p.side}-${i}`} style={row}><td style={cell}><Link href={`/baskets/${p.basket_id}`} style={{ color: "#4f46e5", fontWeight: 700 }}>{p.basket_title}</Link><div style={{ color: "#6e675f" }}>{p.ticker}</div></td><td style={cell}>{p.side}</td><td style={cell}>{p.contracts}</td><td style={cell}>{money(p.invested_dollars)}</td><td style={cell}>{money(p.current_value_dollars)}</td><td style={cell}>{money(p.unrealized_pnl_dollars)}</td></tr>)}
+                <div style={{ overflowX: "auto" }}><table style={table}><thead><tr><th style={cell}>Basket / market</th><th style={cell}>Side</th><th style={cell}>Contracts</th><th style={cell}>Status</th><th style={cell}>Invested</th><th style={cell}>Current value</th><th style={cell}>Unrealized P/L</th></tr></thead><tbody>
+                  {portfolio.positions.map((p, i) => <tr key={`${p.basket_id}-${p.ticker}-${p.side}-${i}`} style={row}><td style={cell}><Link href={`/baskets/${p.basket_id}`} style={{ color: "#4f46e5", fontWeight: 700 }}>{p.basket_title}</Link><div style={{ color: "#6e675f" }}>{p.ticker}</div></td><td style={cell}>{p.side}</td><td style={cell}>{p.contracts}</td><td style={cell}>{p.status.replaceAll("_", " ")}</td><td style={cell}>{money(p.invested_dollars)}</td><td style={cell}>{money(p.current_value_dollars)}</td><td style={cell}>{money(p.unrealized_pnl_dollars)}</td></tr>)}
                 </tbody></table></div>
               )}
             </section>
