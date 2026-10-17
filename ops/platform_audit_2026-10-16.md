@@ -22,12 +22,12 @@ Prism records orders and fills initiated by Prism. It does not import every trad
 ## Deployment controls
 
 - `KALSHI_CREDENTIALS_ENCRYPTION_KEY` must remain set on the Railway API service. Losing it makes existing stored connections unreadable.
-- `ENABLE_LIVE_TRADING=true` permits order submission only after a signed-in user connects credentials and explicitly confirms a valid preview. Keep it false until production smoke checks are complete.
+- `ENABLE_LIVE_TRADING=true` permits order submission only after a signed-in user connects credentials and explicitly confirms a valid preview. It was enabled after the production smoke checks below.
 - `PRISM_ADMIN_API_KEY` is optional; leaving it unset disables diagnostic and maintenance routes.
 
 ## Verification
 
 - Backend: `python -m unittest discover -s tests -p 'test_*.py' -q`.
 - Frontend: `npm run lint`, `npx tsc --noEmit`, `npm run build` in `prism/frontend`.
-- Production smoke: verify public pages and baskets, authenticated-only API responses, diagnostics returning 404 anonymously, then inspect Railway/Vercel deployment status.
+- Production smoke on October 17: Vercel and Railway both reported commit `df54744` ready/successful. `/build` displayed the manual builder as the primary choice; a published basket displayed investor, invested-dollar, and watchlist counters; `/account` displayed the signed-out portfolio gate. The Railway API returned 200 for public baskets, creator search, basket detail, and basket performance; 401 for anonymous credential, portfolio, trade-history, and trade-preview requests; and 404 for anonymous diagnostic endpoints. The frontend origin was present in the API's CORS response. The new Kalshi client successfully read balance and positions with the existing service credential. A Railway environment-only redeployment followed when live trading was enabled.
 - Actual sign-up email confirmation, user-supplied Kalshi credential connection, and a funded order still require a real test account and explicit user action. Never submit a live financial order during an automated smoke test.
