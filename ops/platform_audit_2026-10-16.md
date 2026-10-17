@@ -14,6 +14,7 @@
 | Build entry point | AI builder was emphasized over manual selection. | Homepage and build page put manual Basket Studio first and make AI assistance secondary. |
 | Diagnostics | Database, Kalshi log, pipeline traces, and cache-sync endpoints were publicly reachable. | These endpoints now require a server-only `PRISM_ADMIN_API_KEY` sent in `X-Prism-Admin-Key`; without it, they return 404. Regression tests cover this. |
 | Error reporting | Several list endpoints returned HTTP 200 with empty data on database errors. | They now log the exception and return a generic 503 so the UI does not confuse an outage with an empty feed. |
+| Basket detail availability | During an API redeployment, a temporary request failure was shown as if a basket were missing. | The detail page now distinguishes a 404 from a temporary failure and offers a retry action. |
 
 ## Boundaries of portfolio accounting
 

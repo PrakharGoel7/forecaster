@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
-import { getBasket, getBasketPerformance, getUserPage, bookmarkBasket, unbookmarkBasket, resolveBasket } from "@/lib/api";
+import { ApiError, getBasket, getBasketPerformance, getUserPage, bookmarkBasket, unbookmarkBasket, resolveBasket } from "@/lib/api";
 import { createClient } from "@/lib/supabase";
 import { BasketCard } from "@/components/BasketCard";
 import { BasketTradePanel } from "@/components/BasketTradePanel";
@@ -14,7 +14,8 @@ import type { BasketPerformance, BeliefAnalysis, BeliefSummary, PredictionBasket
 export default function BasketSharePage() {
   const params = useParams<{ id: string }>();
   const [basket, setBasket] = useState<SavedBasket | null>(null);
-  const [basketError, setBasketError] = useState(false);
+  const [basketError, setBasketError] = useState<"missing" | "temporary" | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
   const [beliefSummary, setBeliefSummary] = useState<BeliefSummary | null>(null);
   const [analysis, setAnalysis] = useState<BeliefAnalysis | null>(null);
   const [copied, setCopied] = useState(false);
@@ -41,16 +42,22 @@ export default function BasketSharePage() {
     });
   }, [supabase]);
 
+  const basketId = params?.id;
   useEffect(() => {
-    if (!params?.id) return;
-    getBasket(Number(params.id), myToken ?? undefined).then((saved) => {
-      setBasketError(false);
+    if (!basketId) return;
+    let active = true;
+    getBasket(Number(basketId), myToken ?? undefined).then((saved) => {
+      if (!active) return;
+      setBasketError(null);
       setBasket(saved);
       setBookmarked(saved.is_bookmarked ?? false);
       setBeliefSummary(JSON.parse(saved.belief_summary_json));
       setAnalysis(JSON.parse(saved.analysis_json));
-    }).catch(() => setBasketError(true));
-  }, [params, myToken]);
+    }).catch((error: unknown) => {
+      if (active) setBasketError(error instanceof ApiError && error.status === 404 ? "missing" : "temporary");
+    });
+    return () => { active = false; };
+  }, [basketId, myToken, retryNonce]);
 
   useEffect(() => {
     if (!basket?.username || !basket?.id) return;
@@ -156,7 +163,9 @@ export default function BasketSharePage() {
         <Header />
         <GridOverlay />
         <div style={{ position: "relative", zIndex: 10, maxWidth: 900, margin: "0 auto", padding: "120px 24px" }}>
-          {basketError ? "Basket unavailable. It may be private, removed, or this link may be incorrect." : "Loading basket…"}
+          {basketError === "missing" ? "Basket unavailable. It may be private, removed, or this link may be incorrect." :
+            basketError === "temporary" ? <div>Could not load this basket right now. <button onClick={() => { setBasketError(null); setRetryNonce(n => n + 1); }} style={{ color: "#4f46e5", background: "none", border: 0, cursor: "pointer", font: "inherit", textDecoration: "underline" }}>Try again</button></div> :
+            "Loading basket…"}
         </div>
       </div>
     );
