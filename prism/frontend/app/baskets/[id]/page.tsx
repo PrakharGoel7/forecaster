@@ -8,11 +8,13 @@ import GridOverlay from "@/components/GridOverlay";
 import { getBasket, getBasketPerformance, getUserPage, bookmarkBasket, unbookmarkBasket, resolveBasket } from "@/lib/api";
 import { createClient } from "@/lib/supabase";
 import { BasketCard } from "@/components/BasketCard";
+import { BasketTradePanel } from "@/components/BasketTradePanel";
 import type { BasketPerformance, BeliefAnalysis, BeliefSummary, PredictionBasket, SavedBasket } from "@/lib/types";
 
 export default function BasketSharePage() {
   const params = useParams<{ id: string }>();
   const [basket, setBasket] = useState<SavedBasket | null>(null);
+  const [basketError, setBasketError] = useState(false);
   const [beliefSummary, setBeliefSummary] = useState<BeliefSummary | null>(null);
   const [analysis, setAnalysis] = useState<BeliefAnalysis | null>(null);
   const [copied, setCopied] = useState(false);
@@ -41,13 +43,14 @@ export default function BasketSharePage() {
 
   useEffect(() => {
     if (!params?.id) return;
-    getBasket(Number(params.id)).then((saved) => {
+    getBasket(Number(params.id), myToken ?? undefined).then((saved) => {
+      setBasketError(false);
       setBasket(saved);
       setBookmarked(saved.is_bookmarked ?? false);
       setBeliefSummary(JSON.parse(saved.belief_summary_json));
       setAnalysis(JSON.parse(saved.analysis_json));
-    }).catch(() => {});
-  }, [params]);
+    }).catch(() => setBasketError(true));
+  }, [params, myToken]);
 
   useEffect(() => {
     if (!basket?.username || !basket?.id) return;
@@ -101,11 +104,13 @@ export default function BasketSharePage() {
     setBookmarkLoading(true);
     try {
       if (bookmarked) {
-        await unbookmarkBasket(basket.id, myToken);
+        const result = await unbookmarkBasket(basket.id, myToken);
         setBookmarked(false);
+        setBasket(b => b ? { ...b, watchlist_count: result.watchlist_count } : b);
       } else {
-        await bookmarkBasket(basket.id, myToken);
+        const result = await bookmarkBasket(basket.id, myToken);
         setBookmarked(true);
+        setBasket(b => b ? { ...b, watchlist_count: result.watchlist_count } : b);
       }
     } catch {
       // ignore
@@ -151,7 +156,7 @@ export default function BasketSharePage() {
         <Header />
         <GridOverlay />
         <div style={{ position: "relative", zIndex: 10, maxWidth: 900, margin: "0 auto", padding: "120px 24px" }}>
-          Loading basket…
+          {basketError ? "Basket unavailable. It may be private, removed, or this link may be incorrect." : "Loading basket…"}
         </div>
       </div>
     );
@@ -202,6 +207,18 @@ export default function BasketSharePage() {
           <Tag>{parsedBasket.holdings.length} positions</Tag>
           <Tag>{basket.timeframe_start || "now"} → {basket.timeframe_end || basket.time_horizon}</Tag>
         </div>
+
+        {basket.is_public && (
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", color: "#6e675f", fontSize: 13, marginBottom: 18 }}>
+            <span><strong style={{ color: "#1c1814" }}>{basket.investor_count ?? 0}</strong> investors</span>
+            <span><strong style={{ color: "#1c1814" }}>${(basket.invested_dollars ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> filled investment</span>
+            <span><strong style={{ color: "#1c1814" }}>{basket.watchlist_count ?? 0}</strong> watchlists</span>
+          </div>
+        )}
+
+        {!basket.resolved_at && <BasketTradePanel basketId={basket.id} token={myToken} onExecution={() => {
+          getBasket(basket.id, myToken ?? undefined).then(setBasket).catch(() => {});
+        }} />}
 
         <section style={sectionStyle}>
           <div style={sectionTitleStyle}>Thesis</div>
@@ -415,7 +432,7 @@ export default function BasketSharePage() {
                 cursor: "pointer",
               }}
             >
-              {bookmarkLoading ? "…" : bookmarked ? "★ Saved" : "☆ Save"}
+              {bookmarkLoading ? "…" : bookmarked ? "★ In watchlist" : "☆ Add to watchlist"}
             </button>
           )}
           {myToken && myUserId && basket.user_id === myUserId && !basket.resolved_at && (

@@ -246,6 +246,9 @@ export default function Header() {
                     {user.email}
                   </span>
                 )}
+                <Link href="/account" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", color: path === "/account" ? "#4f46e5" : "#6e675f", textDecoration: "none", fontWeight: 600 }}>
+                  Portfolio
+                </Link>
                 <button onClick={signOut} style={{
                   fontFamily: "var(--font-mono), monospace", fontSize: "10px",
                   fontWeight: 600, letterSpacing: "0.08em",

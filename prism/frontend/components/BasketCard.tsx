@@ -146,6 +146,13 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
             <span style={{ ...tagStyle, background: "#dcfce7", color: "#15803d", borderColor: "#bbf7d0" }}>✓ resolved</span>
           )}
         </div>
+        {basket.is_public && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, borderTop: "1px solid rgba(0,0,0,0.06)", marginTop: 14, paddingTop: 12, color: "#6e675f", fontSize: 11 }}>
+            <span>{basket.investor_count ?? 0} invested</span>
+            <span>${(basket.invested_dollars ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} filled</span>
+            <span>{basket.watchlist_count ?? 0} watching</span>
+          </div>
+        )}
       </article>
     </Link>
   );

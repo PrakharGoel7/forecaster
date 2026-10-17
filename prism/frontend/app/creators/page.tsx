@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
@@ -101,21 +101,15 @@ export default function CreatorsPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    getCreators(100).then(data => {
-      const arr = Array.isArray(data) ? data : [];
-      setCreators(arr);
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return creators;
-    return creators.filter(c =>
-      c.username.includes(q) ||
-      (c.bio || "").toLowerCase().includes(q) ||
-      (Array.isArray(c.domain_tags) ? c.domain_tags : []).some(t => t.toLowerCase().includes(q))
-    );
-  }, [search, creators]);
+    let active = true;
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      getCreators(100, search.trim()).then(data => {
+        if (active) setCreators(Array.isArray(data) ? data : []);
+      }).catch(() => { if (active) setCreators([]); }).finally(() => { if (active) setLoading(false); });
+    }, search ? 250 : 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [search]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8f6f2", position: "relative" }}>
@@ -147,16 +141,16 @@ export default function CreatorsPage() {
 
         {loading ? (
           <div style={{ color: "#a8a29a", fontSize: 14 }}>Loading creators…</div>
-        ) : filtered.length === 0 ? (
+        ) : creators.length === 0 ? (
           <div style={{
             background: "#ffffff", border: "1px solid rgba(0,0,0,0.08)",
             borderRadius: 22, padding: "48px 32px", textAlign: "center",
           }}>
             <div style={{ color: "#9b9390", fontSize: 15 }}>
-              {search ? "No creators match your search." : "No creators yet. Be the first to publish a thesis."}
+              {search ? "No users match your search." : "No users yet. Be the first to publish a thesis."}
             </div>
             {!search && (
-              <Link href="/trading" style={{ ...primaryLinkStyle, display: "inline-block", marginTop: 16 }}>
+              <Link href="/trading/manual" style={{ ...primaryLinkStyle, display: "inline-block", marginTop: 16 }}>
                 Build a thesis
               </Link>
             )}
@@ -164,14 +158,14 @@ export default function CreatorsPage() {
         ) : (
           <>
             <div style={{ color: "#9b9390", fontSize: 12, fontFamily: "var(--font-mono), monospace", marginBottom: 16 }}>
-              {filtered.length} creator{filtered.length !== 1 ? "s" : ""}
+              {creators.length} user{creators.length !== 1 ? "s" : ""}
             </div>
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
               gap: 18,
             }}>
-              {filtered.map(c => <CreatorCard key={c.user_id} creator={c} />)}
+              {creators.map(c => <CreatorCard key={c.user_id} creator={c} />)}
             </div>
           </>
         )}

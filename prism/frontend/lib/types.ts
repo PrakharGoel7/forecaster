@@ -298,6 +298,9 @@ export interface SavedBasket {
   username?: string;
   holdings?: BasketHolding[];
   is_bookmarked?: boolean;
+  watchlist_count?: number;
+  investor_count?: number;
+  invested_dollars?: number;
   resolved_at?: string;
   resolution_note?: string;
 }
@@ -347,6 +350,92 @@ export interface ManualBasketDraftHolding {
   rationale: string;
   main_risk: string;
   rules_summary?: string;
+}
+
+export interface KalshiCredentialsStatus {
+  connected: boolean;
+  key_id_masked?: string | null;
+}
+
+export interface TradePreviewLine {
+  ticker: string;
+  side: string;
+  count: number;
+  limit_price_dollars: string;
+  estimated_cost_dollars: number;
+  weight_percent: number;
+}
+
+export interface TradePreview {
+  preview_id: string;
+  basket_id: number;
+  expires_at: string;
+  amount_dollars: number;
+  estimated_max_cost_dollars: number;
+  lines: TradePreviewLine[];
+}
+
+export interface TradeExecution {
+  investment_id: string;
+  status: "filled" | "partial" | "unfilled" | "pending_reconciliation" | "failed";
+  orders: {
+    ticker: string;
+    side: string;
+    client_order_id: string;
+    order_id?: string;
+    status: string;
+    filled_contracts: number;
+    filled_cost_dollars: number;
+    error?: string;
+  }[];
+}
+
+export interface Portfolio {
+  summary: {
+    invested_dollars: number;
+    current_value_dollars: number | null;
+    unrealized_pnl_dollars: number | null;
+    kalshi_cash_balance_dollars: number | null;
+  };
+  positions: {
+    basket_id: number;
+    basket_title: string;
+    ticker: string;
+    side: string;
+    contracts: number;
+    invested_dollars: number;
+    current_value_dollars: number | null;
+    unrealized_pnl_dollars: number | null;
+  }[];
+  history: { date: string; invested_dollars: number; current_value_dollars: number | null }[];
+}
+
+export interface PortfolioTrade {
+  fill_id: string;
+  investment_id: string;
+  basket_id: number;
+  basket_title: string;
+  ticker: string;
+  side: string;
+  contracts: number;
+  price_dollars: number;
+  fee_dollars: number;
+  cost_dollars: number;
+  created_at: string;
+}
+
+export interface PortfolioOrder {
+  ticker: string;
+  side: string;
+  client_order_id: string;
+  order_id?: string | null;
+  status: string;
+  filled_contracts: number;
+  filled_cost_dollars: number;
+  error?: string | null;
+  created_at: string;
+  basket_id: number;
+  basket_title: string;
 }
 
 // ── Oracle (legacy) ───────────────────────────────────────────────────────────

@@ -314,6 +314,10 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
   }
 
   async function saveManual() {
+    if (!token) {
+      setError("Sign in to save a public or private basket. Your selections will stay in this browser until then.");
+      return;
+    }
     if (!manualTitle.trim() || !manualHoldings.length) {
       setError("Add a basket title and at least one holding.");
       return;
@@ -336,7 +340,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
           role: "direct",
         })),
         is_public: manualIsPublic,
-      }, token ?? undefined);
+      }, token);
       setBasket(JSON.parse(result.basket.basket_json));
       setBeliefSummary(JSON.parse(result.basket.belief_summary_json));
       setAnalysis(JSON.parse(result.basket.analysis_json));
@@ -347,10 +351,11 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
       setManualHoldings([]);
       setSaveModalOpen(false);
       router.replace(`${routeBase}?basket=${result.basket_id}`, { scroll: false });
-      listBaskets(20).then(setSavedBaskets).catch(() => {});
+      listBaskets(20, token).then(setSavedBaskets).catch(() => {});
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save basket");
-      setStage("error");
+      let message = err instanceof Error ? err.message : "Could not save basket";
+      try { message = JSON.parse(message).detail ?? message; } catch { /* use original message */ }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -513,6 +518,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
                       setError("Add at least one holding before saving.");
                       return;
                     }
+                    setError("");
                     setSaveModalOpen(true);
                   }}
                   loading={loading}
@@ -536,6 +542,7 @@ export default function BuilderClient({ buildPath }: { buildPath: BuildPath }) {
           isPublic={manualIsPublic}
           setIsPublic={setManualIsPublic}
           loading={loading}
+          error={error}
           onClose={() => setSaveModalOpen(false)}
           onSave={saveManual}
         />
@@ -1267,12 +1274,13 @@ function SaveManualBasketModal(props: {
   isPublic: boolean;
   setIsPublic: (v: boolean) => void;
   loading: boolean;
+  error: string;
   onClose: () => void;
   onSave: () => void;
 }) {
   const {
     manualTitle, setManualTitle, manualSummary, setManualSummary, manualTimeframe, setManualTimeframe,
-    isPublic, setIsPublic, loading, onClose, onSave,
+    isPublic, setIsPublic, loading, error, onClose, onSave,
   } = props;
   return (
     <div style={{
@@ -1321,6 +1329,7 @@ function SaveManualBasketModal(props: {
             <div style={{ color: "#6e675f", fontSize: 12, lineHeight: 1.5 }}>Your basket will appear on the public feed.</div>
           </div>
         </label>
+        {error && <div role="alert" style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "#fef2f2", color: "#b91c1c", fontSize: 13 }}>{error}</div>}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
           <button onClick={onClose} style={ghostButtonStyle}>Cancel</button>
           <button onClick={onSave} style={{ ...primaryButtonStyle, opacity: loading ? 0.7 : 1 }}>

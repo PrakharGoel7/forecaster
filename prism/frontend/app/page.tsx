@@ -83,7 +83,7 @@ export default function HomePage() {
             }}>
               <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No theses yet.</div>
               <div style={{ color: "#6e675f", fontSize: 14, marginBottom: 24 }}>Be the first to build and share one.</div>
-              <Link href="/trading" style={primaryLinkStyle}>Build a thesis</Link>
+              <Link href="/trading/manual" style={primaryLinkStyle}>Build a thesis</Link>
             </div>
           ) : (
             <div style={{
@@ -186,7 +186,7 @@ export default function HomePage() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
-            <Link href="/trading" style={{
+            <Link href="/trading/manual" style={{
               background: "#ffffff",
               color: "#4f46e5",
               fontWeight: 700,
@@ -196,9 +196,9 @@ export default function HomePage() {
               textDecoration: "none",
               display: "inline-block",
             }}>
-              AI Build
+              Build manually
             </Link>
-            <Link href="/trading/manual" style={{
+            <Link href="/trading" style={{
               background: "rgba(255,255,255,0.15)",
               color: "#ffffff",
               fontWeight: 600,
@@ -209,7 +209,7 @@ export default function HomePage() {
               display: "inline-block",
               border: "1px solid rgba(255,255,255,0.2)",
             }}>
-              Basket Studio
+              Try AI assist
             </Link>
           </div>
         </div>

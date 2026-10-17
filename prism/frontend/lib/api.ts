@@ -14,6 +14,12 @@ import type {
   KalshiMarket,
   BasketPerformance,
   MarketHistory,
+  KalshiCredentialsStatus,
+  TradePreview,
+  TradeExecution,
+  Portfolio,
+  PortfolioTrade,
+  PortfolioOrder,
 } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -217,8 +223,8 @@ export const getUserPage = (username: string, token?: string): Promise<{ profile
 
 // ── Social: Creators ──────────────────────────────────────────────────────────
 
-export const getCreators = (limit = 50): Promise<Creator[]> =>
-  apiFetch(`/api/creators?limit=${limit}`);
+export const getCreators = (limit = 50, query = "", offset = 0): Promise<Creator[]> =>
+  apiFetch(`/api/creators?limit=${limit}&offset=${offset}&q=${encodeURIComponent(query)}`);
 
 // ── Social: Follows ───────────────────────────────────────────────────────────
 
@@ -238,10 +244,10 @@ export const getFeed = (token: string, limit = 48): Promise<SavedBasket[]> =>
 
 // ── Social: Bookmarks ─────────────────────────────────────────────────────────
 
-export const bookmarkBasket = (basketId: number, token: string): Promise<{ ok: boolean; bookmarked: boolean }> =>
+export const bookmarkBasket = (basketId: number, token: string): Promise<{ ok: boolean; bookmarked: boolean; watchlist_count: number }> =>
   apiFetch(`/api/bookmarks/${basketId}`, { method: "POST" }, token);
 
-export const unbookmarkBasket = (basketId: number, token: string): Promise<{ ok: boolean; bookmarked: boolean }> =>
+export const unbookmarkBasket = (basketId: number, token: string): Promise<{ ok: boolean; bookmarked: boolean; watchlist_count: number }> =>
   apiFetch(`/api/bookmarks/${basketId}`, { method: "DELETE" }, token);
 
 export const getBookmarks = (token: string, limit = 48): Promise<SavedBasket[]> =>
@@ -267,6 +273,41 @@ export const resolveBasket = (basketId: number, resolutionNote: string, token: s
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ resolution_note: resolutionNote }),
   }, token);
+
+// ── Kalshi account and basket execution ──────────────────────────────────────
+
+export const getKalshiCredentials = (token: string): Promise<KalshiCredentialsStatus> =>
+  apiFetch("/api/kalshi/credentials", undefined, token);
+
+export const saveKalshiCredentials = (keyId: string, privateKeyPem: string, token: string): Promise<KalshiCredentialsStatus> =>
+  apiFetch("/api/kalshi/credentials", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key_id: keyId, private_key_pem: privateKeyPem }),
+  }, token);
+
+export const deleteKalshiCredentials = (token: string): Promise<{ ok: boolean }> =>
+  apiFetch("/api/kalshi/credentials", { method: "DELETE" }, token);
+
+export const previewBasketTrade = (basketId: number, amountDollars: number, token: string): Promise<TradePreview> =>
+  apiFetch(`/api/baskets/${basketId}/trade/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount_dollars: amountDollars }),
+  }, token);
+
+export const executeBasketTrade = (basketId: number, previewId: string, token: string): Promise<TradeExecution> =>
+  apiFetch(`/api/baskets/${basketId}/trade/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ preview_id: previewId, confirm: true }),
+  }, token);
+
+export const getPortfolio = (token: string): Promise<Portfolio> =>
+  apiFetch("/api/portfolio", undefined, token);
+
+export const getPortfolioTrades = (token: string): Promise<{ trades: PortfolioTrade[]; orders: PortfolioOrder[] }> =>
+  apiFetch("/api/portfolio/trades", undefined, token);
 
 // ── Legacy Oracle endpoints ───────────────────────────────────────────────────
 
