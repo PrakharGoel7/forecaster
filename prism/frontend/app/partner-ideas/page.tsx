@@ -16,7 +16,7 @@ const basketMatches = [
 ];
 
 const showSponsors = [
-  { person: "Bill Maher", show: "Club Random", idea: "Culture, media, and political narratives", source: "https://podcasts.apple.com/fm/podcast/club-random-with-bill-maher/id1613459129" },
+  { person: "Bill Maher", show: "Club Random", idea: "Culture, media, and political narratives", source: "https://podcasts.apple.com/au/podcast/scott-galloway-club-random-with-bill-maher/id1613459129?i=1000785423890" },
   { person: "Bobby Lee", show: "TigerBelly", idea: "Comedy, entertainment, and audience trends", source: "https://podcasts.apple.com/us/podcast/tigerbelly/id1041201977" },
   { person: "Ben Shapiro", show: "The Ben Shapiro Show", idea: "Elections and policy outcomes", source: "https://podcasts.apple.com/us/podcast/ep-2402-note-to-america-haters-sorry-were-busy-kicking-a/id1047335260?i=1000760066333" },
   { person: "Konstantin Kisin & Francis Foster", show: "TRIGGERnometry", idea: "Politics, media, and public debate", source: "https://podcasts.apple.com/ca/podcast/civil-servants-triggered-by-british-flag-is-trump-getting/id1375568988?i=1000786540766" },
