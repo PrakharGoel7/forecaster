@@ -21,6 +21,7 @@ export default function BasketSharePage() {
   const [showPerformance, setShowPerformance] = useState(false);
   const [performance, setPerformance] = useState<BasketPerformance | null>(null);
   const [perfLoading, setPerfLoading] = useState(false);
+  const [perfError, setPerfError] = useState("");
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [myToken, setMyToken] = useState<string | null>(null);
@@ -129,13 +130,15 @@ export default function BasketSharePage() {
     if (!basket) return;
     const next = !showPerformance;
     setShowPerformance(next);
-    if (next && !performance) {
+    if (next) {
       setPerfLoading(true);
+      setPerfError("");
       try {
         const data = await getBasketPerformance(basket.id);
         setPerformance(data);
       } catch {
-        setPerformance({ dates: [], values: [], current_return: null });
+        setPerformance(null);
+        setPerfError("Could not load Kalshi price history. Please try again.");
       } finally {
         setPerfLoading(false);
       }
@@ -296,10 +299,11 @@ export default function BasketSharePage() {
             <div style={sectionTitleStyle}>Portfolio Performance</div>
             {perfLoading ? (
               <div style={{ color: "#9b9390", fontSize: 14, padding: "20px 0" }}>Loading…</div>
+            ) : perfError ? (
+              <div role="alert" style={{ color: "#dc2626", fontSize: 14, padding: "20px 0" }}>{perfError}</div>
             ) : !performance || performance.dates.length < 2 ? (
               <div style={{ color: "#9b9390", fontSize: 14, lineHeight: 1.7 }}>
-                No price history yet. Performance data is captured daily — check back after the next market sync.
-                {performance?.dates.length === 1 && " (1 data point so far — need at least 2 to draw a chart.)"}
+                No Kalshi price updates since this basket was created. Check back after its markets trade or quotes change.
               </div>
             ) : (
               <div>
@@ -319,9 +323,9 @@ export default function BasketSharePage() {
                     <div style={{ fontSize: 18, fontWeight: 600, color: "#1c1814", paddingTop: 5 }}>{performance.dates[performance.dates.length - 1]}</div>
                   </div>
                 </div>
-                <PerformanceChart dates={performance.dates} values={performance.values} />
+                <PerformanceChart dates={performance.dates} values={performance.values} periodMinutes={performance.period_minutes} />
                 <div style={{ color: "#9b9390", fontSize: 11, marginTop: 8, fontFamily: "var(--font-mono), monospace" }}>
-                  Indexed to 100 at creation · YES positions show probability change · NO positions inverted
+                  Indicative mark from Kalshi quotes, indexed to 100 at creation · {performance.updated_holdings}/{performance.total_holdings} holdings have post-creation quotes · Unchanged holdings use their entry price
                 </div>
               </div>
             )}
@@ -573,16 +577,18 @@ function Tag({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PerformanceChart({ dates, values }: { dates: string[]; values: number[] }) {
+function PerformanceChart({ dates, values, periodMinutes }: { dates: string[]; values: number[]; periodMinutes: number | null }) {
   const W = 560, H = 160, PL = 44, PR = 16, PT = 16, PB = 28;
   const cW = W - PL - PR, cH = H - PT - PB;
   const n = values.length;
+  const times = dates.map((date) => new Date(date).getTime());
+  const span = Math.max(times[n - 1] - times[0], 1);
 
   const minV = Math.min(...values, 92);
   const maxV = Math.max(...values, 108);
   const range = maxV - minV || 1;
 
-  const toX = (i: number) => PL + (i / (n - 1)) * cW;
+  const toX = (i: number) => PL + ((times[i] - times[0]) / span) * cW;
   const toY = (v: number) => PT + cH - ((v - minV) / range) * cH;
 
   const baseY = Math.min(Math.max(toY(100), PT), PT + cH);
@@ -626,7 +632,9 @@ function PerformanceChart({ dates, values }: { dates: string[]; values: number[]
       {/* X labels */}
       {xIdxs.map((i) => (
         <text key={i} x={toX(i)} y={H - 4} textAnchor="middle" fontSize={9} fill="#9b9390" fontFamily="monospace">
-          {dates[i].slice(5)}
+          {new Date(dates[i]).toLocaleString(undefined, periodMinutes === 1440
+            ? { month: "short", day: "numeric" }
+            : { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
         </text>
       ))}
     </svg>

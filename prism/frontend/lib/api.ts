@@ -13,6 +13,7 @@ import type {
   KalshiEvent,
   KalshiMarket,
   BasketPerformance,
+  MarketHistory,
 } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -45,6 +46,9 @@ export const getMarkets = (eventTicker: string): Promise<KalshiMarket[]> =>
 
 export const getMarket = (ticker: string): Promise<KalshiMarket> =>
   apiFetch(`/api/markets/${ticker}`);
+
+export const getMarketHistory = (ticker: string, days: 7 | 30 | 90 | 365): Promise<MarketHistory> =>
+  apiFetch(`/api/markets/${encodeURIComponent(ticker)}/history?days=${days}`);
 
 export const listForecasts = (limit = 48, token?: string) =>
   apiFetch(`/api/forecasts?limit=${limit}`, undefined, token);

@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
-import { getMarket, getMarkets } from "@/lib/api";
+import MarketPriceChart from "@/components/MarketPriceChart";
+import { getMarket, getMarketHistory, getMarkets } from "@/lib/api";
 import { addMarketToManualBasketDraft } from "@/lib/manualBasketDraft";
-import type { KalshiMarket } from "@/lib/types";
+import type { KalshiMarket, MarketHistory } from "@/lib/types";
 
 function fmtVol(v: number) {
   if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
@@ -38,6 +39,8 @@ export default function MarketPage() {
   const [markets, setMarkets] = useState<KalshiMarket[]>([]);
   const [selectedMarket, setSelectedMarket] = useState<KalshiMarket | null>(null);
   const [basketNotice, setBasketNotice] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyDays, setHistoryDays] = useState<7 | 30 | 90 | 365>(30);
 
   useEffect(() => {
     getMarkets(rawTicker)
@@ -148,6 +151,28 @@ export default function MarketPage() {
                 </div>
               )}
             </div>
+          </section>
+        )}
+
+        {primaryMarket && (
+          <section style={{ background: "#101010", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 22, padding: 24, marginBottom: 20 }}>
+            <button onClick={() => setShowHistory((open) => !open)} style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", color: "#f2ede7", background: "transparent", border: 0, padding: 0, cursor: "pointer", fontSize: 19, fontWeight: 700, textAlign: "left" }}>
+              <span>Price history <span style={{ color: "#8c8680", fontSize: 13, fontWeight: 400 }}>· {primaryMarket.yes_sub_title || primaryMarket.ticker}</span></span>
+              <span style={{ color: "#8b83ff" }}>{showHistory ? "−" : "+"}</span>
+            </button>
+            {showHistory && (
+              <div style={{ marginTop: 20 }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+                  {([7, 30, 90, 365] as const).map((days) => (
+                    <button key={days} onClick={() => setHistoryDays(days)} style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: historyDays === days ? "#4f46e5" : "transparent", color: historyDays === days ? "#fff" : "#9b938b", cursor: "pointer", fontSize: 12 }}>
+                      {days === 365 ? "1Y" : `${days}D`}
+                    </button>
+                  ))}
+                </div>
+                <MarketHistoryPanel key={`${primaryMarket.ticker}-${historyDays}`} ticker={primaryMarket.ticker} days={historyDays} />
+                <div style={{ marginTop: 10, color: "#77716b", fontSize: 11 }}>YES quote midpoint when available; otherwise last traded price. Gaps indicate periods without a quote.</div>
+              </div>
+            )}
           </section>
         )}
 
@@ -290,6 +315,23 @@ export default function MarketPage() {
       </div>
     </div>
   );
+}
+
+function MarketHistoryPanel({ ticker, days }: { ticker: string; days: 7 | 30 | 90 | 365 }) {
+  const [history, setHistory] = useState<MarketHistory | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMarketHistory(ticker, days)
+      .then((result) => { if (!cancelled) setHistory(result); })
+      .catch(() => { if (!cancelled) setError(true); });
+    return () => { cancelled = true; };
+  }, [ticker, days]);
+
+  if (error) return <div role="alert" style={{ color: "#f87171", fontSize: 13 }}>Could not load Kalshi price history. Please try again.</div>;
+  if (!history) return <div style={{ color: "#9b938b", fontSize: 13 }}>Loading Kalshi history…</div>;
+  return <MarketPriceChart history={history} />;
 }
 
 function SummaryPill({ children, muted }: { children: React.ReactNode; muted?: boolean }) {

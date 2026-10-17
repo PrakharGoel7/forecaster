@@ -73,7 +73,7 @@ def sync(
     *,
     cache_file: Path | None = None,
     cache_db_file: Path | None = None,
-    archive_snapshots: bool = True,
+    archive_snapshots: bool = False,
 ) -> int:
     target_json = Path(cache_file or CACHE_FILE)
     target_db = Path(cache_db_file or MARKETS_CACHE_DB_FILE)

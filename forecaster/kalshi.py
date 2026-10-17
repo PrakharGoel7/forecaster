@@ -362,6 +362,25 @@ class KalshiClient:
         self._log_markets_response("/markets", params, markets, next_cursor)
         return markets, next_cursor
 
+    def get_candlesticks(
+        self, tickers: list[str], start_ts: int, end_ts: int, period_interval: int
+    ) -> dict[str, list[dict]]:
+        """Fetch historical candles for the requested markets only."""
+        if not tickers or len(tickers) > 100:
+            raise ValueError("Kalshi candlesticks require 1 to 100 market tickers")
+        params = {
+            "market_tickers": ",".join(tickers),
+            "start_ts": start_ts,
+            "end_ts": end_ts,
+            "period_interval": period_interval,
+        }
+        resp = self._http.get("/markets/candlesticks", params=params)
+        resp.raise_for_status()
+        return {
+            market["market_ticker"]: market.get("candlesticks", [])
+            for market in resp.json().get("markets", [])
+        }
+
     def get_events(
         self,
         limit: int = 100,

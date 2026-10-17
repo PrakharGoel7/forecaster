@@ -106,6 +106,7 @@ from forecaster.kalshi import KalshiClient
 from forecaster.config import ForecasterConfig
 from forecaster.forecaster_system import ForecasterSystem
 from forecaster import db
+from forecaster.price_history import basket_performance as build_basket_performance, market_history
 
 # Oracle agents (from trading_companion) — imported lazily inside endpoints
 # so a missing trading_companion path doesn't break the rest of the API.
@@ -563,6 +564,18 @@ async def get_market(ticker: str):
     loop = asyncio.get_event_loop()
     m = await loop.run_in_executor(None, lambda: client.get_market(ticker))
     return _market_dict(m)
+
+
+@app.get("/api/markets/{ticker}/history")
+async def get_market_history(ticker: str, days: int = 30):
+    if days not in (7, 30, 90, 365):
+        raise HTTPException(status_code=422, detail="days must be 7, 30, 90, or 365")
+    client = _get_client()
+    try:
+        return await asyncio.to_thread(market_history, client, ticker, days)
+    except Exception:
+        logging.getLogger("prism.kalshi").exception("Market history failed for %s", ticker)
+        raise HTTPException(status_code=502, detail="Kalshi price history is temporarily unavailable")
 
 
 @app.get("/api/forecasts")
@@ -1107,7 +1120,12 @@ async def get_basket_performance(basket_id: int, request: Request):
     basket = db.get_basket(basket_id, user_id=user_id)
     if not basket:
         raise HTTPException(status_code=404, detail="Basket not found")
-    return db.get_basket_performance(basket_id)
+    client = _get_client()
+    try:
+        return await asyncio.to_thread(build_basket_performance, client, basket)
+    except Exception:
+        logging.getLogger("prism.kalshi").exception("Basket history failed for %s", basket_id)
+        raise HTTPException(status_code=502, detail="Kalshi price history is temporarily unavailable")
 
 
 class VisibilityRequest(BaseModel):

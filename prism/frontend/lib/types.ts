@@ -254,6 +254,15 @@ export interface BasketPerformance {
   dates: string[];
   values: number[];
   current_return: number | null;
+  period_minutes: number | null;
+  updated_holdings: number;
+  total_holdings: number;
+}
+
+export interface MarketHistory {
+  ticker: string;
+  period_minutes: number;
+  points: { timestamp: string; yes_price: number }[];
 }
 
 export interface TradingChatResponse {
