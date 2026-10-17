@@ -46,6 +46,7 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
   })();
   const holdingsCount = parsed?.holdings?.length ?? 0;
   const quality = parsed?.basket_quality;
+  const editorial = parsed?.editorial_hypothetical;
   const color = avatarColor(basket.id);
 
   return (
@@ -108,6 +109,11 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
         </div>
 
         {/* Title */}
+        {editorial && (
+          <div style={{ color: "#7c3aed", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
+            Prism editorial · hypothetical · no endorsement
+          </div>
+        )}
         <div style={{
           color: "#1c1814",
           fontSize: 16,

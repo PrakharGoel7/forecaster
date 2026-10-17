@@ -235,6 +235,10 @@ export interface PredictionBasket {
   basket_title: string;
   basket_summary: string;
   construction_notes: string;
+  editorial_hypothetical?: {
+    inspiration_person: string;
+    source_url: string;
+  };
   basket_quality?: "direct" | "strong_proxy" | "mixed_proxy" | "thin_market_coverage";
   basket_quality_explanation?: string;
   basket_buckets?: {

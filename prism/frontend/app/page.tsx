@@ -21,7 +21,7 @@ export default function HomePage() {
   const [creators, setCreators] = useState<Creator[]>([]);
 
   useEffect(() => {
-    listPublicBaskets(9).then(setPublicBaskets).catch(() => {}).finally(() => setLoading(false));
+    listPublicBaskets(12).then(setPublicBaskets).catch(() => {}).finally(() => setLoading(false));
     getCreators(6).then(data => setCreators(Array.isArray(data) ? data.filter(c => (c.basket_count ?? 0) > 0).slice(0, 6) : [])).catch(() => {});
   }, []);
 
@@ -62,7 +62,7 @@ export default function HomePage() {
         {/* ── Basket feed ── */}
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <div style={eyebrowStyle}>Latest theses from the community</div>
+            <div style={eyebrowStyle}>Latest theses and editorial concepts</div>
             <Link href="/baskets" style={{ color: "#6e675f", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               View all
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">

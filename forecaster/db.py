@@ -3,6 +3,7 @@ Supports PostgreSQL (DATABASE_URL env var) with SQLite fallback for local dev.
 """
 import json
 import os
+from threading import Lock
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -44,7 +45,22 @@ def _rows_to_dicts(rows, cursor=None) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+_init_lock = Lock()
+_initialized = False
+
+
 def _init():
+    """Run schema setup once per process, before opening query transactions."""
+    global _initialized
+    if _initialized:
+        return
+    with _init_lock:
+        if not _initialized:
+            _init_once()
+            _initialized = True
+
+
+def _init_once():
     conn = _conn()
     try:
         cur = conn.cursor()
@@ -496,11 +512,10 @@ def get_profile(user_id: str) -> dict | None:
         cur = conn.cursor()
         cur.execute(f"SELECT * FROM profiles WHERE user_id = {p}", (user_id,))
         row = cur.fetchone()
-        if not row:
-            return None
-        return _enrich_profile(_rows_to_dicts([row], cur)[0])
+        profile = _rows_to_dicts([row], cur)[0] if row else None
     finally:
         conn.close()
+    return _enrich_profile(profile) if profile else None
 
 
 def get_profile_by_username(username: str) -> dict | None:
@@ -511,11 +526,10 @@ def get_profile_by_username(username: str) -> dict | None:
         cur = conn.cursor()
         cur.execute(f"SELECT * FROM profiles WHERE username = {p}", (username,))
         row = cur.fetchone()
-        if not row:
-            return None
-        return _enrich_profile(_rows_to_dicts([row], cur)[0])
+        profile = _rows_to_dicts([row], cur)[0] if row else None
     finally:
         conn.close()
+    return _enrich_profile(profile) if profile else None
 
 
 def username_taken(username: str) -> bool:

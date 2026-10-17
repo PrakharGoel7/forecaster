@@ -12,12 +12,14 @@ const NAV_PUBLIC = [
   { href: "/build",     label: "Build"    },
   { href: "/baskets",   label: "Theses"   },
   { href: "/creators",  label: "Creators" },
+  { href: "/partner-ideas", label: "Partner ideas" },
 ];
 const NAV_AUTHED = [
   { href: "/",          label: "Home"     },
   { href: "/build",     label: "Build"    },
   { href: "/baskets",   label: "Theses"   },
   { href: "/creators",  label: "Creators" },
+  { href: "/partner-ideas", label: "Partner ideas" },
   { href: "/feed",      label: "Feed"     },
 ];
 

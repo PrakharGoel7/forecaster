@@ -1,0 +1,496 @@
+[
+  {
+    "name": "Dune: Part Three across the Oscar ballot",
+    "person": "Timothée Chalamet",
+    "domain": "Film",
+    "thesis": "The film receives recognition across picture, craft, writing, and acting categories at the 99th Academy Awards.",
+    "tie": "https://www.gq.com/story/timothee-chalamet-kalshi",
+    "fit": "Chalamet stars in the Dune franchise; the link to this film is direct.",
+    "risk": "The eight outcomes are correlated. Four craft rows have an API expected-expiration placeholder at the late 2027 backstop even though their rules concern the January 2027 nomination announcement.",
+    "rows": [
+      {
+        "ticker": "KXOSCARNOMPIC-27-DUN",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Best Picture is the central prestige signal."
+      },
+      {
+        "ticker": "KXOSCARNOMDIR-27-DEN",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Villeneuve nomination tests auteur recognition."
+      },
+      {
+        "ticker": "KXOSCARNOMCIN-27-DUN",
+        "side": "YES",
+        "weight": 14,
+        "rationale": "Large-scale visuals support cinematography case."
+      },
+      {
+        "ticker": "KXOSCARNOMVISUAL-27-DUN",
+        "side": "YES",
+        "weight": 14,
+        "rationale": "Effects craft is core to the film."
+      },
+      {
+        "ticker": "KXOSCARNOMSCORE-27-DUN",
+        "side": "YES",
+        "weight": 12,
+        "rationale": "Score nomination broadens the craft slate."
+      },
+      {
+        "ticker": "KXOSCARNOMASPLAY-27-DUN",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Adaptation nod tests writing recognition."
+      },
+      {
+        "ticker": "KXOSCARNOMACTO-27-TIM",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Chalamet acting nod is the personal link."
+      },
+      {
+        "ticker": "KXOSCARNOMACTR-27-ZEN",
+        "side": "YES",
+        "weight": 5,
+        "rationale": "Zendaya nod extends the acting case."
+      }
+    ]
+  },
+  {
+    "name": "Genre cinema breaks into Best Picture",
+    "person": "Timothée Chalamet",
+    "domain": "Film",
+    "thesis": "Epic, science-fiction, fantasy, animation, and superhero films earn multiple 2027 Best Picture nominations.",
+    "tie": "https://www.gq.com/story/timothee-chalamet-kalshi",
+    "fit": "A film-industry perspective, with a genre focus associated with his work; this is an editorial premise only.",
+    "risk": "Several selections are long shots, and all depend on the same Academy nomination cycle.",
+    "rows": [
+      {
+        "ticker": "KXOSCARNOMPIC-27-PRO",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Project Hail Mary anchors the science-fiction case."
+      },
+      {
+        "ticker": "KXOSCARNOMPIC-27-ODY",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The Odyssey anchors the epic-film case."
+      },
+      {
+        "ticker": "KXOSCARNOMPIC-27-WILD",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Wildwood tests animation recognition."
+      },
+      {
+        "ticker": "KXOSCARNOMPIC-27-DIS",
+        "side": "YES",
+        "weight": 12,
+        "rationale": "Disclosure Day adds another science-fiction film."
+      },
+      {
+        "ticker": "KXOSCARNOMPIC-27-NAR",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Narnia tests fantasy crossover."
+      },
+      {
+        "ticker": "KXOSCARNOMPIC-27-AVEN",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Avengers tests franchise-film crossover."
+      },
+      {
+        "ticker": "KXOSCARNOMPIC-27-SPI",
+        "side": "YES",
+        "weight": 8,
+        "rationale": "Spider-Man tests superhero-film crossover."
+      }
+    ]
+  },
+  {
+    "name": "Latin singles reach Billboard No. 1",
+    "person": "J Balvin",
+    "domain": "Music",
+    "thesis": "Multiple Latin artists land a Hot 100 No. 1 song by the December 26, 2026 chart issue.",
+    "tie": "https://news.kalshi.com/p/kalshi-j-balvin-advertising-campaign",
+    "fit": "Latin music is Balvin’s domain; his own chart outcomes are deliberately omitted.",
+    "risk": "All seven are low-priced, speculative YES outcomes; the basket is an editorial long-shot thesis, not a balanced return forecast.",
+    "rows": [
+      {
+        "ticker": "KX1SONG-DEC2626-KAR",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "KAROL G is the lead Latin-chart exposure."
+      },
+      {
+        "ticker": "KX1SONG-DEC2626-RUA",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Rauw Alejandro extends urban-pop reach."
+      },
+      {
+        "ticker": "KX1SONG-DEC2626-ROS",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "ROSALÍA adds crossover potential."
+      },
+      {
+        "ticker": "KX1SONG-DEC2626-OZU",
+        "side": "YES",
+        "weight": 12,
+        "rationale": "Ozuna extends reggaeton depth."
+      },
+      {
+        "ticker": "KX1SONG-DEC2626-ANU",
+        "side": "YES",
+        "weight": 12,
+        "rationale": "Anuel AA adds another urban-music path."
+      },
+      {
+        "ticker": "KX1SONG-DEC2626-KAL",
+        "side": "YES",
+        "weight": 11,
+        "rationale": "Kali Uchis broadens the stylistic mix."
+      },
+      {
+        "ticker": "KX1SONG-DEC2626-CAM",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Camilo adds Latin-pop exposure."
+      }
+    ]
+  },
+  {
+    "name": "Latin albums and streaming lead the charts",
+    "person": "J Balvin",
+    "domain": "Music",
+    "thesis": "Latin releases reach No. 1 on the Billboard 200, while a Latin artist tops Spotify’s 2026 artist ranking.",
+    "tie": "https://news.kalshi.com/p/kalshi-j-balvin-advertising-campaign",
+    "fit": "A second, album-and-streaming version of the Latin music thesis; Balvin’s own outcomes are omitted.",
+    "risk": "The album legs are mostly long shots; the Bad Bunny leg has a different platform and a later year-end settlement window.",
+    "rows": [
+      {
+        "ticker": "KXTOPARTIST-26B-BAD",
+        "side": "YES",
+        "weight": 30,
+        "rationale": "Bad Bunny provides the year-end streaming anchor."
+      },
+      {
+        "ticker": "KX1ALBUM-26DEC-KAR",
+        "side": "YES",
+        "weight": 14,
+        "rationale": "KAROL G anchors the album-release case."
+      },
+      {
+        "ticker": "KX1ALBUM-26DEC-RUA",
+        "side": "YES",
+        "weight": 12,
+        "rationale": "Rauw Alejandro adds an urban album path."
+      },
+      {
+        "ticker": "KX1ALBUM-26DEC-ROS",
+        "side": "YES",
+        "weight": 11,
+        "rationale": "ROSALÍA adds an art-pop album path."
+      },
+      {
+        "ticker": "KX1ALBUM-26DEC-OZU",
+        "side": "YES",
+        "weight": 9,
+        "rationale": "Ozuna adds reggaeton release exposure."
+      },
+      {
+        "ticker": "KX1ALBUM-26DEC-ANU",
+        "side": "YES",
+        "weight": 9,
+        "rationale": "Anuel AA adds another urban release."
+      },
+      {
+        "ticker": "KX1ALBUM-26DEC-KAL",
+        "side": "YES",
+        "weight": 8,
+        "rationale": "Kali Uchis broadens the album mix."
+      },
+      {
+        "ticker": "KX1ALBUM-26DEC-CAM",
+        "side": "YES",
+        "weight": 7,
+        "rationale": "Camilo rounds out the pop side."
+      }
+    ]
+  },
+  {
+    "name": "Long-form podcasts keep drawing major guests",
+    "person": "Andrew Schulz",
+    "domain": "Podcast culture",
+    "thesis": "The Joe Rogan Experience remains the leading Spotify podcast and books prominent technology and political guests before 2027.",
+    "tie": "https://www.sportsbusinessjournal.com/Articles/2026/07/07/pro-padel-league-inks-kalshi-to-multiyear-marketing-deal/",
+    "fit": "Schulz is a comedian and podcast host; the markets concern another major podcast, not his own show.",
+    "risk": "Five legs depend on bookings by one podcast, creating concentration; this is an indirect fit to Schulz.",
+    "rows": [
+      {
+        "ticker": "KXTOPPOD-26-JOE",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Year-end podcast rank anchors the thesis."
+      },
+      {
+        "ticker": "KXROGANGUEST-27JAN01-SA",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Sam Altman would extend tech reach."
+      },
+      {
+        "ticker": "KXROGANGUEST-27JAN01-VR",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Vivek Ramaswamy extends political reach."
+      },
+      {
+        "ticker": "KXROGANGUEST-27JAN01-ZOH",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Zohran Mamdani adds cross-party breadth."
+      },
+      {
+        "ticker": "KXROGANGUEST-27JAN01-DS",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "David Sacks adds tech-policy crossover."
+      },
+      {
+        "ticker": "KXROGANGUEST-27JAN01-BA",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Bill Ackman adds finance crossover."
+      }
+    ]
+  },
+  {
+    "name": "One AI IPO breaks through before 2027",
+    "person": "Patrick Bet-David",
+    "domain": "Tech / business",
+    "thesis": "Anthropic confirms an IPO before January 1, 2027, while six other private AI firms do not.",
+    "tie": "https://valuetainment.com/openai-spacex-ipos-bitcoins-big-sell-off-pbd-815/",
+    "fit": "A Kalshi-sponsored PBD episode discusses AI company IPOs. This establishes a show sponsorship, not a personal ambassador deal.",
+    "risk": "Kalshi’s rule uses an effective S-1, IPO pricing, or exchange-assigned ticker as confirmation; it is narrower than a casual announcement. Several NO legs are expensive and may have limited upside.",
+    "rows": [
+      {
+        "ticker": "KXIPO-26-ANTHROPIC",
+        "side": "YES",
+        "weight": 30,
+        "rationale": "Anthropic is the sole positive IPO view."
+      },
+      {
+        "ticker": "KXIPO-26-OPENAI",
+        "side": "NO",
+        "weight": 18,
+        "rationale": "OpenAI remains private in this thesis."
+      },
+      {
+        "ticker": "KXIPO-26-DATABRICKS",
+        "side": "NO",
+        "weight": 14,
+        "rationale": "Databricks does not confirm in 2026."
+      },
+      {
+        "ticker": "KXIPO-26-ANYSPHERE",
+        "side": "NO",
+        "weight": 12,
+        "rationale": "Anysphere does not confirm in 2026."
+      },
+      {
+        "ticker": "KXIPO-26-GLEAN",
+        "side": "NO",
+        "weight": 10,
+        "rationale": "Glean does not confirm in 2026."
+      },
+      {
+        "ticker": "KXIPO-26-MISTRAL",
+        "side": "NO",
+        "weight": 9,
+        "rationale": "Mistral does not confirm in 2026."
+      },
+      {
+        "ticker": "KXIPO-26-AINTUITION",
+        "side": "NO",
+        "weight": 7,
+        "rationale": "Applied Intuition does not confirm in 2026."
+      }
+    ]
+  },
+  {
+    "name": "Seattle makes another championship run",
+    "person": "Marshawn Lynch",
+    "domain": "Sports / NFL",
+    "thesis": "Seattle advances from a strong regular season through the division and NFC to the 2027 championship.",
+    "tie": "https://www.covers.com/industry/kalshi-teams-up-with-pete-sampras-marshawn-lynch-in-new-ads-sept-10-2026",
+    "fit": "Lynch is a retired Seahawks star and appeared in a Kalshi ad.",
+    "risk": "Outcomes are nested and highly correlated. The championship market has an unusually distant API hard-close backstop in 2029; its expected expiration is February 2027.",
+    "rows": [
+      {
+        "ticker": "KXNFLWINS-27SEA-11",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "11-plus wins is the season-strength base."
+      },
+      {
+        "ticker": "KXNFLPLAYOFF-27-SEA",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Playoff qualification is the first milestone."
+      },
+      {
+        "ticker": "KXNFLNFCWEST-27-SEA",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "A division title signals sustained strength."
+      },
+      {
+        "ticker": "KXNFLNFCCHAMP-27-SEA",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Conference win is the title path."
+      },
+      {
+        "ticker": "KXSB-27-SEA",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Championship is the high-upside capstone."
+      }
+    ]
+  },
+  {
+    "name": "Manchester United returns to the top tier",
+    "person": "Rio Ferdinand",
+    "domain": "Sports / soccer",
+    "thesis": "United posts a strong league season and contends for domestic and European trophies.",
+    "tie": "https://www.sportsbusinessjournal.com/Articles/2026/07/24/for-world-cup-king-kalshi-it-was-never-about-the-free-15-bucks/",
+    "fit": "Ferdinand is retired and closely associated with Manchester United.",
+    "risk": "Top-six, top-four, top-two, and title legs overlap; cup paths add some diversification.",
+    "rows": [
+      {
+        "ticker": "KXEPLTOP-27TOP6-MUN",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Top six establishes league improvement."
+      },
+      {
+        "ticker": "KXEPLTOP-27TOP4-MUN",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Top four confirms elite-league return."
+      },
+      {
+        "ticker": "KXEPLTOP-27TOP2-MUN",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Top two is the stronger league test."
+      },
+      {
+        "ticker": "KXPREMIERLEAGUE-27-MUN",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "League title is the domestic peak."
+      },
+      {
+        "ticker": "KXFACUP-27-MUN",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "FA Cup gives a separate trophy route."
+      },
+      {
+        "ticker": "KXUCL-27-MUN",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Champions League adds the European route."
+      }
+    ]
+  },
+  {
+    "name": "Real Madrid completes a domestic and European push",
+    "person": "Marcelo",
+    "domain": "Sports / soccer",
+    "thesis": "Real Madrid wins El Clásico, captures Spanish trophies, and tops Europe’s league phase on a title path.",
+    "tie": "https://www.sportsbusinessjournal.com/Articles/2026/07/24/for-world-cup-king-kalshi-it-was-never-about-the-free-15-bucks/",
+    "fit": "Marcelo is a retired Real Madrid legend in Kalshi’s World Cup campaign.",
+    "risk": "League and Champions League legs are correlated. The El Clásico leg has a short October 25 expected window and will go stale quickly.",
+    "rows": [
+      {
+        "ticker": "KXLALIGAGAME-26OCT25BARRMA-RMA",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "An El Clásico win is the near-term signal."
+      },
+      {
+        "ticker": "KXLALIGA-27-RMA",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "La Liga title is the domestic anchor."
+      },
+      {
+        "ticker": "KXCOPADELREY-27-RMA",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Copa del Rey supplies a second domestic path."
+      },
+      {
+        "ticker": "KXUCLTOP-27-RMA",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Top of the Champions League phase tests dominance."
+      },
+      {
+        "ticker": "KXUCL-27-RMA",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Champions League win is the peak outcome."
+      }
+    ]
+  },
+  {
+    "name": "Barcelona restores its domestic and European peak",
+    "person": "David Villa",
+    "domain": "Sports / soccer",
+    "thesis": "Barcelona wins El Clásico, captures Spanish silverware, and tops Europe’s league phase on a title path.",
+    "tie": "https://www.sportsbusinessjournal.com/Articles/2026/07/24/for-world-cup-king-kalshi-it-was-never-about-the-free-15-bucks/",
+    "fit": "Villa is retired and won league and European titles with Barcelona.",
+    "risk": "League and European outcomes are correlated. The El Clásico leg has a short October 25 expected window and will go stale quickly.",
+    "rows": [
+      {
+        "ticker": "KXLALIGAGAME-26OCT25BARRMA-BAR",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "An El Clásico win is the near-term signal."
+      },
+      {
+        "ticker": "KXLALIGA-27-BAR",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "La Liga title is the domestic anchor."
+      },
+      {
+        "ticker": "KXCOPADELREY-27-BAR",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Copa del Rey adds a second Spanish trophy."
+      },
+      {
+        "ticker": "KXUCLTOP-27-BAR",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Top of the Champions League phase tests dominance."
+      },
+      {
+        "ticker": "KXUCL-27-BAR",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Champions League win is the peak outcome."
+      }
+    ]
+  }
+]
