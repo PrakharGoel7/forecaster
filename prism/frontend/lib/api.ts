@@ -309,6 +309,9 @@ export const getPortfolio = (token: string): Promise<Portfolio> =>
 export const getPortfolioTrades = (token: string): Promise<{ trades: PortfolioTrade[]; orders: PortfolioOrder[] }> =>
   apiFetch("/api/portfolio/trades", undefined, token);
 
+export const reconcilePortfolio = (token: string): Promise<{ ok: boolean }> =>
+  apiFetch("/api/portfolio/reconcile", { method: "POST" }, token);
+
 // ── Legacy Oracle endpoints ───────────────────────────────────────────────────
 
 export async function oracleTurn(

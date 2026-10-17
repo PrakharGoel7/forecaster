@@ -5,7 +5,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
 import { BasketCard } from "@/components/BasketCard";
-import { deleteKalshiCredentials, getBookmarks, getKalshiCredentials, getPortfolio, getPortfolioTrades, saveKalshiCredentials } from "@/lib/api";
+import { deleteKalshiCredentials, getBookmarks, getKalshiCredentials, getPortfolio, getPortfolioTrades, reconcilePortfolio, saveKalshiCredentials } from "@/lib/api";
 import { createClient } from "@/lib/supabase";
 import type { KalshiCredentialsStatus, Portfolio, PortfolioOrder, PortfolioTrade, SavedBasket } from "@/lib/types";
 
@@ -31,6 +31,7 @@ export default function AccountPage() {
   const [keyId, setKeyId] = useState("");
   const [privateKeyPem, setPrivateKeyPem] = useState("");
   const [busy, setBusy] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -90,6 +91,20 @@ export default function AccountPage() {
       setNotice("Kalshi credentials removed. Existing trade history remains visible.");
     } catch (err) { setError(errorMessage(err)); }
     finally { setBusy(false); }
+  }
+
+  async function refreshOrders() {
+    if (!token || reconciling) return;
+    setReconciling(true); setError(""); setNotice("");
+    try {
+      await reconcilePortfolio(token);
+      const [updatedPortfolio, updatedTrades] = await Promise.all([getPortfolio(token), getPortfolioTrades(token)]);
+      setPortfolio(updatedPortfolio);
+      setTrades(updatedTrades.trades);
+      setOrders(updatedTrades.orders);
+      setNotice("Order statuses refreshed from Kalshi.");
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setReconciling(false); }
   }
 
   return (
@@ -152,6 +167,7 @@ export default function AccountPage() {
             </section>
             <section style={card}>
               <div style={eyebrow}>Prism order history · all outcomes</div>
+              {credentials?.connected && <button onClick={refreshOrders} disabled={reconciling} style={{ ...secondaryButton, color: "#4f46e5", borderColor: "rgba(79,70,229,0.25)", marginBottom: 12 }}>{reconciling ? "Checking Kalshi…" : "Refresh order statuses"}</button>}
               {!orders.length ? <p style={{ color: "#6e675f", fontSize: 13, margin: 0 }}>No basket orders submitted yet.</p> : (
                 <div style={{ overflowX: "auto" }}><table style={table}><thead><tr><th style={cell}>Submitted</th><th style={cell}>Basket / market</th><th style={cell}>Side</th><th style={cell}>Status</th><th style={cell}>Filled</th><th style={cell}>Filled cost</th></tr></thead><tbody>
                   {orders.map((o, i) => <tr key={`${o.client_order_id}-${i}`} style={row}><td style={cell}>{new Date(o.created_at).toLocaleString()}</td><td style={cell}><Link href={`/baskets/${o.basket_id}`} style={{ color: "#4f46e5", fontWeight: 700 }}>{o.basket_title}</Link><div style={{ color: "#6e675f" }}>{o.ticker}</div></td><td style={cell}>{o.side}</td><td style={cell}><strong style={{ color: o.status === "filled" ? "#15803d" : o.status === "failed" ? "#b91c1c" : "#92400e" }}>{o.status.replaceAll("_", " ")}</strong>{o.error && <div style={{ color: "#b91c1c", whiteSpace: "normal", maxWidth: 280 }}>{o.error}</div>}</td><td style={cell}>{o.filled_contracts}</td><td style={cell}>{money(o.filled_cost_dollars)}</td></tr>)}
