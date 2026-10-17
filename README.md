@@ -12,6 +12,7 @@ Prism combines a multi-agent forecasting engine with live Kalshi market data. Us
 - **AI basket construction** — interviews the user about a belief, maps it across relevant domains, screens live markets, and proposes a weighted portfolio of Kalshi contracts.
 - **Manual basket studio** — lets users search markets, select outcomes, size positions, and save a thesis without the AI workflow.
 - **Social research layer** — supports public and private theses, creator profiles, follows, personalized feeds, bookmarks, and performance views.
+- **Basket trading** — signed-in users can connect their own Kalshi API credentials, preview a dollar allocation, confirm limit orders, and review Prism-attributed fills and portfolio marks. Live execution requires `ENABLE_LIVE_TRADING=true` on the API service.
 
 ## Architecture
 
@@ -105,6 +106,9 @@ python -m forecaster forecast \
 | `DATABASE_URL` | PostgreSQL connection string; optional locally |
 | `SUPABASE_URL` | Supabase project URL used by the API |
 | `SUPABASE_JWT_SECRET` | Validates authenticated API requests |
+| `KALSHI_CREDENTIALS_ENCRYPTION_KEY` | Fernet key used to encrypt each user's Kalshi key ID and private key at rest; keep server only and retain for existing connections |
+| `ENABLE_LIVE_TRADING` | Set to `true` after deployment checks to allow confirmed Kalshi order submission |
+| `PRISM_ADMIN_API_KEY` | Optional secret for diagnostic and maintenance endpoints; if unset, they are unavailable |
 | `ALLOWED_ORIGINS` | Comma-separated CORS allowlist |
 | `NEXT_PUBLIC_API_URL` | Browser-facing API base URL |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL used by the frontend |

@@ -12,7 +12,7 @@ from typing import Optional
 import httpx
 from bs4 import BeautifulSoup
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric import ed25519, padding, rsa
 
 PROD_BASE = "https://api.elections.kalshi.com/trade-api/v2"
 logger = logging.getLogger("prism.kalshi")
@@ -58,14 +58,17 @@ class _KalshiAuth(httpx.Auth):
         path = request.url.path
         message = (timestamp_str + request.method + path).encode()
 
-        sig_bytes = self._private_key.sign(
-            message,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH,
-            ),
-            hashes.SHA256(),
-        )
+        if isinstance(self._private_key, ed25519.Ed25519PrivateKey):
+            sig_bytes = self._private_key.sign(message)
+        else:
+            sig_bytes = self._private_key.sign(
+                message,
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH,
+                ),
+                hashes.SHA256(),
+            )
         sig_b64 = base64.b64encode(sig_bytes).decode()
 
         request.headers["KALSHI-ACCESS-KEY"] = self._key_id
@@ -79,11 +82,15 @@ def _load_private_key(pem: str | bytes):
         pem = pem.encode()
     pem = pem.strip()
     if pem.startswith(b"-----"):
-        return serialization.load_pem_private_key(pem, password=None)
-    # Raw base64 DER (no PEM headers) — decode and load directly
-    import base64
-    der = base64.b64decode(pem)
-    return serialization.load_der_private_key(der, password=None)
+        key = serialization.load_pem_private_key(pem, password=None)
+    else:
+        # Raw base64 DER (no PEM headers) — decode and load directly
+        import base64
+        der = base64.b64decode(pem)
+        key = serialization.load_der_private_key(der, password=None)
+    if not isinstance(key, (rsa.RSAPrivateKey, ed25519.Ed25519PrivateKey)):
+        raise ValueError("Kalshi API key must be RSA or Ed25519")
+    return key
 
 
 @dataclass

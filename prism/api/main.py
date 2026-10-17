@@ -6,6 +6,7 @@ import dataclasses
 import json
 import logging
 import os
+import hmac
 import sys
 import uuid
 from datetime import datetime, timedelta
@@ -122,6 +123,14 @@ if _TC_AVAILABLE:
 app = FastAPI(title="Prism API")
 logging.getLogger("prism.kalshi").setLevel(logging.INFO)
 _cache_refresh_logger.setLevel(logging.INFO)
+
+
+def _require_admin_access(request: Request) -> None:
+    """Keep diagnostics and maintenance actions private in every environment."""
+    configured = os.environ.get("PRISM_ADMIN_API_KEY", "")
+    supplied = request.headers.get("X-Prism-Admin-Key", "")
+    if not configured or not supplied or not hmac.compare_digest(supplied, configured):
+        raise HTTPException(status_code=404, detail="Not found")
 
 _raw_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001")
 _origins = list({o.strip() for o in _raw_origins.split(",") if o.strip()} | {
@@ -474,6 +483,7 @@ async def me(request: Request):
 @app.get("/api/debug/auth")
 async def debug_auth(request: Request):
     """Debug: shows exactly why JWT verification is failing."""
+    _require_admin_access(request)
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         return {"step": "header", "error": "No Bearer token in Authorization header"}
@@ -490,7 +500,8 @@ async def debug_auth(request: Request):
 
 
 @app.post("/api/admin/sync-cache")
-async def admin_sync_cache():
+async def admin_sync_cache(request: Request):
+    _require_admin_access(request)
     if not _TC_AVAILABLE:
         raise HTTPException(status_code=503, detail="trading_companion not available")
     asyncio.create_task(_run_cache_refresh())
@@ -498,7 +509,8 @@ async def admin_sync_cache():
 
 
 @app.get("/api/debug/db")
-async def debug_db():
+async def debug_db(request: Request):
+    _require_admin_access(request)
     from forecaster.db import DATABASE_URL
     masked = DATABASE_URL[:40] + "..." if len(DATABASE_URL) > 40 else DATABASE_URL
     try:
@@ -511,7 +523,8 @@ async def debug_db():
 
 
 @app.get("/api/debug/kalshi-log")
-async def get_kalshi_log(limit: int = 200):
+async def get_kalshi_log(request: Request, limit: int = 200):
+    _require_admin_access(request)
     rows = _read_kalshi_log_rows(limit)
     return {
         "path": str(_KALSHI_API_LOG_FILE),
@@ -522,7 +535,8 @@ async def get_kalshi_log(limit: int = 200):
 
 
 @app.get("/api/debug/kalshi-log/download")
-async def download_kalshi_log():
+async def download_kalshi_log(request: Request):
+    _require_admin_access(request)
     if not _KALSHI_API_LOG_FILE.exists():
         raise HTTPException(status_code=404, detail="Kalshi API log file not found")
     return FileResponse(
@@ -886,21 +900,41 @@ class TradingChatRequest(BaseModel):
     mode: str = "thinking"
 
 
+def _with_basket_counts(baskets: list[dict]) -> list[dict]:
+    """Attach watchlist and filled-trade counts to basket API responses."""
+    if not baskets:
+        return baskets
+    from forecaster import trading_db
+
+    ids = [int(basket["id"]) for basket in baskets]
+    watched = db.get_watchlist_counts(ids)
+    invested = trading_db.get_baskets_stats(ids)
+    for basket in baskets:
+        basket_id = int(basket["id"])
+        trade_stats = invested.get(basket_id, {})
+        basket["watchlist_count"] = watched.get(basket_id, 0)
+        basket["investor_count"] = trade_stats.get("investor_count", 0)
+        basket["invested_dollars"] = trade_stats.get("invested_dollars", 0.0)
+    return baskets
+
+
 @app.get("/api/baskets")
 async def list_baskets(request: Request, limit: int = 20):
     user_id = _get_user_id(request)
     try:
-        return db.get_baskets(limit=limit, user_id=user_id, public_only=not bool(user_id))
-    except Exception as e:
-        return {"error": str(e), "items": []}
+        return _with_basket_counts(db.get_baskets(limit=limit, user_id=user_id, public_only=not bool(user_id)))
+    except Exception:
+        logging.getLogger("prism.db").exception("Could not list baskets")
+        raise HTTPException(status_code=503, detail="Basket data is temporarily unavailable")
 
 
 @app.get("/api/baskets/public")
 async def list_public_baskets(limit: int = 48):
     try:
-        return db.get_baskets(limit=limit, public_only=True)
+        return _with_basket_counts(db.get_baskets(limit=limit, public_only=True))
     except Exception:
-        return []
+        logging.getLogger("prism.db").exception("Could not list public baskets")
+        raise HTTPException(status_code=503, detail="Basket data is temporarily unavailable")
 
 
 # ── Profile endpoints ─────────────────────────────────────────────────────────
@@ -938,7 +972,7 @@ async def get_user_profile(username: str, request: Request):
     profile = db.get_profile_by_username(username.lower())
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
-    baskets = db.get_baskets(limit=48, by_username=username.lower())
+    baskets = _with_basket_counts(db.get_baskets(limit=48, by_username=username.lower()))
     viewer_id = _get_user_id(request)
     is_following = False
     if viewer_id and viewer_id != profile["user_id"]:
@@ -949,11 +983,14 @@ async def get_user_profile(username: str, request: Request):
 # ── Social: Creators ──────────────────────────────────────────────────────────
 
 @app.get("/api/creators")
-async def list_creators(limit: int = 50):
+async def list_creators(q: str = "", limit: int = 50, offset: int = 0):
+    if limit < 1 or limit > 100 or offset < 0 or len(q) > 80:
+        raise HTTPException(status_code=400, detail="Invalid creator search parameters")
     try:
-        return db.get_creators(limit=limit)
+        return db.get_creators(limit=limit, query=q, offset=offset)
     except Exception:
-        return []
+        logging.getLogger("prism.db").exception("Could not search creators")
+        raise HTTPException(status_code=503, detail="Creator search is temporarily unavailable")
 
 
 # ── Social: Follows ───────────────────────────────────────────────────────────
@@ -1007,9 +1044,10 @@ async def get_feed(request: Request, limit: int = 48):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        return db.get_feed(user_id, limit=limit)
-    except Exception as e:
-        return {"error": str(e), "items": []}
+        return _with_basket_counts(db.get_feed(user_id, limit=limit))
+    except Exception:
+        logging.getLogger("prism.db").exception("Could not load following feed")
+        raise HTTPException(status_code=503, detail="Following feed is temporarily unavailable")
 
 
 # ── Social: Bookmarks ─────────────────────────────────────────────────────────
@@ -1023,7 +1061,7 @@ async def bookmark_basket(basket_id: int, request: Request):
     if not basket:
         raise HTTPException(status_code=404, detail="Basket not found")
     db.bookmark_basket(user_id, basket_id)
-    return {"ok": True, "bookmarked": True}
+    return {"ok": True, "bookmarked": True, "watchlist_count": db.get_watchlist_counts([basket_id]).get(basket_id, 0)}
 
 
 @app.delete("/api/bookmarks/{basket_id}")
@@ -1032,7 +1070,9 @@ async def unbookmark_basket(basket_id: int, request: Request):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
     db.unbookmark_basket(user_id, basket_id)
-    return {"ok": True, "bookmarked": False}
+    visible = db.get_basket(basket_id, user_id=user_id)
+    count = db.get_watchlist_counts([basket_id]).get(basket_id, 0) if visible else 0
+    return {"ok": True, "bookmarked": False, "watchlist_count": count}
 
 
 @app.get("/api/bookmarks")
@@ -1041,9 +1081,10 @@ async def list_bookmarks(request: Request, limit: int = 48):
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        return db.get_bookmarks(user_id, limit=limit)
-    except Exception as e:
-        return {"error": str(e), "items": []}
+        return _with_basket_counts(db.get_bookmarks(user_id, limit=limit))
+    except Exception:
+        logging.getLogger("prism.db").exception("Could not load watchlist")
+        raise HTTPException(status_code=503, detail="Watchlist is temporarily unavailable")
 
 
 # ── Profile update ────────────────────────────────────────────────────────────
@@ -1093,6 +1134,7 @@ async def get_basket(basket_id: int, request: Request):
     basket = db.get_basket(basket_id, user_id=user_id)
     if not basket:
         raise HTTPException(status_code=404, detail="Basket not found")
+    _with_basket_counts([basket])
     basket["is_bookmarked"] = db.is_bookmarked(user_id, basket_id) if user_id else False
     # Enrich basket_json holdings with event_title if missing (legacy baskets)
     try:
@@ -1136,6 +1178,8 @@ async def update_basket_visibility(basket_id: int, req: VisibilityRequest, reque
     user_id = _get_user_id(request)
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    if req.is_public and not db.get_profile(user_id):
+        raise HTTPException(status_code=400, detail="Choose a username before publishing")
     updated = db.update_basket_visibility(basket_id, user_id, req.is_public)
     if not updated:
         raise HTTPException(status_code=404, detail="Basket not found or not yours")
@@ -1562,6 +1606,8 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
         return StreamingResponse(_unavail(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache"})
 
+    user_id = _get_user_id(request)
+
     async def _tc_generate() -> AsyncIterator[str]:
         loop = asyncio.get_running_loop()
         queue: asyncio.Queue = asyncio.Queue()
@@ -1574,8 +1620,8 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
                 result = _run_trading_pipeline(
                     belief_summary=req.belief_summary,
                     mode=req.mode,
-                    request_user_id=_get_user_id(request),
-                    save_basket=True,
+                    request_user_id=user_id,
+                    save_basket=bool(user_id),
                     progress_callback=_progress,
                 )
                 asyncio.run_coroutine_threadsafe(
@@ -1612,7 +1658,8 @@ async def trading_analyze(req: TradingAnalyzeRequest, request: Request):
 
 
 @app.get("/api/debug/trading-pipeline-runs")
-async def list_trading_pipeline_runs(limit: int = 20):
+async def list_trading_pipeline_runs(request: Request, limit: int = 20):
+    _require_admin_access(request)
     runs = _list_trading_pipeline_debug_runs(limit)
     return {
         "path": str(_TRADING_PIPELINE_DEBUG_DIR),
@@ -1622,13 +1669,15 @@ async def list_trading_pipeline_runs(limit: int = 20):
 
 
 @app.get("/api/debug/trading-pipeline-runs/{run_id}")
-async def get_trading_pipeline_run(run_id: str):
+async def get_trading_pipeline_run(run_id: str, request: Request):
+    _require_admin_access(request)
     _, payload = _load_trading_pipeline_debug_run(run_id)
     return payload
 
 
 @app.get("/api/debug/trading-pipeline-runs/{run_id}/download")
-async def download_trading_pipeline_run(run_id: str):
+async def download_trading_pipeline_run(run_id: str, request: Request):
+    _require_admin_access(request)
     path, _ = _load_trading_pipeline_debug_run(run_id)
     return FileResponse(
         path=path,
@@ -1638,7 +1687,8 @@ async def download_trading_pipeline_run(run_id: str):
 
 
 @app.post("/api/debug/trading-pipeline-runs")
-async def run_trading_pipeline_batch(req: TradingPipelineBatchRequest):
+async def run_trading_pipeline_batch(req: TradingPipelineBatchRequest, request: Request):
+    _require_admin_access(request)
     if not _TC_AVAILABLE:
         raise HTTPException(status_code=503, detail="Trading companion not available")
 
@@ -1760,6 +1810,11 @@ async def run_trading_pipeline_batch(req: TradingPipelineBatchRequest):
 
 @app.post("/api/baskets/manual")
 async def create_manual_basket(req: ManualBasketRequest, request: Request):
+    user_id = _get_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Sign in to save a basket")
+    if req.is_public and not db.get_profile(user_id):
+        raise HTTPException(status_code=400, detail="Choose a username before publishing")
     if not req.holdings:
         raise HTTPException(status_code=400, detail="At least one holding is required")
 
@@ -1834,8 +1889,14 @@ async def create_manual_basket(req: ManualBasketRequest, request: Request):
         screened_count=len(normalized_holdings),
         holdings=normalized_holdings,
         is_public=req.is_public,
-        user_id=_get_user_id(request),
+        user_id=user_id,
         thesis_notes=req.thesis_notes or None,
     )
-    saved = db.get_basket(basket_id, user_id=_get_user_id(request))
+    saved = db.get_basket(basket_id, user_id=user_id)
     return {"basket_id": basket_id, "basket": saved}
+
+
+# User Kalshi connection and basket-trading routes are isolated from the
+# market-data and social APIs above.
+from prism.api.trading_routes import create_trading_router
+app.include_router(create_trading_router(lambda request: _get_user_id(request), lambda: _get_client()))

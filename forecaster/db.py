@@ -389,7 +389,7 @@ def save_basket(*, title, summary, core_belief, mode, time_horizon, timeframe_st
         conn.close()
 
 
-def get_baskets(limit: int = 20, user_id: str | None = None, public_only: bool = False, by_username: str | None = None):
+def get_baskets(limit: int = 20, user_id: str | None = None, public_only: bool = True, by_username: str | None = None):
     _init()
     p = _ph()
     conn = _conn()
@@ -700,13 +700,16 @@ def get_feed(user_id: str, limit: int = 48) -> list[dict]:
         conn.close()
 
 
-def get_creators(limit: int = 50) -> list[dict]:
-    """Return profiles sorted by follower count, enriched with basket and follower counts."""
+def get_creators(limit: int = 50, query: str = "", offset: int = 0) -> list[dict]:
+    """Search profiles by username and return public creator counts."""
     _init()
     p = _ph()
     conn = _conn()
     try:
         cur = conn.cursor()
+        # The username is the public, stable search key. Keep the wildcard in a
+        # bound value so search text cannot become part of the SQL expression.
+        search = f"%{query.strip().lower()}%"
         cur.execute(
             f"SELECT pr.*, "
             f"COUNT(DISTINCT f.follower_id) AS follower_count, "
@@ -714,10 +717,11 @@ def get_creators(limit: int = 50) -> list[dict]:
             f"FROM profiles pr "
             f"LEFT JOIN follows f ON f.following_id = pr.user_id "
             f"LEFT JOIN baskets b ON b.user_id = pr.user_id AND b.is_public = {'TRUE' if _use_pg() else '1'} "
+            f"WHERE LOWER(pr.username) LIKE {p} "
             f"GROUP BY pr.user_id "
-            f"ORDER BY follower_count DESC, basket_count DESC "
-            f"LIMIT {p}",
-            (limit,),
+            f"ORDER BY follower_count DESC, basket_count DESC, pr.username ASC "
+            f"LIMIT {p} OFFSET {p}",
+            (search, limit, offset),
         )
         rows = _rows_to_dicts(cur.fetchall(), cur)
         for r in rows:
@@ -782,6 +786,26 @@ def is_bookmarked(user_id: str, basket_id: int) -> bool:
             (user_id, basket_id),
         )
         return cur.fetchone() is not None
+    finally:
+        conn.close()
+
+
+def get_watchlist_counts(basket_ids: list[int]) -> dict[int, int]:
+    """Count distinct users watching each visible basket without scanning per card."""
+    if not basket_ids:
+        return {}
+    _init()
+    ids = list(dict.fromkeys(basket_ids))
+    placeholders = ",".join([_ph()] * len(ids))
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT basket_id, COUNT(*) FROM bookmarks "
+            f"WHERE basket_id IN ({placeholders}) GROUP BY basket_id",
+            tuple(ids),
+        )
+        return {int(basket_id): int(count) for basket_id, count in cur.fetchall()}
     finally:
         conn.close()
 
