@@ -72,6 +72,21 @@ class BasketSocialTests(unittest.TestCase):
         )
         self.assertEqual(self.client.get("/api/creators", params={"limit": 101}).status_code, 400)
 
+    def test_display_name_is_searchable_and_shown_on_public_basket(self):
+        conn = db._conn()
+        try:
+            conn.execute("UPDATE profiles SET display_name = ? WHERE user_id = ?", ("Alice Smith", "alice-id"))
+            conn.commit()
+        finally:
+            conn.close()
+        creators = self.client.get("/api/creators", params={"q": "SMITH"})
+        self.assertEqual(creators.status_code, 200)
+        self.assertEqual([(c["username"], c["display_name"]) for c in creators.json()], [("alice", "Alice Smith")])
+        basket_id = _basket("alice-id")
+        basket = self.client.get(f"/api/baskets/{basket_id}")
+        self.assertEqual(basket.status_code, 200)
+        self.assertEqual(basket.json()["display_name"], "Alice Smith")
+
     def test_manual_basket_requires_account_and_private_basket_has_owner(self):
         payload = {
             "title": "Test basket", "summary": "Test", "is_public": False,

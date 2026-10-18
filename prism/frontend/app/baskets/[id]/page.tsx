@@ -203,7 +203,7 @@ export default function BasketSharePage() {
         </h1>
         {parsedBasket.editorial_hypothetical && (
           <div style={{ color: "#7c3aed", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
-            Prism editorial thought experiment · Inspired by {parsedBasket.editorial_hypothetical.inspiration_person}&apos;s public work · No participation or endorsement
+            Prism-curated hypothetical inspired by {parsedBasket.editorial_hypothetical.inspiration_person}&apos;s public work · Market selections were made by Prism, not the person
           </div>
         )}
         {basket.username && (
@@ -212,7 +212,7 @@ export default function BasketSharePage() {
               <span style={{ color: "#fff", fontSize: 9, fontWeight: 700 }}>◈</span>
             </div>
             <Link href={`/users/${basket.username}`} style={{ color: "#6e675f", fontSize: 13, textDecoration: "none", fontFamily: "var(--font-mono), monospace" }}>
-              @{basket.username}
+              {basket.display_name || `@${basket.username}`}
             </Link>
           </div>
         )}
@@ -481,7 +481,7 @@ export default function BasketSharePage() {
 
         {authorBaskets.length > 0 && basket.username && (
           <div style={{ marginTop: 40 }}>
-            <div style={sectionTitleStyle}>More from @{basket.username}</div>
+            <div style={sectionTitleStyle}>More from {basket.display_name || `@${basket.username}`}</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
               {authorBaskets.map((b) => (
                 <BasketCard key={b.id} basket={b} />

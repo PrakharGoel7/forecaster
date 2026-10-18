@@ -51,7 +51,7 @@ export default function HomePage() {
               Browse theses
             </Link>
             <Link href="/creators" style={ghostLinkStyle}>
-              Follow experts
+              Explore profiles
             </Link>
             <Link href="/build" style={{ ...ghostLinkStyle, color: "#9b9390" }}>
               Build your own
@@ -62,7 +62,7 @@ export default function HomePage() {
         {/* ── Basket feed ── */}
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <div style={eyebrowStyle}>Latest theses and editorial concepts</div>
+            <div style={eyebrowStyle}>Latest theses from the community</div>
             <Link href="/baskets" style={{ color: "#6e675f", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               View all
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -133,7 +133,7 @@ export default function HomePage() {
                           <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>◈</span>
                         </div>
                         <div>
-                          <div style={{ color: "#4f46e5", fontSize: 13, fontWeight: 700, fontFamily: "var(--font-mono), monospace" }}>@{c.username}</div>
+                          <div style={{ color: "#4f46e5", fontSize: 13, fontWeight: 700 }}>{c.display_name || `@${c.username}`}</div>
                           <div style={{ color: "#9b9390", fontSize: 11 }}>{c.follower_count} follower{c.follower_count !== 1 ? "s" : ""} · {c.basket_count} ths.</div>
                         </div>
                       </div>

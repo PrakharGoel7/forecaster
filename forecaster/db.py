@@ -46,18 +46,25 @@ def _rows_to_dicts(rows, cursor=None) -> list[dict]:
 
 
 _init_lock = Lock()
-_initialized = False
+_initialized_target = None
+
+
+def _schema_target():
+    # The SQLite connector is replaced by isolated test databases; retain the
+    # connector object so a new database gets its own schema initialization.
+    return ("postgres", DATABASE_URL) if _use_pg() else ("sqlite", _sqlite_conn)
 
 
 def _init():
-    """Run schema setup once per process, before opening query transactions."""
-    global _initialized
-    if _initialized:
+    """Run schema setup once per database target, before query transactions."""
+    global _initialized_target
+    target = _schema_target()
+    if _initialized_target == target:
         return
     with _init_lock:
-        if not _initialized:
+        if _initialized_target != target:
             _init_once()
-            _initialized = True
+            _initialized_target = target
 
 
 def _init_once():
@@ -164,6 +171,8 @@ def _init_once():
                 "ALTER TABLE baskets ADD COLUMN IF NOT EXISTS resolved_at TEXT",
                 "ALTER TABLE baskets ADD COLUMN IF NOT EXISTS resolution_note TEXT",
                 "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bio TEXT",
+                "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_name TEXT",
+                "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS profile_kind TEXT NOT NULL DEFAULT 'member'",
                 "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS domain_tags TEXT",
                 "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS twitter TEXT",
                 "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS substack TEXT",
@@ -280,7 +289,7 @@ def _init_once():
                     cur.execute(f"ALTER TABLE baskets ADD COLUMN {col_def}")
                 except Exception:
                     pass
-            for col_def in ["bio TEXT", "domain_tags TEXT", "twitter TEXT", "substack TEXT"]:
+            for col_def in ["bio TEXT", "display_name TEXT", "profile_kind TEXT NOT NULL DEFAULT 'member'", "domain_tags TEXT", "twitter TEXT", "substack TEXT"]:
                 try:
                     cur.execute(f"ALTER TABLE profiles ADD COLUMN {col_def}")
                 except Exception:
@@ -424,7 +433,7 @@ def get_baskets(limit: int = 20, user_id: str | None = None, public_only: bool =
             clauses.append("b.is_public = 1" if not _use_pg() else "b.is_public = TRUE")
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         cur.execute(
-            f"SELECT b.*, p.username FROM baskets b LEFT JOIN profiles p ON b.user_id = p.user_id {where} ORDER BY b.created_at DESC LIMIT {p}",
+            f"SELECT b.*, p.username, p.display_name FROM baskets b LEFT JOIN profiles p ON b.user_id = p.user_id {where} ORDER BY b.created_at DESC LIMIT {p}",
             (*params, limit),
         )
         rows = _rows_to_dicts(cur.fetchall(), cur)
@@ -440,9 +449,9 @@ def get_basket(basket_id: int, user_id: str | None = None):
     try:
         cur = conn.cursor()
         if user_id:
-            cur.execute(f"SELECT b.*, p.username FROM baskets b LEFT JOIN profiles p ON b.user_id = p.user_id WHERE b.id = {p} AND (b.user_id = {p} OR b.is_public = {'TRUE' if _use_pg() else '1'})", (basket_id, user_id))
+            cur.execute(f"SELECT b.*, p.username, p.display_name FROM baskets b LEFT JOIN profiles p ON b.user_id = p.user_id WHERE b.id = {p} AND (b.user_id = {p} OR b.is_public = {'TRUE' if _use_pg() else '1'})", (basket_id, user_id))
         else:
-            cur.execute(f"SELECT b.*, p.username FROM baskets b LEFT JOIN profiles p ON b.user_id = p.user_id WHERE b.id = {p} AND b.is_public = {'TRUE' if _use_pg() else '1'}", (basket_id,))
+            cur.execute(f"SELECT b.*, p.username, p.display_name FROM baskets b LEFT JOIN profiles p ON b.user_id = p.user_id WHERE b.id = {p} AND b.is_public = {'TRUE' if _use_pg() else '1'}", (basket_id,))
         row = cur.fetchone()
         if not row:
             return None
@@ -702,7 +711,7 @@ def get_feed(user_id: str, limit: int = 48) -> list[dict]:
     try:
         cur = conn.cursor()
         cur.execute(
-            f"SELECT b.*, pr.username FROM baskets b "
+            f"SELECT b.*, pr.username, pr.display_name FROM baskets b "
             f"JOIN profiles pr ON b.user_id = pr.user_id "
             f"JOIN follows f ON f.following_id = b.user_id "
             f"WHERE f.follower_id = {p} AND b.is_public = {'TRUE' if _use_pg() else '1'} "
@@ -715,14 +724,14 @@ def get_feed(user_id: str, limit: int = 48) -> list[dict]:
 
 
 def get_creators(limit: int = 50, query: str = "", offset: int = 0) -> list[dict]:
-    """Search profiles by username and return public creator counts."""
+    """Search profiles by username or display name and return public creator counts."""
     _init()
     p = _ph()
     conn = _conn()
     try:
         cur = conn.cursor()
-        # The username is the public, stable search key. Keep the wildcard in a
-        # bound value so search text cannot become part of the SQL expression.
+        # Keep the wildcard in a bound value so search text cannot become part
+        # of the SQL expression.
         search = f"%{query.strip().lower()}%"
         cur.execute(
             f"SELECT pr.*, "
@@ -731,11 +740,11 @@ def get_creators(limit: int = 50, query: str = "", offset: int = 0) -> list[dict
             f"FROM profiles pr "
             f"LEFT JOIN follows f ON f.following_id = pr.user_id "
             f"LEFT JOIN baskets b ON b.user_id = pr.user_id AND b.is_public = {'TRUE' if _use_pg() else '1'} "
-            f"WHERE LOWER(pr.username) LIKE {p} "
+            f"WHERE LOWER(pr.username) LIKE {p} OR LOWER(COALESCE(pr.display_name, '')) LIKE {p} "
             f"GROUP BY pr.user_id "
             f"ORDER BY follower_count DESC, basket_count DESC, pr.username ASC "
             f"LIMIT {p} OFFSET {p}",
-            (search, limit, offset),
+            (search, search, limit, offset),
         )
         rows = _rows_to_dicts(cur.fetchall(), cur)
         for r in rows:
@@ -831,7 +840,7 @@ def get_bookmarks(user_id: str, limit: int = 48) -> list[dict]:
     try:
         cur = conn.cursor()
         cur.execute(
-            f"SELECT b.*, pr.username FROM baskets b "
+            f"SELECT b.*, pr.username, pr.display_name FROM baskets b "
             f"JOIN bookmarks bk ON bk.basket_id = b.id "
             f"LEFT JOIN profiles pr ON b.user_id = pr.user_id "
             f"WHERE bk.user_id = {p} AND b.is_public = {'TRUE' if _use_pg() else '1'} "

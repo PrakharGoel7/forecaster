@@ -178,8 +178,9 @@ export default function UserProfilePage() {
                   color: "#1c1814", fontSize: "clamp(22px, 3vw, 32px)", fontWeight: 700,
                   letterSpacing: "-0.04em", margin: 0,
                 }}>
-                  @{profile.username}
+                  {profile.display_name || `@${profile.username}`}
                 </h1>
+                {profile.profile_kind === "curated" && <span style={{ color: "#7c3aed", fontSize: 12, fontWeight: 700 }}>Prism-curated profile</span>}
                 {/* Follow / Edit button */}
                 {isOwnProfile ? (
                   <button onClick={openEdit} style={ghostBtnStyle}>
@@ -202,7 +203,7 @@ export default function UserProfilePage() {
               </div>
 
               <div style={{ color: "#9b9390", fontSize: 12, fontFamily: "var(--font-mono), monospace", marginBottom: profile.bio ? 10 : 0 }}>
-                Joined {joinedDate}
+                {profile.display_name ? `@${profile.username} · ` : ""}{profile.profile_kind === "curated" ? "Prism profile created" : "Joined"} {joinedDate}
               </div>
 
               {profile.bio && (

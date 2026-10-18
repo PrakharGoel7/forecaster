@@ -47,9 +47,11 @@ function CreatorCard({ creator }: { creator: Creator }) {
             <span style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>◈</span>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: "#4f46e5", fontSize: 14, fontWeight: 700, fontFamily: "var(--font-mono), monospace", marginBottom: 2 }}>
-              @{creator.username}
+            <div style={{ color: "#4f46e5", fontSize: 14, fontWeight: 700, marginBottom: 2 }}>
+              {creator.display_name || `@${creator.username}`}
             </div>
+            {creator.display_name && <div style={{ color: "#9b9390", fontSize: 11, marginBottom: 4 }}>@{creator.username}</div>}
+            {creator.profile_kind === "curated" && <div style={{ color: "#7c3aed", fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Prism-curated profile</div>}
             {creator.bio && (
               <div style={{
                 color: "#6e675f", fontSize: 13, lineHeight: 1.5,
@@ -119,14 +121,14 @@ export default function CreatorsPage() {
         <div style={{ marginBottom: 32 }}>
           <div style={eyebrowStyle}>Creators</div>
           <h1 style={{ color: "#1c1814", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 700, letterSpacing: "-0.05em", margin: "0 0 12px" }}>
-            Thought leaders & forecasters
+            Creators & curated concepts
           </h1>
           <p style={{ color: "#6e675f", fontSize: 16, lineHeight: 1.65, margin: "0 0 24px", maxWidth: 560 }}>
-            Follow experts building prediction market theses across macro, geopolitics, tech, and more.
+            Explore community creators and Prism-curated concept profiles across sports, culture, markets, and more.
           </p>
           <input
             type="text"
-            placeholder="Search by name, bio, or domain…"
+            placeholder="Search by name or username…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{

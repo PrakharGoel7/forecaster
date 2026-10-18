@@ -47,6 +47,8 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
   const holdingsCount = parsed?.holdings?.length ?? 0;
   const quality = parsed?.basket_quality;
   const editorial = parsed?.editorial_hypothetical;
+  const hasPersonProfile = Boolean(editorial && basket.display_name && basket.user_id !== "prism:editorial");
+  const authorName = hasPersonProfile ? basket.display_name : editorial ? `Inspired by ${editorial.inspiration_person}` : basket.display_name || (basket.username ? `@${basket.username}` : "Prism");
   const color = avatarColor(basket.id);
 
   return (
@@ -72,7 +74,7 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div
             style={{ display: "flex", alignItems: "center", gap: 8 }}
-            onClick={basket.username ? (e) => { e.preventDefault(); router.push(`/users/${basket.username}`); } : undefined}
+            onClick={basket.username && (!editorial || hasPersonProfile) ? (e) => { e.preventDefault(); router.push(`/users/${basket.username}`); } : undefined}
           >
             <div style={{
               width: 28, height: 28, borderRadius: "50%",
@@ -84,13 +86,15 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
             </div>
             <div>
               <div style={{
-                color: basket.username ? "#4f46e5" : "#1c1814",
+                color: basket.username && (!editorial || hasPersonProfile) ? "#4f46e5" : "#1c1814",
                 fontSize: 13, fontWeight: 600, lineHeight: 1.2,
-                cursor: basket.username ? "pointer" : "default",
+                cursor: basket.username && (!editorial || hasPersonProfile) ? "pointer" : "default",
               }}>
-                {basket.username ? `@${basket.username}` : "Prism"}
+                {authorName}
               </div>
-              <div style={{ color: "#a8a29a", fontSize: 11, lineHeight: 1.2 }}>{timeAgo(basket.created_at)}</div>
+              <div style={{ color: "#a8a29a", fontSize: 11, lineHeight: 1.2 }}>
+                {editorial ? `Prism-curated concept · ${timeAgo(basket.created_at)}` : timeAgo(basket.created_at)}
+              </div>
             </div>
           </div>
           <span style={{
@@ -111,7 +115,7 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
         {/* Title */}
         {editorial && (
           <div style={{ color: "#7c3aed", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-            Prism editorial · hypothetical · no endorsement
+            Hypothetical · market selections by Prism
           </div>
         )}
         <div style={{

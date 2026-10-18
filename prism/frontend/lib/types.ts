@@ -300,6 +300,7 @@ export interface SavedBasket {
   is_public: boolean;
   user_id?: string;
   username?: string;
+  display_name?: string | null;
   holdings?: BasketHolding[];
   is_bookmarked?: boolean;
   watchlist_count?: number;
@@ -312,6 +313,8 @@ export interface SavedBasket {
 export interface UserProfile {
   user_id: string;
   username: string;
+  display_name?: string | null;
+  profile_kind?: "member" | "curated";
   created_at: string;
   bio?: string;
   domain_tags?: string[];
@@ -325,6 +328,8 @@ export interface UserProfile {
 export interface Creator {
   user_id: string;
   username: string;
+  display_name?: string | null;
+  profile_kind?: "member" | "curated";
   created_at: string;
   bio?: string;
   domain_tags?: string[];
