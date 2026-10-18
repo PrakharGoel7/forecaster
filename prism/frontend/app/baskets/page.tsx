@@ -16,6 +16,7 @@ export default function BasketsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "positions">("newest");
   const [modeFilter, setModeFilter] = useState<"all" | "ai" | "manual">("all");
+  const [creatorFilter, setCreatorFilter] = useState<"all" | "celebrity" | "sample">("all");
 
   useEffect(() => {
     listPublicBaskets(96).then(setBaskets).catch(() => {}).finally(() => setLoading(false));
@@ -23,11 +24,13 @@ export default function BasketsPage() {
 
   const filteredBaskets = (() => {
     let list = baskets.filter((basket) => {
+      if (creatorFilter === "celebrity" && !basket.user_id?.startsWith("prism:curated:")) return false;
+      if (creatorFilter === "sample" && !basket.user_id?.startsWith("prism:demo:")) return false;
       if (modeFilter === "ai" && basket.mode === "manual") return false;
       if (modeFilter === "manual" && basket.mode !== "manual") return false;
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
-      return basket.title.toLowerCase().includes(q) || basket.summary.toLowerCase().includes(q);
+      return basket.title.toLowerCase().includes(q) || basket.summary.toLowerCase().includes(q) || Boolean(basket.username?.toLowerCase().includes(q));
     });
     if (sort === "positions") {
       list = [...list].sort((a, b) => {
@@ -90,6 +93,23 @@ export default function BasketsPage() {
                 }}
               >
                 {f === "all" ? "All" : f === "ai" ? "AI Built" : "Manual"}
+              </button>
+            ))}
+          </div>
+          <div style={{ width: 1, height: 20, background: "rgba(0,0,0,0.1)", margin: "0 4px" }} />
+          <div style={{ display: "flex", gap: 6 }}>
+            {(["all", "celebrity", "sample"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => { setCreatorFilter(f); setPage(1); }}
+                style={{
+                  borderRadius: 999, border: `1px solid ${creatorFilter === f ? "rgba(79,70,229,0.4)" : "rgba(0,0,0,0.08)"}`,
+                  background: creatorFilter === f ? "rgba(79,70,229,0.1)" : "rgba(0,0,0,0.03)",
+                  color: creatorFilter === f ? "#1c1814" : "#6e675f",
+                  padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                {f === "all" ? "All creators" : f === "celebrity" ? "Celebrity" : "Samples"}
               </button>
             ))}
           </div>
