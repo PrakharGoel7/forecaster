@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase";
 import { BasketCard } from "@/components/BasketCard";
 import { BasketTradePanel } from "@/components/BasketTradePanel";
 import type { BasketPerformance, BeliefAnalysis, BeliefSummary, PredictionBasket, SavedBasket } from "@/lib/types";
+import styles from "./page.module.css";
 
 export default function BasketSharePage() {
   const params = useParams<{ id: string }>();
@@ -21,10 +22,10 @@ export default function BasketSharePage() {
   const [copied, setCopied] = useState(false);
   const [authorBaskets, setAuthorBaskets] = useState<SavedBasket[]>([]);
   const [generatingImage, setGeneratingImage] = useState(false);
-  const [showPerformance, setShowPerformance] = useState(false);
   const [performance, setPerformance] = useState<BasketPerformance | null>(null);
-  const [perfLoading, setPerfLoading] = useState(false);
+  const [perfLoading, setPerfLoading] = useState(true);
   const [perfError, setPerfError] = useState("");
+  const [perfRefreshNonce, setPerfRefreshNonce] = useState(0);
   const [bookmarked, setBookmarked] = useState(false);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [myToken, setMyToken] = useState<string | null>(null);
@@ -65,6 +66,24 @@ export default function BasketSharePage() {
       setAuthorBaskets(b.filter((x) => x.id !== basket.id).slice(0, 3));
     }).catch(() => {});
   }, [basket?.username, basket?.id]);
+
+  useEffect(() => {
+    if (!basket?.id) return;
+    let active = true;
+    setPerfLoading(true);
+    getBasketPerformance(basket.id, myToken ?? undefined).then((data) => {
+      if (!active) return;
+      setPerformance(data);
+      setPerfError("");
+    }).catch(() => {
+      if (!active) return;
+      setPerformance(null);
+      setPerfError("Could not load price history right now.");
+    }).finally(() => {
+      if (active) setPerfLoading(false);
+    });
+    return () => { active = false; };
+  }, [basket?.id, myToken, perfRefreshNonce]);
 
   async function copyLink() {
     if (typeof window === "undefined" || !navigator.clipboard || !basket) return;
@@ -144,25 +163,6 @@ export default function BasketSharePage() {
     setResolveLoading(false);
   }
 
-  async function togglePerformance() {
-    if (!basket) return;
-    const next = !showPerformance;
-    setShowPerformance(next);
-    if (next) {
-      setPerfLoading(true);
-      setPerfError("");
-      try {
-        const data = await getBasketPerformance(basket.id, myToken ?? undefined);
-        setPerformance(data);
-      } catch {
-        setPerformance(null);
-        setPerfError("Could not load Kalshi price history. Please try again.");
-      } finally {
-        setPerfLoading(false);
-      }
-    }
-  }
-
   if (!basket) {
     return (
       <div style={{ minHeight: "100vh", background: "#f8f6f2", color: "#1c1814" }}>
@@ -228,12 +228,6 @@ export default function BasketSharePage() {
             Prism selected the markets in this hypothetical basket. {parsedBasket.editorial_hypothetical.inspiration_person} did not create, review, or endorse these positions.
           </p>
         )}
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
-          <Tag>{basket.mode}</Tag>
-          <Tag>{parsedBasket.holdings.length} positions</Tag>
-          <Tag>{basket.timeframe_start || "now"} → {basket.timeframe_end || basket.time_horizon}</Tag>
-        </div>
-
         {basket.is_public && (
           <div style={{ display: "flex", gap: 20, flexWrap: "wrap", color: "#6e675f", fontSize: 13, marginBottom: 18 }}>
             <span><strong style={{ color: "#1c1814" }}>{basket.investor_count ?? 0}</strong> investors</span>
@@ -241,6 +235,47 @@ export default function BasketSharePage() {
             <span><strong style={{ color: "#1c1814" }}>{basket.watchlist_count ?? 0}</strong> watchlists</span>
           </div>
         )}
+
+        <section id="price-tracking" className={styles.priceTracking} aria-labelledby="price-tracking-title">
+          <div className={styles.priceHeader}>
+            <div>
+              <div className={styles.priceEyebrow}>Market movement</div>
+              <h2 id="price-tracking-title" className={styles.priceTitle}>Price tracking</h2>
+              <p className={styles.priceDescription}>How the basket&apos;s market prices have moved since it was created.</p>
+              <button className={styles.priceRefresh} onClick={() => setPerfRefreshNonce((nonce) => nonce + 1)} disabled={perfLoading}>
+                Refresh prices
+              </button>
+            </div>
+            {!perfLoading && !perfError && performance && performance.dates.length > 1 && (
+              <div className={styles.priceMetric}>
+                <span className={styles.priceMetricLabel}>Indicative change</span>
+                <strong className={(performance.current_return ?? 0) >= 0 ? styles.priceUp : styles.priceDown}>
+                  {(performance.current_return ?? 0) >= 0 ? "+" : ""}{performance.current_return?.toFixed(1)}%
+                </strong>
+                <span className={styles.priceMetricDetail}>Index {performance.values[performance.values.length - 1]?.toFixed(1)} · started at 100</span>
+              </div>
+            )}
+          </div>
+          {perfLoading ? (
+            <div className={styles.priceStatus}>Loading price history…</div>
+          ) : perfError ? (
+            <div role="alert" className={styles.priceStatus}>{perfError}</div>
+          ) : !performance || performance.dates.length < 2 ? (
+            <div className={styles.priceStatus}>Tracking begins when these markets receive new Kalshi quotes. Check back as prices move.</div>
+          ) : (
+            <>
+              <div className={styles.chartWrap}>
+                <div className={styles.desktopChart}><PerformanceChart dates={performance.dates} values={performance.values} periodMinutes={performance.period_minutes} /></div>
+                <div className={styles.mobileChart}><PerformanceChart dates={performance.dates} values={performance.values} periodMinutes={performance.period_minutes} compact /></div>
+              </div>
+              <div className={styles.priceFooter}>
+                <span>{performance.updated_holdings} of {performance.total_holdings} markets have new quotes</span>
+                <span>Latest quote {new Date(performance.dates[performance.dates.length - 1]).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+              </div>
+              <p className={styles.priceNote}>Indicative mark from Kalshi quotes, indexed to 100 at creation. Markets without new quotes retain their entry price.</p>
+            </>
+          )}
+        </section>
 
         {!basket.resolved_at && <BasketTradePanel basketId={basket.id} token={myToken} onExecution={() => {
           getBasket(basket.id, myToken ?? undefined).then(setBasket).catch(() => {});
@@ -272,37 +307,32 @@ export default function BasketSharePage() {
                     <div key={h.ticker} style={{ flexBasis: `${(h.weight_dollars / total) * 100}%`, background: colors[i % colors.length], flexShrink: 0 }} />
                   ))}
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
-                  {(parsedBasket as PredictionBasket).holdings.map((h: { ticker: string; weight_dollars: number; question: string }, i: number) => (
-                    <div key={h.ticker} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#6e675f" }}>
-                      <div style={{ width: 8, height: 8, borderRadius: 2, background: colors[i % colors.length], flexShrink: 0 }} />
-                      <span style={{ fontFamily: "var(--font-mono), monospace" }}>{Math.round((h.weight_dollars / total) * 100)}%</span>
-                      <span style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.question}</span>
-                    </div>
-                  ))}
-                </div>
               </div>
             );
           })()}
-          <div style={{ display: "grid", gap: 12 }}>
-        {(parsedBasket as PredictionBasket).holdings.map((holding) => (
-              <div key={holding.ticker} style={{ border: "1px solid rgba(0,0,0,0.08)", borderRadius: 18, padding: 18, background: "rgba(0,0,0,0.03)" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 100px", gap: 16 }}>
-                  <div>
-                    {holding.event_title && holding.event_title !== holding.question && (
-                      <div style={{ color: "#9c8f85", fontSize: 13, marginBottom: 4 }}>{holding.event_title}</div>
-                    )}
-                    <div style={{ color: "#1c1814", fontWeight: 600, fontSize: 18, marginBottom: 8 }}>{holding.question}</div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                      <Tag>{holding.side}</Tag>
-                      <Tag>{holding.topic_bucket || holding.fit_type?.replace(/_/g, " ") || "position"}</Tag>
-                      <Tag>{Math.round(holding.market_price * 100)}% market odds</Tag>
+          <div className={styles.holdingsList}>
+            {(parsedBasket as PredictionBasket).holdings.map((holding, index) => (
+              <div key={holding.ticker} className={styles.holdingRow}>
+                <div className={styles.holdingMain}>
+                  <span className={styles.holdingDot} style={{ background: ["#4f46e5","#4338ca","#7c73f0","#312e9e","#a5a0f4","#6159eb","#2dd4bf","#f59e0b"][index % 8] }} />
+                  <div className={styles.holdingContent}>
+                    <div className={styles.holdingQuestion}>{holding.question}</div>
+                    <div className={styles.holdingMeta}>
+                      <span className={styles.holdingSide}>{holding.side}</span>
+                      <span>Entry odds {Math.round(holding.market_price * 100)}%</span>
+                      {holding.close_date && <span>Closes {formatCloseDate(holding.close_date)}</span>}
                     </div>
-                    <div style={{ color: "#6e675f", lineHeight: 1.6 }}>{holding.rationale}</div>
+                    {holding.rationale && (
+                      <details className={styles.holdingDetails}>
+                        <summary>Why this market</summary>
+                        <p>{holding.rationale}</p>
+                      </details>
+                    )}
                   </div>
-                  <div style={{ textAlign: "right", color: "#1c1814", fontSize: 22, fontWeight: 600 }}>
-                    {Math.round((holding.weight_dollars / parsedBasket.total_notional) * 100)}%
-                  </div>
+                </div>
+                <div className={styles.holdingWeight}>
+                  <strong>{Math.round((holding.weight_dollars / (parsedBasket.total_notional || 1)) * 100)}%</strong>
+                  <span>of basket</span>
                 </div>
               </div>
             ))}
@@ -334,44 +364,6 @@ export default function BasketSharePage() {
             {basket.resolution_note && (
               <div style={{ color: "#3a3530", lineHeight: 1.75, whiteSpace: "pre-wrap" }}>
                 {basket.resolution_note}
-              </div>
-            )}
-          </section>
-        )}
-
-        {showPerformance && (
-          <section style={sectionStyle}>
-            <div style={sectionTitleStyle}>Portfolio Performance</div>
-            {perfLoading ? (
-              <div style={{ color: "#9b9390", fontSize: 14, padding: "20px 0" }}>Loading…</div>
-            ) : perfError ? (
-              <div role="alert" style={{ color: "#dc2626", fontSize: 14, padding: "20px 0" }}>{perfError}</div>
-            ) : !performance || performance.dates.length < 2 ? (
-              <div style={{ color: "#9b9390", fontSize: 14, lineHeight: 1.7 }}>
-                No Kalshi price updates since this basket was created. Check back after its markets trade or quotes change.
-              </div>
-            ) : (
-              <div>
-                <div style={{ display: "flex", gap: 24, marginBottom: 18, flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 4 }}>Since creation</div>
-                    <div style={{ fontSize: 28, fontWeight: 700, color: (performance.current_return ?? 0) >= 0 ? "#16a34a" : "#dc2626" }}>
-                      {(performance.current_return ?? 0) >= 0 ? "+" : ""}{performance.current_return?.toFixed(1)}%
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 4 }}>Data points</div>
-                    <div style={{ fontSize: 28, fontWeight: 700, color: "#1c1814" }}>{performance.dates.length}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 4 }}>Latest</div>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: "#1c1814", paddingTop: 5 }}>{performance.dates[performance.dates.length - 1]}</div>
-                  </div>
-                </div>
-                <PerformanceChart dates={performance.dates} values={performance.values} periodMinutes={performance.period_minutes} />
-                <div style={{ color: "#9b9390", fontSize: 11, marginTop: 8, fontFamily: "var(--font-mono), monospace" }}>
-                  Indicative mark from Kalshi quotes, indexed to 100 at creation · {performance.updated_holdings}/{performance.total_holdings} holdings have post-creation quotes · Unchanged holdings use their entry price
-                </div>
               </div>
             )}
           </section>
@@ -430,21 +422,21 @@ export default function BasketSharePage() {
           >
             {copied ? "Copied ✓" : "Copy link"}
           </button>
-          <button
-            onClick={togglePerformance}
+          <a
+            href="#price-tracking"
             style={{
-              background: showPerformance ? "#4f46e5" : "transparent",
-              color: showPerformance ? "#fff" : "#6e675f",
-              border: "1px solid " + (showPerformance ? "#4f46e5" : "rgba(0,0,0,0.12)"),
+              background: "transparent",
+              color: "#6e675f",
+              border: "1px solid rgba(0,0,0,0.12)",
               padding: "10px 18px",
               borderRadius: 12,
               fontWeight: 600,
               fontSize: 14,
-              cursor: "pointer",
+              textDecoration: "none",
             }}
           >
             Price tracking
-          </button>
+          </a>
           {myToken && (
             <button
               onClick={toggleBookmark}
@@ -605,25 +597,14 @@ function EditorialField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Tag({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{
-      display: "inline-flex",
-      alignItems: "center",
-      padding: "5px 9px",
-      borderRadius: 999,
-      border: "1px solid rgba(0,0,0,0.08)",
-      color: "#3a3530",
-      fontSize: 12,
-      background: "rgba(0,0,0,0.03)",
-    }}>
-      {children}
-    </span>
-  );
+function formatCloseDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
-function PerformanceChart({ dates, values, periodMinutes }: { dates: string[]; values: number[]; periodMinutes: number | null }) {
-  const W = 560, H = 160, PL = 44, PR = 16, PT = 16, PB = 28;
+function PerformanceChart({ dates, values, periodMinutes, compact = false }: { dates: string[]; values: number[]; periodMinutes: number | null; compact?: boolean }) {
+  const W = compact ? 320 : 560, H = compact ? 175 : 160, PL = compact ? 32 : 44, PR = compact ? 8 : 16, PT = 16, PB = compact ? 34 : 28;
   const cW = W - PL - PR, cH = H - PT - PB;
   const n = values.length;
   const times = dates.map((date) => new Date(date).getTime());
@@ -648,7 +629,7 @@ function PerformanceChart({ dates, values, periodMinutes }: { dates: string[]; v
   const yLabels = Array.from(new Set([100, Math.round(minV + range * 0.25), Math.round(maxV - range * 0.25)])).sort((a, b) => b - a);
 
   // X-axis: show ~4 date labels
-  const xIdxs = [0, Math.floor(n * 0.33), Math.floor(n * 0.66), n - 1].filter((v, i, a) => a.indexOf(v) === i);
+  const xIdxs = (compact ? [0, n - 1] : [0, Math.floor(n * 0.33), Math.floor(n * 0.66), n - 1]).filter((v, i, a) => a.indexOf(v) === i);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
@@ -676,10 +657,10 @@ function PerformanceChart({ dates, values, periodMinutes }: { dates: string[]; v
 
       {/* X labels */}
       {xIdxs.map((i) => (
-        <text key={i} x={toX(i)} y={H - 4} textAnchor="middle" fontSize={9} fill="#9b9390" fontFamily="monospace">
+        <text key={i} x={toX(i)} y={H - 4} textAnchor={compact ? (i === 0 ? "start" : "end") : "middle"} fontSize={compact ? 10 : 9} fill="#9b9390" fontFamily="monospace">
           {new Date(dates[i]).toLocaleString(undefined, periodMinutes === 1440
             ? { month: "short", day: "numeric" }
-            : { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            : compact ? { month: "short", day: "numeric", hour: "numeric" } : { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
         </text>
       ))}
     </svg>
