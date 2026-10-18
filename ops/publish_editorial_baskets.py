@@ -1,8 +1,8 @@
-"""Publish the reviewed hypothetical baskets under Prism's editorial profile.
+"""Publish Prism-curated hypothetical baskets through the ordinary thesis feed.
 
-Usage: DATABASE_URL=... python ops/publish_editorial_baskets.py [--dry-run]
+Usage: DATABASE_URL=... python ops/publish_editorial_baskets.py --fixture PATH [--retire-fixture PATH] [--dry-run]
 Market data is fetched again immediately before any database write. Re-running
-skips baskets already owned by the editorial profile.
+skips baskets already owned by the intended Prism-managed curated profile.
 """
 
 from __future__ import annotations
@@ -21,6 +21,16 @@ import psycopg2
 FIXTURE = Path(__file__).with_name("editorial_baskets_2026_10_16.json")
 PROFILE_ID = "prism:editorial"
 USERNAME = "prism_editorial"
+CURATED_HANDLES = {
+    "Ray Dalio": "ray_dalio",
+    "Nouriel Roubini": "nouriel_roubini",
+    "Peter Zeihan": "peter_zeihan",
+    "Scott Galloway": "scott_galloway",
+    "Bill Gates": "bill_gates",
+    "Mark Cuban": "mark_cuban",
+    "Kara Swisher": "kara_swisher",
+    "Andrew Yang": "andrew_yang",
+}
 MARKET_API = "https://api.elections.kalshi.com/trade-api/v2/markets/"
 
 
@@ -48,7 +58,8 @@ def check_markets(baskets: list[dict]) -> dict[str, dict]:
     return markets
 
 
-def publish(baskets: list[dict], markets: dict[str, dict], dry_run: bool) -> list[tuple[int | None, str]]:
+def publish(baskets: list[dict], markets: dict[str, dict], dry_run: bool,
+            retire_baskets: list[dict], curated_profiles: bool) -> list[tuple[int | None, str]]:
     if dry_run:
         return [(None, basket["name"]) for basket in baskets]
     if not os.environ.get("DATABASE_URL"):
@@ -58,23 +69,38 @@ def publish(baskets: list[dict], markets: dict[str, dict], dry_run: bool) -> lis
     try:
         with conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT user_id FROM profiles WHERE username = %s", (USERNAME,))
-                existing = cur.fetchone()
-                if existing and existing[0] != PROFILE_ID:
-                    raise RuntimeError("Editorial username belongs to another profile")
-                cur.execute(
-                    """INSERT INTO profiles (user_id, username, created_at, bio, domain_tags)
-                    VALUES (%s,%s,%s,%s,%s)
-                    ON CONFLICT (user_id) DO UPDATE SET bio = EXCLUDED.bio, domain_tags = EXCLUDED.domain_tags""",
-                    (PROFILE_ID, USERNAME, datetime.now(timezone.utc).isoformat(),
-                     "Prism's own hypothetical market baskets. Named public figures are topic inspiration only; they did not author, approve, or endorse these positions.",
-                     json.dumps(["Prism editorial", "Hypothetical concepts"])),
-                )
+                cur.execute("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS display_name TEXT")
+                cur.execute("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS profile_kind TEXT NOT NULL DEFAULT 'member'")
                 for basket in baskets:
                     title = basket["name"]
-                    cur.execute("SELECT id FROM baskets WHERE user_id = %s AND title = %s", (PROFILE_ID, title))
+                    person = basket["person"]
+                    if curated_profiles:
+                        handle = CURATED_HANDLES[person]
+                        owner_id = f"prism:curated:{handle}"
+                        bio = (f"Prism-managed profile. The baskets here are hypothetical concepts inspired by {person}'s public work. "
+                               f"Prism selected the markets; {person} did not create, review, or endorse these positions.")
+                        profile_kind, display_name = "curated", person
+                    else:
+                        handle, owner_id = USERNAME, PROFILE_ID
+                        bio = "Prism's hypothetical market baskets. Named figures are topic inspiration only; they did not author, approve, or endorse these positions."
+                        profile_kind, display_name = "member", "Prism editorial"
+                    cur.execute("SELECT user_id FROM profiles WHERE username = %s", (handle,))
+                    existing = cur.fetchone()
+                    if existing and existing[0] != owner_id:
+                        raise RuntimeError(f"Username {handle!r} belongs to another profile")
+                    cur.execute(
+                        """INSERT INTO profiles (user_id, username, created_at, display_name, profile_kind, bio, domain_tags)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s)
+                        ON CONFLICT (user_id) DO UPDATE SET display_name=EXCLUDED.display_name,
+                        profile_kind=EXCLUDED.profile_kind, bio=EXCLUDED.bio, domain_tags=EXCLUDED.domain_tags""",
+                        (owner_id, handle, datetime.now(timezone.utc).isoformat(), display_name,
+                         profile_kind, bio, json.dumps([basket["domain"], "Prism-curated concepts"])),
+                    )
+                    cur.execute("SELECT id, is_public FROM baskets WHERE user_id = %s AND title = %s", (owner_id, title))
                     old = cur.fetchone()
                     if old:
+                        if not old[1]:
+                            cur.execute("UPDATE baskets SET is_public=TRUE WHERE id=%s", (old[0],))
                         published.append((old[0], title))
                         continue
                     rows = basket["rows"]
@@ -142,7 +168,7 @@ def publish(baskets: list[dict], markets: dict[str, dict], dry_run: bool) -> lis
                          "See contract close dates", basket["thesis"],
                          "Editorial market selection", basket["domain"], json.dumps([]),
                          json.dumps(belief), json.dumps({"affected_domains": [basket["domain"]]}),
-                         json.dumps(payload), 100.0, len(holdings), True, PROFILE_ID, notes),
+                         json.dumps(payload), 100.0, len(holdings), True, owner_id, notes),
                     )
                     basket_id = cur.fetchone()[0]
                     for holding in holdings:
@@ -157,6 +183,17 @@ def publish(baskets: list[dict], markets: dict[str, dict], dry_run: bool) -> lis
                              holding["main_risk"], holding["market_price"], holding["close_date"]),
                         )
                     published.append((basket_id, title))
+                for old_basket in retire_baskets:
+                    cur.execute("SELECT id, user_id, basket_json FROM baskets WHERE title=%s FOR UPDATE", (old_basket["name"],))
+                    matches = cur.fetchall()
+                    if len(matches) != 1:
+                        raise RuntimeError(f"Expected one old basket named {old_basket['name']!r}; found {len(matches)}")
+                    basket_id, owner_id, raw_payload = matches[0]
+                    metadata = json.loads(raw_payload).get("editorial_hypothetical") or {}
+                    if (metadata.get("inspiration_person") != old_basket["person"] or
+                            not owner_id.startswith("prism:")):
+                        raise RuntimeError(f"Old basket {basket_id} no longer matches its Prism metadata")
+                    cur.execute("UPDATE baskets SET is_public=FALSE WHERE id=%s", (basket_id,))
     finally:
         conn.close()
     return published
@@ -165,10 +202,18 @@ def publish(baskets: list[dict], markets: dict[str, dict], dry_run: bool) -> lis
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--fixture", type=Path, default=FIXTURE)
+    parser.add_argument("--retire-fixture", type=Path)
+    parser.add_argument("--curated-profiles", action="store_true")
     args = parser.parse_args()
-    baskets = json.loads(FIXTURE.read_text())
+    baskets = json.loads(args.fixture.read_text())
+    retire_baskets = json.loads(args.retire_fixture.read_text()) if args.retire_fixture else []
+    if args.curated_profiles and {basket["person"] for basket in baskets} - set(CURATED_HANDLES):
+        raise ValueError("A curated person is missing an approved Prism handle")
+    if {basket["name"] for basket in baskets} & {basket["name"] for basket in retire_baskets}:
+        raise ValueError("A new basket cannot also be retired")
     markets = check_markets(baskets)
-    for basket_id, title in publish(baskets, markets, args.dry_run):
+    for basket_id, title in publish(baskets, markets, args.dry_run, retire_baskets, args.curated_profiles):
         print(f"{basket_id if basket_id is not None else 'checked'}: {title}")
 
 

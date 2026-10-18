@@ -742,6 +742,7 @@ def get_creators(limit: int = 50, query: str = "", offset: int = 0) -> list[dict
             f"LEFT JOIN baskets b ON b.user_id = pr.user_id AND b.is_public = {'TRUE' if _use_pg() else '1'} "
             f"WHERE LOWER(pr.username) LIKE {p} OR LOWER(COALESCE(pr.display_name, '')) LIKE {p} "
             f"GROUP BY pr.user_id "
+            f"HAVING pr.profile_kind != 'curated' OR COUNT(DISTINCT b.id) > 0 "
             f"ORDER BY follower_count DESC, basket_count DESC, pr.username ASC "
             f"LIMIT {p} OFFSET {p}",
             (search, search, limit, offset),

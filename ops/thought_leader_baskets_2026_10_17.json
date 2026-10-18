@@ -1,0 +1,372 @@
+[
+  {
+    "name": "The debt-supply squeeze",
+    "person": "Ray Dalio",
+    "domain": "Macro / Economics",
+    "thesis": "Hypothetical editorial stress case: U.S. federal debt climbs, major foreign Treasury holders do not add to holdings, and inflation and policy rates remain elevated.",
+    "tie": "https://www.principles.com/big-debt-crises-consumer",
+    "fit": "A Prism editorial scenario exploring themes in Ray Dalio's public macro work; this is not their forecast.",
+    "risk": "Debt thresholds and foreign Treasury holdings can diverge; several legs have long settlement horizons.",
+    "rows": [
+      {
+        "ticker": "KXDEBTGROWTH-28DEC31-45",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Debt reaching $45 trillion anchors the fiscal-supply thesis."
+      },
+      {
+        "ticker": "KXDEBTGROWTH-28DEC31-47.5",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Higher debt threshold adds an intentionally more aggressive tail."
+      },
+      {
+        "ticker": "KXUSTHOLDERS-31DEC26-CHN",
+        "side": "NO",
+        "weight": 15,
+        "rationale": "Mainland Chinese Treasury holdings fail to rise, a foreign-demand signal."
+      },
+      {
+        "ticker": "KXUSTHOLDERS-31DEC26-JPN",
+        "side": "NO",
+        "weight": 15,
+        "rationale": "Japanese Treasury holdings fail to rise, a second foreign-demand signal."
+      },
+      {
+        "ticker": "KXUSCPIYEAR-28FEB01-T3.0",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "December 2027 CPI above 3% expresses persistent inflation."
+      },
+      {
+        "ticker": "KXFEDFUNDSYEAR-28JAN01-T4.00",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "A federal funds upper bound above 4% at 2027 year end expresses rates staying elevated."
+      }
+    ]
+  },
+  {
+    "name": "Stagflationary policy trap",
+    "person": "Nouriel Roubini",
+    "domain": "Macro / Economics",
+    "thesis": "Hypothetical editorial stress case: inflation remains sticky while jobs and output weaken, with the Fed unable to return to low rates by year end 2027. This is not a claim about Roubini’s actual forecast.",
+    "tie": "https://nourielroubini.com/articles/where-will-the-global-bond-rout-hit-growth-and-equities/",
+    "fit": "A Prism editorial scenario exploring themes in Nouriel Roubini's public macro work; this is not their forecast.",
+    "risk": "Stress scenario, not Nouriel Roubini’s stated baseline; inflation and recession legs can diverge.",
+    "rows": [
+      {
+        "ticker": "KXRECSSNBER-27",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "An NBER recession in 2027 is the hard-landing anchor."
+      },
+      {
+        "ticker": "KXGDP-27APR29-T2.0",
+        "side": "NO",
+        "weight": 15,
+        "rationale": "Real Q1 2027 GDP growth fails to exceed 2%, expressing slower output."
+      },
+      {
+        "ticker": "KXU3EOY-27JAN08-T4.5",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "December 2026 unemployment above 4.5% is an early labor warning."
+      },
+      {
+        "ticker": "KXCPIYOY-26DEC-T3.5",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "December 2026 headline CPI above 3.5% expresses sticky inflation."
+      },
+      {
+        "ticker": "KXCPICOREYOY-26DEC-T3.0",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "December 2026 core CPI above 3% tests breadth of inflation."
+      },
+      {
+        "ticker": "KXUSCPIYEAR-28FEB01-T3.0",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "December 2027 CPI above 3% extends inflation persistence."
+      },
+      {
+        "ticker": "KXFEDFUNDSYEAR-28JAN01-T4.00",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Federal funds upper bound above 4% at 2027 year end expresses a restrictive policy backdrop."
+      }
+    ]
+  },
+  {
+    "name": "Trade normalization stalls",
+    "person": "Peter Zeihan",
+    "domain": "Geopolitics / Trade",
+    "thesis": "Commercial shipping through major Middle East chokepoints remains constrained, energy retains a risk premium, and U.S.–China trade and tariff policy continue to show fragmentation.",
+    "tie": "https://zeihan.com/meet-peter-zeihan/",
+    "fit": "A Prism editorial scenario on supply chains and chokepoints, themes in Zeihan’s public work; this is not his forecast.",
+    "risk": "Several short-dated legs can resolve within days and may move independently; one API expected-expiration field conflicts with the rule cutoff.",
+    "rows": [
+      {
+        "ticker": "KXHORMUZNORM-26MAR17-B270401",
+        "side": "NO",
+        "weight": 20,
+        "rationale": "Hormuz 7-day average does not exceed 60 before April 1, 2027; the long-horizon reopening test for the chokepoint thesis."
+      },
+      {
+        "ticker": "KXHORMUZWEEKLY-26OCT25-T30",
+        "side": "NO",
+        "weight": 13,
+        "rationale": "Weekly Hormuz transit calls stay at 30 or fewer in October 19–25, testing near-term shipping restraint."
+      },
+      {
+        "ticker": "KXHORMUZPEAK-26OCT25-T8",
+        "side": "NO",
+        "weight": 10,
+        "rationale": "No single day in October 19–25 exceeds eight Hormuz transit calls, testing whether a short rebound fails to appear."
+      },
+      {
+        "ticker": "KXSUEZWEEKLY-26OCT25-T300",
+        "side": "NO",
+        "weight": 17,
+        "rationale": "Suez Canal transit calls stay at 300 or fewer in the same week, extending the shipping-friction thesis to the Red Sea route."
+      },
+      {
+        "ticker": "KXBRENTW-26OCT2317-T108.99",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Brent closes above $108.99 per barrel on October 23, expressing an energy-price premium alongside chokepoint stress."
+      },
+      {
+        "ticker": "KXCNIMPORT-27FEB04-T280",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "2026 U.S. goods imports from China finish below $280 billion, a separate annual test of weaker cross-border trade."
+      },
+      {
+        "ticker": "KXNEWTARIFFS-26OCT-NOV01",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "A qualifying executive action imposes new or increased tariffs in October, testing continued policy fragmentation."
+      }
+    ]
+  },
+  {
+    "name": "Anthropic’s coding and IPO edge",
+    "person": "Scott Galloway",
+    "domain": "AI / Technology",
+    "thesis": "Anthropic retains coding leadership and reaches IPO confirmation before OpenAI",
+    "tie": "https://scottgalloway.profgmedia.com/podcasts-markets/",
+    "fit": "A Prism editorial scenario exploring themes in Scott Galloway's public work; this is not their forecast.",
+    "risk": "Model-ranking and IPO outcomes are correlated; this is not Scott Galloway’s forecast.",
+    "rows": [
+      {
+        "ticker": "KXCODINGMODEL-26DEC-ANTH",
+        "side": "YES",
+        "weight": 30,
+        "rationale": "Anthropic finishes the year with the top coding model."
+      },
+      {
+        "ticker": "KXIPO-26-ANTHROPIC",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Anthropic confirms an IPO before 2027."
+      },
+      {
+        "ticker": "KXIPO-26-OPENAI",
+        "side": "NO",
+        "weight": 20,
+        "rationale": "OpenAI does not confirm an IPO in the same window."
+      },
+      {
+        "ticker": "KXPRICEINCREASECLAUDE-26",
+        "side": "NO",
+        "weight": 10,
+        "rationale": "Stable Claude pricing reinforces competitive adoption."
+      },
+      {
+        "ticker": "KXTOPAI-27-JAN01-OPEN",
+        "side": "NO",
+        "weight": 15,
+        "rationale": "OpenAI does not regain a top-ranked model before 2027."
+      }
+    ]
+  },
+  {
+    "name": "Clean power scales across technologies",
+    "person": "Bill Gates",
+    "domain": "Energy / Climate",
+    "thesis": "Clean electricity scales through nuclear, solar, and storage",
+    "tie": "https://www.gatesnotes.com/work/work-section-topic/reader/the-next-generation-of-electricity-is-almost-here",
+    "fit": "A Prism editorial scenario exploring themes in Bill Gates's public work; this is not their forecast.",
+    "risk": "Horizons range from 2026 to 2030; some energy outcomes may involve companies with which Gates has ties. No trade is proposed on his behalf.",
+    "rows": [
+      {
+        "ticker": "KXREACTOR-26DEC31",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "A new U.S. reactor license is a near-term nuclear milestone."
+      },
+      {
+        "ticker": "KXILNUCLEAR-27FEB28-T95.0",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Illinois nuclear output clears the contract threshold."
+      },
+      {
+        "ticker": "KXSOLAR-26-45",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "U.S. solar deployment reaches at least 45 GWdc."
+      },
+      {
+        "ticker": "KXTESLAENERGYBY-27-20",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Tesla energy-product deployments exceed 20 GWh in a quarter before Q1 2027."
+      },
+      {
+        "ticker": "KXDATACENTER-30",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "A U.S. military-base nuclear-powered data-center project begins construction process by 2030."
+      },
+      {
+        "ticker": "KXFUSION-30-JAN01",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Fusion reaches the contract-defined achievement milestone by 2030."
+      }
+    ]
+  },
+  {
+    "name": "Healthcare affordability remains strained",
+    "person": "Mark Cuban",
+    "domain": "Health / Business",
+    "thesis": "Healthcare affordability strain persists while federal coverage reforms stall",
+    "tie": "https://www.costplusdrugs.com/mission/index.html",
+    "fit": "A Prism editorial scenario exploring themes in Mark Cuban's public work; this is not their forecast.",
+    "risk": "Insurance and ACA contracts are indirect proxies for healthcare affordability, and policy outcomes may diverge.",
+    "rows": [
+      {
+        "ticker": "KXPARTDGLP1-26AUG-28JAN01",
+        "side": "NO",
+        "weight": 25,
+        "rationale": "CMS does not add obesity or chronic weight-management GLP-1 coverage to Part D before 2028."
+      },
+      {
+        "ticker": "KXACAENROLLMENT-27FEB28-A20",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "ACA Marketplace effectuated enrollment falls more than 20% year over year."
+      },
+      {
+        "ticker": "KXACAEXT-26JAN-27",
+        "side": "NO",
+        "weight": 20,
+        "rationale": "Enhanced ACA credits are not extended by year-end 2026."
+      },
+      {
+        "ticker": "KXACAHSAFSA-27",
+        "side": "NO",
+        "weight": 15,
+        "rationale": "An HSA/FSA-directed subsidy bill does not become law by year-end."
+      },
+      {
+        "ticker": "KXACAREPEAL-29-29JAN20",
+        "side": "NO",
+        "weight": 20,
+        "rationale": "Core ACA provisions avoid repeal through the specified 2029 deadline."
+      }
+    ]
+  },
+  {
+    "name": "Tech platforms face tighter rules",
+    "person": "Kara Swisher",
+    "domain": "Technology / Policy",
+    "thesis": "Governments tighten AI and child-safety rules for technology platforms",
+    "tie": "https://podcasts.voxmedia.com/host/kara-swisher",
+    "fit": "A Prism editorial scenario exploring themes in Kara Swisher's public work; this is not their forecast.",
+    "risk": "Regulatory outcomes differ across jurisdictions and definitions; there is no single common event.",
+    "rows": [
+      {
+        "ticker": "KXUSAIREGULATOR-28JAN01-28JAN01",
+        "side": "YES",
+        "weight": 18,
+        "rationale": "A U.S. national AI regulator emerges before 2028."
+      },
+      {
+        "ticker": "KXAISAFETYAUDIT-26SEP-28JAN01",
+        "side": "YES",
+        "weight": 18,
+        "rationale": "Mandatory independent AI safety audits take effect before 2028."
+      },
+      {
+        "ticker": "KXAILEGISLATION-27-JAN01",
+        "side": "YES",
+        "weight": 18,
+        "rationale": "Federal AI legislation reaches the contract criterion by early 2027."
+      },
+      {
+        "ticker": "KXSOCIALMEDIABAN-27JAN01",
+        "side": "YES",
+        "weight": 16,
+        "rationale": "The U.S. enacts a child social-media ban without a parental-consent bypass before 2027."
+      },
+      {
+        "ticker": "KXUKSOCIALBAN-27-27AUG01",
+        "side": "YES",
+        "weight": 16,
+        "rationale": "A UK under-16 account ban enters into effect before August 2027."
+      },
+      {
+        "ticker": "KXNZU16SOCIALBAN-27OCT01",
+        "side": "YES",
+        "weight": 14,
+        "rationale": "New Zealand makes an under-16 social-media ban law before October 2027."
+      }
+    ]
+  },
+  {
+    "name": "White-collar layoff pressure rises",
+    "person": "Andrew Yang",
+    "domain": "Technology / Labor",
+    "thesis": "White-collar layoff pressure without a national unemployment spike",
+    "tie": "https://blog.andrewyang.com/p/the-end-of-the-office",
+    "fit": "A Prism editorial scenario exploring themes in Andrew Yang's public work; this is not their forecast.",
+    "risk": "Layoff announcements and unemployment do not establish AI causation; these are labor-market proxies.",
+    "rows": [
+      {
+        "ticker": "KXCOMPANYLAYOFF-27JAN01-GOOG",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Alphabet acknowledges a layoff before 2027."
+      },
+      {
+        "ticker": "KXCOMPANYLAYOFF-27JAN01-TSLA",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Tesla acknowledges a layoff before 2027."
+      },
+      {
+        "ticker": "KXCOMPANYLAYOFF-27JAN01-NVDA",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Nvidia acknowledges a layoff before 2027."
+      },
+      {
+        "ticker": "KXLAYOFFSYPBS-26-5497000",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Professional and business services layoffs exceed 5.497 million in 2026."
+      },
+      {
+        "ticker": "KXU3MAX-27-5.5",
+        "side": "NO",
+        "weight": 20,
+        "rationale": "National U-3 unemployment never exceeds 5.5% for a 2026 month."
+      }
+    ]
+  }
+]
