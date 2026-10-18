@@ -110,7 +110,7 @@ def publish(baskets: list[dict], markets: dict[str, dict], dry_run: bool,
                         "this basket or its positions. No trade has been placed. "
                         f"Topic source: {basket['tie']}\n\nReview risk: {basket['risk']}"
                     )
-                    summary = f"Hypothetical Prism editorial concept inspired by {basket['person']} (no endorsement). {basket['thesis']}"
+                    summary = basket.get("summary") or basket["thesis"]
                     holdings = []
                     for row in rows:
                         market = markets[row["ticker"]]

@@ -201,11 +201,6 @@ export default function BasketSharePage() {
         <h1 style={{ color: "#1c1814", fontSize: "clamp(34px, 5vw, 56px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 10px" }}>
           {basket.title}
         </h1>
-        {parsedBasket.editorial_hypothetical && (
-          <div style={{ color: "#7c3aed", fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
-            Prism-curated hypothetical inspired by {parsedBasket.editorial_hypothetical.inspiration_person}&apos;s public work · Market selections were made by Prism, not the person
-          </div>
-        )}
         {basket.username && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -214,6 +209,9 @@ export default function BasketSharePage() {
             <Link href={`/users/${basket.username}`} style={{ color: "#6e675f", fontSize: 13, textDecoration: "none", fontFamily: "var(--font-mono), monospace" }}>
               {basket.display_name || `@${basket.username}`}
             </Link>
+            {parsedBasket.editorial_hypothetical && (
+              <span style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700 }}>Prism-curated</span>
+            )}
           </div>
         )}
         <p style={{ color: "#6e675f", fontSize: 17, lineHeight: 1.65, margin: "0 0 26px", maxWidth: 780 }}>
@@ -305,9 +303,9 @@ export default function BasketSharePage() {
           </section>
         )}
 
-        {basket.thesis_notes && (
+        {basket.thesis_notes && !parsedBasket.editorial_hypothetical && (
           <section style={sectionStyle}>
-            <div style={sectionTitleStyle}>{parsedBasket.editorial_hypothetical ? "Editorial Notes" : "Creator's Notes"}</div>
+            <div style={sectionTitleStyle}>Creator&apos;s Notes</div>
             <div style={{ color: "#3a3530", lineHeight: 1.8, whiteSpace: "pre-wrap", fontSize: 15 }}>
               {basket.thesis_notes}
             </div>
