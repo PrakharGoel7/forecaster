@@ -1,0 +1,868 @@
+[
+  {
+    "name": "A wet finish to October on the West Coast",
+    "domain": "Climate / Rainfall",
+    "thesis": "Los Angeles, San Francisco and Seattle each exceed one inch of October rainfall, with a two-inch upside in each city.",
+    "summary": "October ends wet across Los Angeles, San Francisco and Seattle.",
+    "risk": "Rainfall contracts close soon, and the one-inch and two-inch contracts for each city are correlated. Quote depth varies by city.",
+    "rows": [
+      {
+        "ticker": "KXRAINLAXM-26OCT-1",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Los Angeles exceeds one inch of rain in October."
+      },
+      {
+        "ticker": "KXRAINLAXM-26OCT-2",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Los Angeles exceeds two inches for a stronger wet-month outcome."
+      },
+      {
+        "ticker": "KXRAINSFOM-26OCT-1",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "San Francisco exceeds one inch of rain in October."
+      },
+      {
+        "ticker": "KXRAINSFOM-26OCT-2",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "San Francisco exceeds two inches."
+      },
+      {
+        "ticker": "KXRAINSEAM-26OCT-1",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Seattle exceeds one inch of rain in October."
+      },
+      {
+        "ticker": "KXRAINSEAM-26OCT-2",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Seattle exceeds two inches."
+      }
+    ],
+    "username": "demo_mossyline"
+  },
+  {
+    "name": "Chinese AI challengers reach the frontier",
+    "domain": "Technology / AI",
+    "thesis": "Several Chinese AI developers achieve a top-ranked model before 2027 and Chinese models appear on the year-end cost-efficiency frontier.",
+    "summary": "Chinese AI labs post frontier-ranked models and competitive cost-performance by year end.",
+    "risk": "The top-ranked tests can be met by multiple firms at different times, but each is uncertain; some Pareto contracts have thin volume.",
+    "rows": [
+      {
+        "ticker": "KXTOPAI-27-JAN01-ALIB",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Alibaba releases a top-ranked AI model."
+      },
+      {
+        "ticker": "KXTOPAI-27-JAN01-DEPP",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "DeepSeek reaches top-ranked status."
+      },
+      {
+        "ticker": "KXTOPAI-27-JAN01-BAID",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Baidu adds another Chinese frontier result."
+      },
+      {
+        "ticker": "KXTOPAI-27-JAN01-BYTE",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "ByteDance joins the top-ranked field."
+      },
+      {
+        "ticker": "KXTOPAI-27-JAN01-ZAI",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Z.ai adds a smaller-lab route to the frontier."
+      },
+      {
+        "ticker": "KXAIPARETO-26DEC31-DEEP",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "DeepSeek lands on the year-end Pareto frontier."
+      },
+      {
+        "ticker": "KXAIPARETO-26DEC31-ALI",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Alibaba lands on the year-end Pareto frontier."
+      }
+    ],
+    "username": "demo_cirrus"
+  },
+  {
+    "name": "OpenAI launches a clip-on wearable",
+    "domain": "Technology / Hardware",
+    "thesis": "OpenAI and Jony Ive announce a clip-on device rather than a conventional screen-based product.",
+    "summary": "A clip-on wearable is the announced form factor, rather than a phone, tablet, computer or headset.",
+    "risk": "Device-type contracts may have nuanced settlement rules and the announcement may not happen before the deadline. Several NO legs can win even if the clip-on YES leg loses.",
+    "rows": [
+      {
+        "ticker": "KXOAIHARDWARE-27-CLIPON",
+        "side": "YES",
+        "weight": 30,
+        "rationale": "The clip-on form factor is the central outcome."
+      },
+      {
+        "ticker": "KXOAIHARDWARE-27-PHONE",
+        "side": "NO",
+        "weight": 20,
+        "rationale": "The announcement is not a phone."
+      },
+      {
+        "ticker": "KXOAIHARDWARE-27-TABLET",
+        "side": "NO",
+        "weight": 15,
+        "rationale": "The announcement is not a tablet."
+      },
+      {
+        "ticker": "KXOAIHARDWARE-27-PC",
+        "side": "NO",
+        "weight": 15,
+        "rationale": "The announcement is not a laptop or desktop computer."
+      },
+      {
+        "ticker": "KXOAIHARDWARE-27-HEADDISPLAY",
+        "side": "NO",
+        "weight": 10,
+        "rationale": "The announcement is not a head-mounted display."
+      },
+      {
+        "ticker": "KXOAIHARDWARE-27-WATCH",
+        "side": "NO",
+        "weight": 10,
+        "rationale": "The announcement is not a watch."
+      }
+    ],
+    "username": "demo_pocketfuture"
+  },
+  {
+    "name": "Democrats win a broad Senate map",
+    "domain": "Politics / U.S. elections",
+    "thesis": "Democratic candidates win competitive Senate races in Maine, Michigan, Alaska and Iowa and take more than 52 Senate seats.",
+    "summary": "Democrats win several swing-state Senate races and emerge with a larger Senate caucus.",
+    "risk": "Candidate outcomes and the seat-count contract are correlated; a party can still gain seats without winning every named state.",
+    "rows": [
+      {
+        "ticker": "KXMESENATEPERSON-26-TJAC",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Troy Jackson wins Maine."
+      },
+      {
+        "ticker": "KXMISENATE-26-AELS",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Abdul El-Sayed wins Michigan."
+      },
+      {
+        "ticker": "KXAKSENATE-26NOV03-MPEL",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Mary Peltola wins Alaska."
+      },
+      {
+        "ticker": "KXIASENATE-26-JTUR",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Josh Turek wins Iowa."
+      },
+      {
+        "ticker": "KXDSENATESEATS-27-ABOVE52",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The Democratic caucus exceeds 52 seats."
+      },
+      {
+        "ticker": "KXDEMCOREFOURSENATESWEEP-26NOV03",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Democrats sweep Georgia, Michigan, North Carolina and Maine."
+      }
+    ],
+    "username": "demo_civicsignal"
+  },
+  {
+    "name": "Israel adds new regional partners",
+    "domain": "Geopolitics / Middle East",
+    "thesis": "Israel reaches new normalization agreements with several regional partners, including a higher-probability long-horizon Saudi outcome.",
+    "summary": "New diplomatic ties emerge between Israel and neighbors or regional powers.",
+    "risk": "Each bilateral agreement is distinct and uncertain. Several before-2027 contracts have low quoted probabilities and thin depth; the aggregate count may resolve differently from named-country bets.",
+    "rows": [
+      {
+        "ticker": "KXABRAHAMSA-29-JAN20",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Saudi Arabia normalizes relations by January 2029."
+      },
+      {
+        "ticker": "KXABRAHAMQ-29-JAN20",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Qatar normalizes relations by January 2029."
+      },
+      {
+        "ticker": "KXABRAHAMSA-27-JAN01-OMAN",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Oman normalizes before 2027."
+      },
+      {
+        "ticker": "KXABRAHAMSA-27-JAN01-INDO",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Indonesia normalizes before 2027."
+      },
+      {
+        "ticker": "KXABRAHAMSA-27-JAN01-LEB",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Lebanon normalizes before 2027."
+      },
+      {
+        "ticker": "KXISRNORMCOUNT-27DEC31-AL2",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "At least two new countries normalize by the end of 2027."
+      }
+    ],
+    "username": "demo_crosswinds"
+  },
+  {
+    "name": "Central-bank rate hikes spread globally",
+    "domain": "Macro / Monetary policy",
+    "thesis": "The Bank of Japan, ECB, Bank of Canada, Bank of England, Riksbank and RBA each raise policy rates at upcoming meetings.",
+    "summary": "Rate hikes appear across major developed-economy central banks into late 2026.",
+    "risk": "Policy meetings occur on different dates and can respond to local conditions; several contracts have limited depth or high implied probabilities.",
+    "rows": [
+      {
+        "ticker": "KXCBDECISIONJAPAN-26DEC17-H25",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Japan raises rates by 25 basis points in December."
+      },
+      {
+        "ticker": "KXCBDECISIONEU-26DEC17-H25",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The ECB raises rates by 1–25 basis points in December."
+      },
+      {
+        "ticker": "KXCBDECISIONCANADA-26DEC-H25",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Canada raises rates by 25 basis points in December."
+      },
+      {
+        "ticker": "KXCBDECISIONENGLAND-26NOV05-H25",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "The Bank of England raises rates by 1–25 basis points in November."
+      },
+      {
+        "ticker": "KXCBDSWEDEN-26NOV04-H25",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Sweden raises rates by 1–25 basis points in November."
+      },
+      {
+        "ticker": "KXCBDECISIONAUSTRALIA-26NOV02-H25",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Australia raises rates by 1–25 basis points in November."
+      }
+    ],
+    "username": "demo_ratecascade"
+  },
+  {
+    "name": "SpaceX keeps pushing Starship toward Mars",
+    "domain": "Technology / Space",
+    "thesis": "SpaceX maintains a rapid launch cadence, flies Starship again and from Florida, and eventually sends hardware and people toward Mars.",
+    "summary": "Starship launches again this year while SpaceX sustains launches and progresses toward Mars.",
+    "risk": "The near-term launch, Florida, annual cadence and Mars milestones have very different dates and odds. Launch-count thresholds overlap, while Mars missions are especially speculative.",
+    "rows": [
+      {
+        "ticker": "KXSPACEXSTARSHIP-15-26NOV27",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Another Starship launch occurs by November 27, 2026."
+      },
+      {
+        "ticker": "KXSTARSHIPFL-26JUN-27JAN01",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Starship launches from Florida before 2027."
+      },
+      {
+        "ticker": "KXSPACEXCOUNT-26B-140",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "SpaceX exceeds 140 launches during 2026."
+      },
+      {
+        "ticker": "KXSPACEXMARS-30",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "SpaceX lands something on Mars before 2030."
+      },
+      {
+        "ticker": "STARSHIPMARS-29DEC31",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "A crewed Starship mission reaches Mars before 2030."
+      },
+      {
+        "ticker": "KXSPACEXCOUNT-26B-150",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "SpaceX exceeds 150 launches during 2026, a more ambitious annual cadence."
+      }
+    ],
+    "username": "demo_launchwatch"
+  },
+  {
+    "name": "The U.S. returns astronauts to the Moon",
+    "domain": "Technology / Space",
+    "thesis": "NASA lands people on the Moon by 2029 and the United States is the next country to send humans there.",
+    "summary": "NASA reaches the Moon again before 2030, ahead of other national programs.",
+    "risk": "NASA date markets are nested; the next-country market has its own settlement rule and could diverge from NASA timing. Several opposing-country NO legs offer small upside.",
+    "rows": [
+      {
+        "ticker": "MOON-28DEC31",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "NASA lands a person on the Moon by 2028."
+      },
+      {
+        "ticker": "MOON-29DEC31",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "NASA lands a person on the Moon by 2029."
+      },
+      {
+        "ticker": "KXMOONMAN-31-USA",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "The U.S. is the next country to send humans to the Moon."
+      },
+      {
+        "ticker": "KXMOONMAN-31-PRC",
+        "side": "NO",
+        "weight": 20,
+        "rationale": "China is not the next country to send humans to the Moon."
+      },
+      {
+        "ticker": "KXMOONMAN-31-R",
+        "side": "NO",
+        "weight": 10,
+        "rationale": "Russia is not the next country to send humans to the Moon."
+      }
+    ],
+    "username": "demo_moonwalks"
+  },
+  {
+    "name": "U.S. oil and gas output stays resilient",
+    "domain": "Energy / Production",
+    "thesis": "Crude output from Texas, North Dakota, New Mexico and Alaska remains above selected 2026 thresholds while Marcellus gas production reaches 10 Tcf.",
+    "summary": "Oil output holds up across producing states, with a strong Marcellus gas year.",
+    "risk": "These are different regional production measures and most resolve only after official annual data. New Mexico and Alaska YES asks are high, limiting upside.",
+    "rows": [
+      {
+        "ticker": "KXTXOIL-27MAR31-T5.8",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Texas exceeds 5.8 million barrels per day on annual average."
+      },
+      {
+        "ticker": "KXNDKOIL-27FEB26-T421.101",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "North Dakota exceeds 421.101 million barrels for the year."
+      },
+      {
+        "ticker": "KXNMCOIL-27FEB26-T819.225",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "New Mexico exceeds 819.225 million barrels."
+      },
+      {
+        "ticker": "KXAKCRUDEOIL-27MAR01-T153.607",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Alaska exceeds 153.607 million barrels."
+      },
+      {
+        "ticker": "KXMARCELLUSGAS-27MAR31-T10.00",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Marcellus dry-gas production exceeds 10 Tcf."
+      },
+      {
+        "ticker": "KXPAGAS-27FEB26-T7.675792",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "Pennsylvania marketed gas output exceeds 7.675792 Tcf."
+      }
+    ],
+    "username": "demo_wellhead"
+  },
+  {
+    "name": "Data-center expansion meets power constraints",
+    "domain": "Technology / Infrastructure",
+    "thesis": "U.S. data-center construction and Ohio site counts rise while electricity inflation persists and federal power-cost standards are enacted.",
+    "summary": "Data centers keep expanding as their power costs draw policy attention.",
+    "risk": "Construction spending, site counts, electricity CPI and legislation use different sources; none guarantees another. Ohio and electricity contracts have thin historical volume.",
+    "rows": [
+      {
+        "ticker": "KXDATACENTCON-26NOV02-T90.0",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "U.S. private data-center construction spending exceeds $90B."
+      },
+      {
+        "ticker": "KXDATACENTCON-26NOV02-T92.5",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "A higher construction-spending threshold adds upside."
+      },
+      {
+        "ticker": "KXOHDATACENTERS-26DEC31-T305",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Ohio has at least 305 data centers by year-end."
+      },
+      {
+        "ticker": "KXRATEPAYERLAW-26SEP-YES",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "Power-cost standards for data centers become law before 2027."
+      },
+      {
+        "ticker": "KXCPIELECYOY-26DEC10-T4.2",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "U.S. electricity prices rise more than 4.2% year over year in November."
+      }
+    ],
+    "username": "demo_gridatlas"
+  },
+  {
+    "name": "Buffalo finally finishes the job",
+    "domain": "Sports / NFL",
+    "thesis": "Buffalo converts another strong regular season into an AFC title and Super Bowl win.",
+    "summary": "The Bills win at least 12 games, take the AFC East, and make a Super Bowl run.",
+    "risk": "Regular-season and postseason legs overlap; the Super Bowl leg remains a low-probability outcome. Football injuries and changing quotes can shift the basket quickly.",
+    "rows": [
+      {
+        "ticker": "KXNFLWINS-27BUF-12",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Twelve wins mark a strong season."
+      },
+      {
+        "ticker": "KXNFLAFCEAST-27-BUF",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "An AFC East title secures a strong postseason path."
+      },
+      {
+        "ticker": "KXNFLPLAYOFF-27-BUF",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "A playoff berth is necessary for the title run."
+      },
+      {
+        "ticker": "KXNFLAFCCHAMP-27-BUF",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "An AFC crown reaches the Super Bowl."
+      },
+      {
+        "ticker": "KXSB-27-BUF",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "A championship completes the thesis."
+      }
+    ],
+    "username": "demo_fourthdown"
+  },
+  {
+    "name": "Arsenal chases silverware on two fronts",
+    "domain": "Sports / Soccer",
+    "thesis": "Arsenal stays near the top of the Premier League and makes deep domestic and European trophy runs in 2026–27.",
+    "summary": "Arsenal finishes in the Premier League top two and contends for three major trophies.",
+    "risk": "The Premier League top-two and title legs overlap, while simultaneous cup wins are difficult. Quotes and eligible competitions should be rechecked before trading.",
+    "rows": [
+      {
+        "ticker": "KXEPLTOP-27TOP2-ARS",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "A top-two league finish signals sustained title contention."
+      },
+      {
+        "ticker": "KXPREMIERLEAGUE-27-ARS",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "The Premier League title is the main domestic outcome."
+      },
+      {
+        "ticker": "KXFACUP-27-ARS",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The FA Cup adds a second domestic trophy path."
+      },
+      {
+        "ticker": "KXUCLTOP-27-ARS",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Finishing atop the Champions League league phase shows European strength."
+      },
+      {
+        "ticker": "KXUCL-27-ARS",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The Champions League title completes the European leg."
+      }
+    ],
+    "username": "demo_northbank"
+  },
+  {
+    "name": "Edmonton pushes for the Stanley Cup",
+    "domain": "Sports / NHL",
+    "thesis": "The Oilers turn a strong 2026–27 regular season into a Western Conference and Stanley Cup run.",
+    "summary": "Edmonton tops 105 points, wins the Pacific, and contests the Cup.",
+    "risk": "The regular-season and postseason legs are correlated; a Cup outcome is much less likely than a playoff berth. Check depth and quotes before trading.",
+    "rows": [
+      {
+        "ticker": "KXNHLSEASONPTS-27EDM-105",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "At least 105 regular-season points signals contender-level form."
+      },
+      {
+        "ticker": "KXNHLPACIFIC-27-EDM",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "A Pacific Division win creates a stronger playoff path."
+      },
+      {
+        "ticker": "KXNHLPRES-27-EDM",
+        "side": "YES",
+        "weight": 10,
+        "rationale": "The league-best record expresses the upper end of the thesis."
+      },
+      {
+        "ticker": "KXNHLPLAYOFF-27-EDM",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "A playoff berth is necessary to chase the Cup."
+      },
+      {
+        "ticker": "KXNHLWEST-27-EDM",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "A Western Conference title puts Edmonton in the final."
+      },
+      {
+        "ticker": "KXNHL-27-EDM",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "The Stanley Cup completes the thesis."
+      }
+    ],
+    "username": "demo_iceorange"
+  },
+  {
+    "name": "Toronto shocks the East",
+    "domain": "Sports / NHL",
+    "thesis": "Toronto rebounds in 2026–27, makes the playoffs, and exceeds expectations in the East.",
+    "summary": "The Maple Leafs reach 105 points, win the Atlantic and East, and contend for the Cup.",
+    "risk": "The division, conference, and Cup outcomes are long shots, and some season-point contracts have low historical volume. These legs are highly correlated.",
+    "rows": [
+      {
+        "ticker": "KXNHLSEASONPTS-27TOR-105",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "At least 105 points would be a strong rebound."
+      },
+      {
+        "ticker": "KXNHLPLAYOFF-27-TOR",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The playoff berth is the base of the run."
+      },
+      {
+        "ticker": "KXNHLATLANTIC-27-TOR",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Winning the Atlantic makes the rebound emphatic."
+      },
+      {
+        "ticker": "KXNHLEAST-27-TOR",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The East title means a Cup Final appearance."
+      },
+      {
+        "ticker": "KXNHL-27-TOR",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "A Stanley Cup would complete the upset scenario."
+      }
+    ],
+    "username": "demo_iceblue"
+  },
+  {
+    "name": "Oklahoma City stays atop the NBA",
+    "domain": "Sports / NBA",
+    "thesis": "Oklahoma City repeats its elite 2026–27 regular season and converts it into another championship run.",
+    "summary": "The Thunder win at least 60 games, take the West, and win the NBA title.",
+    "risk": "The two wins thresholds overlap, and every postseason leg depends on sustained team health. The best-record and championship outcomes are not guaranteed by a strong regular season.",
+    "rows": [
+      {
+        "ticker": "KXNBAWINS-27OKC-60",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Sixty wins establishes another elite regular season."
+      },
+      {
+        "ticker": "KXNBAWINS-27OKC-65",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Sixty-five wins tests a more dominant campaign."
+      },
+      {
+        "ticker": "KXNBARECORD-27BEST-OKC",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The best NBA record captures league-wide dominance."
+      },
+      {
+        "ticker": "KXNBAWEST-27-OKC",
+        "side": "YES",
+        "weight": 25,
+        "rationale": "The Western Conference title reaches the Finals."
+      },
+      {
+        "ticker": "KXNBA-27-OKC",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "An NBA title completes the thesis."
+      }
+    ],
+    "username": "demo_thunderlane"
+  },
+  {
+    "name": "Detroit wins the NFC",
+    "domain": "Sports / NFL",
+    "thesis": "Detroit turns a strong 2026 season into an NFC championship and Super Bowl run.",
+    "summary": "The Lions win at least 11 games, take the NFC North, and reach the Super Bowl.",
+    "risk": "The wins, division, playoff, and conference outcomes overlap; the Super Bowl is a long shot. Injuries and roster changes can move all legs together.",
+    "rows": [
+      {
+        "ticker": "KXNFLWINS-27DET-11",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Eleven wins indicate a strong regular season."
+      },
+      {
+        "ticker": "KXNFLNFCNORTH-27-DET",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The division title improves playoff seeding."
+      },
+      {
+        "ticker": "KXNFLPLAYOFF-27-DET",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "A playoff berth starts the postseason path."
+      },
+      {
+        "ticker": "KXNFLNFCCHAMP-27-DET",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The NFC title puts Detroit in the Super Bowl."
+      },
+      {
+        "ticker": "KXSB-27-DET",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "A Super Bowl title is the upside outcome."
+      }
+    ],
+    "username": "demo_motorcity"
+  },
+  {
+    "name": "The Odyssey sweeps major Oscars",
+    "domain": "Entertainment / Film",
+    "thesis": "The Odyssey emerges as a leading 2027 Oscar film across picture, directing, acting, and craft categories.",
+    "summary": "The Odyssey wins Best Picture and several major film awards.",
+    "risk": "Oscar categories are correlated and each winner is decided separately. Matt Damon and Christopher Nolan award markets are person-specific and could settle Yes for another film; check rules and quotes before trading. The director and actor contracts follow the person, so a win for another film could settle those legs Yes.",
+    "rows": [
+      {
+        "ticker": "KXOSCARPIC-27-ODY",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Best Picture is the central award outcome."
+      },
+      {
+        "ticker": "KXOSCARDIR-27-CHRI",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Christopher Nolan winning Best Director supports a broad film sweep."
+      },
+      {
+        "ticker": "KXOSCARACTO-27-MATT",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Matt Damon winning Best Actor adds an acting award."
+      },
+      {
+        "ticker": "KXOSCARSCORE-27-ODY",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Original Score captures a craft win."
+      },
+      {
+        "ticker": "KXOSCARCINE-27-ODY",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Cinematography captures another craft win."
+      },
+      {
+        "ticker": "KXOSCARASPLAY-27-ODY",
+        "side": "YES",
+        "weight": 15,
+        "rationale": "Adapted Screenplay broadens the awards profile."
+      }
+    ],
+    "username": "demo_filmreel"
+  },
+  {
+    "name": "Psychedelic therapies reach FDA approval",
+    "domain": "Health / Drug approvals",
+    "thesis": "At least one psychedelic treatment gains FDA approval by 2027, with COMP360 and MDMA-related approvals progressing over the following years.",
+    "summary": "Psychedelic therapies move from trials toward FDA approval.",
+    "risk": "Approval dates are uncertain and deadlines overlap. The general psychedelic approval market and drug-specific markets may settle under different definitions.",
+    "rows": [
+      {
+        "ticker": "KXFDAAPPROVALPSYCHEDELIC-27-ANYPSYCH",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Any psychedelic approval before 2027 is the earliest catalyst."
+      },
+      {
+        "ticker": "KXFDAAPPROVALDATECMPS-360-27MAR01",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "COMP360 approval by March 2027 marks early progress."
+      },
+      {
+        "ticker": "KXFDAAPPROVALDATECMPS-360-27OCT01",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "COMP360 approval by October 2027 allows more development time."
+      },
+      {
+        "ticker": "KXFDAAPPROVE-MDMA-28JAN01",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "MDMA approval before 2028 broadens the treatment class."
+      },
+      {
+        "ticker": "KXFDAAPPROVE-MDMA-30JAN01",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "MDMA approval before 2030 captures a longer regulatory path."
+      }
+    ],
+    "username": "demo_healthhorizon"
+  },
+  {
+    "name": "Starbucks store and traffic recovery",
+    "domain": "Consumer / Retail",
+    "thesis": "Starbucks expands its store base and reports stronger customer transactions in fiscal 2026 and early 2027.",
+    "summary": "Starbucks reports more stores, more staff, and stronger comparable transactions.",
+    "risk": "Store-count and transaction metrics use different periods; staffing is an imperfect proxy for demand. Some company KPI markets have lower volume than headline sports markets.",
+    "rows": [
+      {
+        "ticker": "KXSBUXA-28JANSTORES-41600",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "More than 41,600 global stores measures footprint expansion."
+      },
+      {
+        "ticker": "KXSBUXA-28JANCOMPTXN-5",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Above 5% comparable transaction growth signals customer demand."
+      },
+      {
+        "ticker": "KXSBUXA-26NOVHEAD-368000",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "More than 368,000 staff reflects operating scale."
+      },
+      {
+        "ticker": "KXSBUX-27JANTXGRW-7.0",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Above 7% Q1 2027 transaction growth extends the recovery."
+      },
+      {
+        "ticker": "KXSBUX-27JANSTORES-41500",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "The Q1 2027 store count gives a second expansion checkpoint."
+      }
+    ],
+    "username": "demo_cupcounter"
+  },
+  {
+    "name": "Project Hail Mary breaks through at the Oscars",
+    "domain": "Entertainment / Film",
+    "thesis": "Project Hail Mary converts its audience success into 2027 Oscar wins across picture, acting, and craft categories.",
+    "summary": "Project Hail Mary competes for Best Picture, Ryan Gosling for Best Actor, and wins across craft categories.",
+    "risk": "Several award legs are low-probability and correlated through the film’s overall awards reception. Ryan Gosling’s award contract is person-specific, so it could settle Yes for another film.",
+    "rows": [
+      {
+        "ticker": "KXOSCARPIC-27-PRO",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Best Picture is the main breakthrough outcome."
+      },
+      {
+        "ticker": "KXOSCARACTO-27-RYA",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Ryan Gosling winning Best Actor supports the film’s awards run."
+      },
+      {
+        "ticker": "KXOSCARSCORE-27-PRO",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Original Score adds a craft win."
+      },
+      {
+        "ticker": "KXOSCARCINE-27-PRO",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Cinematography adds visual recognition."
+      },
+      {
+        "ticker": "KXOSCARASPLAY-27-PRO",
+        "side": "YES",
+        "weight": 20,
+        "rationale": "Adapted Screenplay captures the source-material adaptation."
+      }
+    ],
+    "username": "demo_stargazer"
+  }
+]

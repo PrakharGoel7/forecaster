@@ -76,10 +76,13 @@ export default function BasketSharePage() {
   function shareToX() {
     if (!basket) return;
     const url = `${window.location.origin}/baskets/${basket.id}`;
-    const isEditorial = (() => { try { return !!JSON.parse(basket.basket_json).editorial_hypothetical; } catch { return false; } })();
+    const metadata: PredictionBasket = (() => { try { return JSON.parse(basket.basket_json); } catch { return {} as PredictionBasket; } })();
+    const isEditorial = !!metadata.editorial_hypothetical;
     const text = isEditorial
       ? `"${basket.title}" — a hypothetical Prism editorial concept, not endorsed by the person named`
-      : `"${basket.title}" — my prediction market portfolio on @prismforecaster`;
+      : metadata.demo_basket?.created_by === "Prism"
+        ? `"${basket.title}" — a sample prediction market basket created by Prism`
+        : `"${basket.title}" — my prediction market portfolio on @prismforecaster`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank");
   }
 
@@ -212,6 +215,9 @@ export default function BasketSharePage() {
             {parsedBasket.editorial_hypothetical && (
               <span style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700 }}>Market selections by Prism</span>
             )}
+            {parsedBasket.demo_basket?.created_by === "Prism" && (
+              <span style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700 }}>Sample basket by Prism</span>
+            )}
           </div>
         )}
         <p style={{ color: "#6e675f", fontSize: 17, lineHeight: 1.65, margin: "0 0 26px", maxWidth: 780 }}>
@@ -312,7 +318,7 @@ export default function BasketSharePage() {
 
         {basket.thesis_notes && !parsedBasket.editorial_hypothetical && (
           <section style={sectionStyle}>
-            <div style={sectionTitleStyle}>Creator&apos;s Notes</div>
+            <div style={sectionTitleStyle}>{parsedBasket.demo_basket ? "About this sample" : "Creator's Notes"}</div>
             <div style={{ color: "#3a3530", lineHeight: 1.8, whiteSpace: "pre-wrap", fontSize: 15 }}>
               {basket.thesis_notes}
             </div>
@@ -772,6 +778,9 @@ async function generateShareImage(basket: SavedBasket, parsedBasket: PredictionB
   ctx.fillStyle = "#9b9390";
   ctx.font = "20px monospace";
   ctx.fillText("PREDICTION MARKET ETF", PAD + 18, PAD + 58);
+  if (parsedBasket.demo_basket?.created_by === "Prism") {
+    ctx.fillText("SAMPLE BASKET BY PRISM", PAD + 18, PAD + 89);
+  }
 
   // Divider
   ctx.fillStyle = "rgba(0,0,0,0.08)";

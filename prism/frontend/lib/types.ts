@@ -239,6 +239,9 @@ export interface PredictionBasket {
     inspiration_person: string;
     source_url: string;
   };
+  demo_basket?: {
+    created_by: "Prism";
+  };
   basket_quality?: "direct" | "strong_proxy" | "mixed_proxy" | "thin_market_coverage";
   basket_quality_explanation?: string;
   basket_buckets?: {
@@ -314,7 +317,7 @@ export interface UserProfile {
   user_id: string;
   username: string;
   display_name?: string | null;
-  profile_kind?: "member" | "curated";
+  profile_kind?: "member" | "curated" | "demo";
   created_at: string;
   bio?: string;
   domain_tags?: string[];
@@ -329,7 +332,7 @@ export interface Creator {
   user_id: string;
   username: string;
   display_name?: string | null;
-  profile_kind?: "member" | "curated";
+  profile_kind?: "member" | "curated" | "demo";
   created_at: string;
   bio?: string;
   domain_tags?: string[];

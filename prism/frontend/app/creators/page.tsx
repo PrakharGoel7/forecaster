@@ -52,6 +52,9 @@ function CreatorCard({ creator }: { creator: Creator }) {
             <div style={{ color: "#4f46e5", fontSize: 14, fontWeight: 700, marginBottom: 2 }}>
               {creator.display_name || `@${creator.username}`}
             </div>
+            {creator.profile_kind === "demo" && (
+              <div style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Sample profile · created by Prism</div>
+            )}
             {creator.display_name && <div style={{ color: "#9b9390", fontSize: 11, marginBottom: 4 }}>@{creator.username}</div>}
             {creator.bio && (
               <div style={{

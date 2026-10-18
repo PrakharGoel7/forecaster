@@ -47,6 +47,7 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
   const holdingsCount = parsed?.holdings?.length ?? 0;
   const quality = parsed?.basket_quality;
   const editorial = parsed?.editorial_hypothetical;
+  const isDemo = parsed?.demo_basket?.created_by === "Prism";
   const hasPersonProfile = Boolean(editorial && basket.display_name && basket.user_id !== "prism:editorial");
   const authorName = hasPersonProfile ? basket.display_name : editorial ? `Inspired by ${editorial.inspiration_person}` : basket.display_name || (basket.username ? `@${basket.username}` : "Prism");
   const color = avatarColor(basket.id);
@@ -93,7 +94,7 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
                 {authorName}
               </div>
               <div style={{ color: "#a8a29a", fontSize: 11, lineHeight: 1.2 }}>
-                {editorial ? `Market selections by Prism · ${timeAgo(basket.created_at)}` : timeAgo(basket.created_at)}
+                {editorial ? `Market selections by Prism · ${timeAgo(basket.created_at)}` : isDemo ? `Sample basket by Prism · ${timeAgo(basket.created_at)}` : timeAgo(basket.created_at)}
               </div>
             </div>
           </div>

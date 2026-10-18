@@ -139,6 +139,7 @@ export default function HomePage() {
                         </div>
                         <div>
                           <div style={{ color: "#4f46e5", fontSize: 13, fontWeight: 700 }}>{c.display_name || `@${c.username}`}</div>
+                          {c.profile_kind === "demo" && <div style={{ color: "#7c3aed", fontSize: 10, fontWeight: 700 }}>Sample profile</div>}
                           <div style={{ color: "#9b9390", fontSize: 11 }}>{c.follower_count} follower{c.follower_count !== 1 ? "s" : ""} · {c.basket_count} ths.</div>
                         </div>
                       </div>

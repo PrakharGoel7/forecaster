@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import time
+from urllib.error import HTTPError
 from urllib.request import urlopen
 
 import psycopg2
@@ -38,13 +40,25 @@ MARKET_API = "https://api.elections.kalshi.com/trade-api/v2/markets/"
 
 
 def fetch_market(ticker: str) -> dict:
-    with urlopen(MARKET_API + ticker, timeout=20) as response:
-        return json.load(response)["market"]
+    for attempt in range(6):
+        try:
+            with urlopen(MARKET_API + ticker, timeout=20) as response:
+                return json.load(response)["market"]
+        except HTTPError as error:
+            if error.code != 429 or attempt == 5:
+                raise
+            retry_after = error.headers.get("Retry-After")
+            try:
+                delay = float(retry_after) if retry_after else min(2 ** attempt, 16)
+            except ValueError:
+                delay = min(2 ** attempt, 16)
+            time.sleep(min(max(delay, 1), 60))
+    raise RuntimeError(f"Could not fetch {ticker}")
 
 
-def check_markets(baskets: list[dict]) -> dict[str, dict]:
+def check_markets(baskets: list[dict], max_workers: int = 8) -> dict[str, dict]:
     tickers = sorted({row["ticker"] for basket in baskets for row in basket["rows"]})
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
         markets = dict(zip(tickers, pool.map(fetch_market, tickers)))
     now = datetime.now(timezone.utc)
     for basket in baskets:

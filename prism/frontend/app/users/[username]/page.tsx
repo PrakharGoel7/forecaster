@@ -182,6 +182,11 @@ export default function UserProfilePage() {
                 }}>
                   {profile.display_name || `@${profile.username}`}
                 </h1>
+                {profile.profile_kind === "demo" && (
+                  <span style={{ color: "#7c3aed", background: "#f5f3ff", borderRadius: 999, padding: "4px 9px", fontSize: 11, fontWeight: 700 }}>
+                    Sample profile
+                  </span>
+                )}
                 {/* Follow / Edit button */}
                 {isOwnProfile ? (
                   <button onClick={openEdit} style={ghostBtnStyle}>
@@ -204,7 +209,7 @@ export default function UserProfilePage() {
               </div>
 
               <div style={{ color: "#9b9390", fontSize: 12, fontFamily: "var(--font-mono), monospace", marginBottom: profile.bio ? 10 : 0 }}>
-                {profile.display_name ? `@${profile.username} · ` : ""}{profile.profile_kind === "curated" ? "Profile created" : "Joined"} {joinedDate}
+                {profile.display_name ? `@${profile.username} · ` : ""}{profile.profile_kind === "curated" || profile.profile_kind === "demo" ? "Profile created" : "Joined"} {joinedDate}
               </div>
 
               {profile.bio && (
