@@ -210,7 +210,7 @@ export default function BasketSharePage() {
               {basket.display_name || `@${basket.username}`}
             </Link>
             {parsedBasket.editorial_hypothetical && (
-              <span style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700 }}>Prism-curated</span>
+              <span style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700 }}>Market selections by Prism</span>
             )}
           </div>
         )}

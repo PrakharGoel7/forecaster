@@ -16,7 +16,9 @@ function avatarColor(seed: string): string {
 
 function CreatorCard({ creator }: { creator: Creator }) {
   const color = avatarColor(creator.username);
-  const tags: string[] = Array.isArray(creator.domain_tags) ? creator.domain_tags : [];
+  const tags: string[] = Array.isArray(creator.domain_tags)
+    ? creator.domain_tags.filter(tag => tag !== "Prism-curated concepts")
+    : [];
 
   return (
     <Link href={`/users/${creator.username}`} style={{ textDecoration: "none", display: "block" }}>
@@ -51,7 +53,6 @@ function CreatorCard({ creator }: { creator: Creator }) {
               {creator.display_name || `@${creator.username}`}
             </div>
             {creator.display_name && <div style={{ color: "#9b9390", fontSize: 11, marginBottom: 4 }}>@{creator.username}</div>}
-            {creator.profile_kind === "curated" && <div style={{ color: "#7c3aed", fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Prism-curated profile</div>}
             {creator.bio && (
               <div style={{
                 color: "#6e675f", fontSize: 13, lineHeight: 1.5,
@@ -124,7 +125,7 @@ export default function CreatorsPage() {
             Creators & curated concepts
           </h1>
           <p style={{ color: "#6e675f", fontSize: 16, lineHeight: 1.65, margin: "0 0 24px", maxWidth: 560 }}>
-            Explore community creators and Prism-curated concept profiles across sports, culture, markets, and more.
+            Explore public profiles and prediction market themes across sports, culture, markets, and more.
           </p>
           <input
             type="text"

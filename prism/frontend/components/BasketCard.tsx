@@ -93,11 +93,11 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
                 {authorName}
               </div>
               <div style={{ color: "#a8a29a", fontSize: 11, lineHeight: 1.2 }}>
-                {editorial ? `Prism-curated concept · ${timeAgo(basket.created_at)}` : timeAgo(basket.created_at)}
+                {editorial ? `Market selections by Prism · ${timeAgo(basket.created_at)}` : timeAgo(basket.created_at)}
               </div>
             </div>
           </div>
-          <span style={{
+          {basket.mode !== "manual" && <span style={{
             fontFamily: "var(--font-mono), monospace",
             fontSize: 10,
             color: "#6e675f",
@@ -109,15 +109,10 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
             letterSpacing: "0.1em",
           }}>
             {modeLabel(basket.mode)}
-          </span>
+          </span>}
         </div>
 
         {/* Title */}
-        {editorial && (
-          <div style={{ color: "#7c3aed", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-            Hypothetical · market selections by Prism
-          </div>
-        )}
         <div style={{
           color: "#1c1814",
           fontSize: 16,

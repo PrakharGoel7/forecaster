@@ -143,7 +143,9 @@ export default function UserProfilePage() {
   const color = avatarColor(profile.username);
   const joinedDate = new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const isOwnProfile = myUserId === profile.user_id;
-  const tags: string[] = Array.isArray(profile.domain_tags) ? profile.domain_tags : [];
+  const tags: string[] = Array.isArray(profile.domain_tags)
+    ? profile.domain_tags.filter(tag => tag !== "Prism-curated concepts")
+    : [];
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8f6f2", position: "relative" }}>
@@ -180,7 +182,6 @@ export default function UserProfilePage() {
                 }}>
                   {profile.display_name || `@${profile.username}`}
                 </h1>
-                {profile.profile_kind === "curated" && <span style={{ color: "#7c3aed", fontSize: 12, fontWeight: 700 }}>Prism-curated profile</span>}
                 {/* Follow / Edit button */}
                 {isOwnProfile ? (
                   <button onClick={openEdit} style={ghostBtnStyle}>
@@ -203,7 +204,7 @@ export default function UserProfilePage() {
               </div>
 
               <div style={{ color: "#9b9390", fontSize: 12, fontFamily: "var(--font-mono), monospace", marginBottom: profile.bio ? 10 : 0 }}>
-                {profile.display_name ? `@${profile.username} · ` : ""}{profile.profile_kind === "curated" ? "Prism profile created" : "Joined"} {joinedDate}
+                {profile.display_name ? `@${profile.username} · ` : ""}{profile.profile_kind === "curated" ? "Profile created" : "Joined"} {joinedDate}
               </div>
 
               {profile.bio && (
