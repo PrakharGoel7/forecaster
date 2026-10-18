@@ -4,9 +4,9 @@ import styles from "./CreatorHeroGallery.module.css";
 
 const portraits = [
   { name: "Ray Dalio", username: "ray_dalio", image: "/creators/ray-dalio.png", position: "ray" },
-  { name: "Kara Swisher", username: "kara_swisher", image: "/creators/kara-swisher.png", position: "kara" },
-  { name: "Andrew Yang", username: "andrew_yang", image: "/creators/andrew-yang.png", position: "andrew" },
-  { name: "Scott Galloway", username: "scott_galloway", image: "/creators/scott-galloway.png", position: "scott" },
+  { name: "Bryson DeChambeau", username: "bryson_dechambeau", image: "/creators/bryson-dechambeau.png", position: "bryson" },
+  { name: "Luka Modrić", username: "luka_modric", image: "/creators/luka-modric.png", position: "luka" },
+  { name: "José Alvarado", username: "jose_alvarado", image: "/creators/jose-alvarado.png", position: "jose" },
   { name: "Bill Gates", username: "bill_gates", image: "/creators/bill-gates.png", position: "bill" },
   { name: "Mark Cuban", username: "mark_cuban", image: "/creators/mark-cuban.png", position: "mark" },
 ] as const;
@@ -29,7 +29,7 @@ export function CreatorHeroGallery() {
             fill
             sizes="(max-width: 760px) 35vw, 180px"
             className={styles.image}
-            priority={position === "bill" || position === "mark" || position === "scott"}
+            priority={position === "bill" || position === "mark" || position === "jose"}
           />
         </Link>
       ))}
