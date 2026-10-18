@@ -70,11 +70,6 @@ def assign(database_url: str, dry_run: bool = False) -> list[tuple[int, str, str
                 domains = {item["person"]: item["domain"] for item in baskets}
                 now = datetime.now(timezone.utc).isoformat()
                 for person, handle in HANDLES.items():
-                    bio = (
-                        "Prism-managed profile. The baskets here are hypothetical concepts "
-                        f"inspired by {person}'s public work. Prism selected the markets; "
-                        f"{person} did not create, review, or endorse those positions."
-                    )
                     cur.execute(
                         """INSERT INTO profiles
                            (user_id, username, created_at, display_name, profile_kind, bio, domain_tags)
@@ -84,7 +79,7 @@ def assign(database_url: str, dry_run: bool = False) -> list[tuple[int, str, str
                              profile_kind=EXCLUDED.profile_kind,
                              bio=EXCLUDED.bio,
                              domain_tags=EXCLUDED.domain_tags""",
-                        (profile_id(handle), handle, now, person, "curated", bio,
+                        (profile_id(handle), handle, now, person, "curated", None,
                          json.dumps([domains[person], "Prism-curated concepts"])),
                     )
                 for basket_id, _, handle in plan:

@@ -217,6 +217,11 @@ export default function BasketSharePage() {
         <p style={{ color: "#6e675f", fontSize: 17, lineHeight: 1.65, margin: "0 0 26px", maxWidth: 780 }}>
           {basket.summary}
         </p>
+        {parsedBasket.editorial_hypothetical && (
+          <p style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.6, margin: "-12px 0 24px", maxWidth: 780 }}>
+            Prism selected the markets in this hypothetical basket. {parsedBasket.editorial_hypothetical.inspiration_person} did not create, review, or endorse these positions.
+          </p>
+        )}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
           <Tag>{basket.mode}</Tag>
           <Tag>{parsedBasket.holdings.length} positions</Tag>

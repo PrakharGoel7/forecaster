@@ -80,8 +80,7 @@ def publish(baskets: list[dict], markets: dict[str, dict], dry_run: bool,
                     if curated_profiles:
                         handle = CURATED_HANDLES[person]
                         owner_id = f"prism:curated:{handle}"
-                        bio = (f"Prism-managed profile. The baskets here are hypothetical concepts inspired by {person}'s public work. "
-                               f"Prism selected the markets; {person} did not create, review, or endorse these positions.")
+                        bio = None
                         profile_kind, display_name = "curated", person
                     else:
                         handle, owner_id = USERNAME, PROFILE_ID
