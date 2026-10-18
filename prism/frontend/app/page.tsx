@@ -5,8 +5,10 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
 import { BasketCard } from "@/components/BasketCard";
+import { CreatorHeroGallery } from "@/components/CreatorHeroGallery";
 import { listPublicBaskets, getCreators } from "@/lib/api";
 import type { SavedBasket, Creator } from "@/lib/types";
+import styles from "./home.module.css";
 
 function avatarColor(seed: string): string {
   const palette = ["#4f46e5", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
@@ -32,7 +34,8 @@ export default function HomePage() {
 
       {/* ── Hero ── */}
       <div style={{ position: "relative", zIndex: 10, maxWidth: 1140, margin: "0 auto", padding: "120px 24px 80px" }}>
-        <div style={{ maxWidth: 700, marginBottom: 52 }}>
+        <div className={styles.hero}>
+        <div className={styles.heroCopy}>
           <div style={eyebrowStyle}>Prism</div>
           <h1 style={{
             color: "#1c1814",
@@ -57,6 +60,8 @@ export default function HomePage() {
               Build your own
             </Link>
           </div>
+        </div>
+        <CreatorHeroGallery />
         </div>
 
         {/* ── Basket feed ── */}
