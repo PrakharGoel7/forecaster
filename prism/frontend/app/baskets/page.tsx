@@ -48,12 +48,12 @@ export default function BasketsPage() {
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, maxWidth: 1200, margin: "0 auto", padding: "110px 24px 80px" }}>
         <div style={{ marginBottom: 36 }}>
-          <div style={eyebrowStyle}>Community</div>
+          <div style={eyebrowStyle}>Theses</div>
           <h1 style={{ color: "#1c1814", fontSize: "clamp(32px, 5vw, 56px)", lineHeight: 1.02, letterSpacing: "-0.05em", margin: "0 0 12px" }}>
-            What people are betting on
+            Explore prediction market theses
           </h1>
           <p style={{ color: "#6e675f", fontSize: 17, lineHeight: 1.65, margin: 0, maxWidth: 600 }}>
-            Browse prediction market theses from the Prism community.
+            Browse public baskets and the outcomes they track.
           </p>
         </div>
 

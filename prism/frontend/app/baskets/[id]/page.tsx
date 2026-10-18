@@ -235,17 +235,19 @@ export default function BasketSharePage() {
           getBasket(basket.id, myToken ?? undefined).then(setBasket).catch(() => {});
         }} />}
 
-        <section style={sectionStyle}>
-          <div style={sectionTitleStyle}>Thesis</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 18 }}>
-            <EditorialField label="Resolution Target" value={beliefSummary?.resolution_target || "—"} />
-            <EditorialField label="Mechanism" value={
-              Array.isArray(beliefSummary?.mechanism)
-                ? (beliefSummary.mechanism as string[]).join(" • ")
-                : (beliefSummary?.mechanism || "—")
-            } />
-          </div>
-        </section>
+        {!parsedBasket.editorial_hypothetical && (
+          <section style={sectionStyle}>
+            <div style={sectionTitleStyle}>Thesis</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 18 }}>
+              <EditorialField label="Resolution Target" value={beliefSummary?.resolution_target || "—"} />
+              <EditorialField label="Mechanism" value={
+                Array.isArray(beliefSummary?.mechanism)
+                  ? (beliefSummary.mechanism as string[]).join(" • ")
+                  : (beliefSummary?.mechanism || "—")
+              } />
+            </div>
+          </section>
+        )}
 
         <section style={sectionStyle}>
           <div style={sectionTitleStyle}>Holdings</div>

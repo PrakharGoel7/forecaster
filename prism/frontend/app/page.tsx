@@ -62,7 +62,7 @@ export default function HomePage() {
         {/* ── Basket feed ── */}
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <div style={eyebrowStyle}>Latest theses from the community</div>
+            <div style={eyebrowStyle}>Latest theses</div>
             <Link href="/baskets" style={{ color: "#6e675f", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               View all
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
