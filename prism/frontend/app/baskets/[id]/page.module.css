@@ -109,6 +109,58 @@
   margin: 12px 0 0;
 }
 
+.thesisTradeGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: stretch;
+  gap: 16px;
+  margin: 0 0 20px;
+}
+
+.thesisCard {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.thesisHeading {
+  color: #1c1814;
+  font-size: 22px;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+  margin: 0 0 12px;
+}
+
+.thesisStatement {
+  color: #3a3530;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.thesisTarget {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  margin-top: 20px;
+  padding-top: 16px;
+}
+
+.thesisTarget span {
+  color: #8b837c;
+  font: 11px var(--font-mono), monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.thesisTarget p {
+  color: #6e675f;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 7px 0 0;
+}
+
 .holdingsList {
   display: grid;
   gap: 8px;
@@ -209,4 +261,8 @@
   .holdingQuestion { font-size: 14px; }
   .holdingWeight strong { font-size: 18px; }
   .holdingWeight span { font-size: 9px; }
+}
+
+@media (max-width: 760px) {
+  .thesisTradeGrid { grid-template-columns: 1fr; }
 }

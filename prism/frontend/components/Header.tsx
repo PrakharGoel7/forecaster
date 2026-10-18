@@ -21,7 +21,7 @@ const NAV_AUTHED = [
   { href: "/feed",      label: "Feed"     },
 ];
 
-export default function Header() {
+export default function Header({ signInRequest = 0 }: { signInRequest?: number }) {
   const path = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -41,6 +41,16 @@ export default function Header() {
   const [pendingToken, setPendingToken] = useState<string | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [welcomeUsername, setWelcomeUsername] = useState("");
+
+  useEffect(() => {
+    if (!signInRequest) return;
+    setShowModal(true);
+    setMode("signin");
+    setEmail("");
+    setPassword("");
+    setError("");
+    setSuccess("");
+  }, [signInRequest]);
 
   useEffect(() => {
     if (!supabase) return;

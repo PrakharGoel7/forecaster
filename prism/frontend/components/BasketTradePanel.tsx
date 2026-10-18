@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { executeBasketTrade, getKalshiCredentials, previewBasketTrade } from "@/lib/api";
 import type { TradeExecution, TradePreview } from "@/lib/types";
+import styles from "./BasketTradePanel.module.css";
 
 const money = (value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -16,7 +17,7 @@ function errorMessage(error: unknown): string {
   return error.message;
 }
 
-export function BasketTradePanel({ basketId, token, onExecution }: { basketId: number; token: string | null; onExecution?: () => void }) {
+export function BasketTradePanel({ basketId, token, onExecution, onSignIn }: { basketId: number; token: string | null; onExecution?: () => void; onSignIn: () => void }) {
   const [amount, setAmount] = useState("100");
   const [connected, setConnected] = useState<boolean | null>(null);
   const [preview, setPreview] = useState<TradePreview | null>(null);
@@ -76,30 +77,35 @@ export function BasketTradePanel({ basketId, token, onExecution }: { basketId: n
   }
 
   return (
-    <section style={{ background: "#ffffff", border: "1px solid rgba(79,70,229,0.25)", borderRadius: 22, padding: 22, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginTop: 18 }}>
-      <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>Invest in this basket</div>
-      <div style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
-        Your amount is allocated across its markets. Live quotes determine whole contract counts and limit prices before you place orders.
-      </div>
+    <section className={styles.tradeCard}>
+      <div className={styles.tradeEyebrow}>Trade this thesis</div>
+      <h2 className={styles.tradeHeading}>Invest in this basket</h2>
       {!token ? (
-        <div style={{ color: "#6e675f", fontSize: 14 }}>Sign in to connect your Kalshi account and trade this basket.</div>
+        <div className={styles.tradeAction}>
+          <button type="button" onClick={onSignIn} className={styles.primaryAction}>Sign in to invest <span aria-hidden="true">→</span></button>
+        </div>
       ) : connected === false ? (
-        <div style={{ color: "#6e675f", fontSize: 14 }}>
-          Connect your Kalshi API credentials in <Link href="/account" style={{ color: "#4f46e5", fontWeight: 700 }}>Account settings</Link> to preview and place trades.
+        <div className={styles.tradeAction}>
+          <p className={styles.tradeHint}>Connect Kalshi to preview and place orders.</p>
+          <Link href="/account" className={styles.primaryAction}>Connect Kalshi <span aria-hidden="true">→</span></Link>
+        </div>
+      ) : connected === null ? (
+        <div className={styles.tradeAction}>
+          <p className={styles.tradeHint}>{error ? "Check your connection in Account settings." : "Checking your Kalshi connection…"}</p>
+          {error && <Link href="/account" className={styles.primaryAction}>Account settings <span aria-hidden="true">→</span></Link>}
         </div>
       ) : (
-        <>
-          <label htmlFor="basket-invest-amount" style={{ color: "#1c1814", fontWeight: 700, fontSize: 13, display: "block", marginBottom: 7 }}>Amount to invest (USD)</label>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <form className={styles.tradeAction} onSubmit={(event) => { event.preventDefault(); requestPreview(); }}>
+          <label htmlFor="basket-invest-amount" className={styles.amountLabel}>Investment amount</label>
+          <div className={styles.amountField}>
+            <span aria-hidden="true">$</span>
             <input id="basket-invest-amount" type="number" inputMode="decimal" min="1" step="0.01" value={amount}
-              onChange={(event) => { setAmount(event.target.value); setPreview(null); setExecution(null); }}
-              style={{ width: 170, padding: "11px 12px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.16)", color: "#1c1814", fontSize: 15 }} />
-            <button onClick={requestPreview} disabled={busy !== null || connected === null}
-              style={{ padding: "11px 18px", border: 0, borderRadius: 10, background: "#4f46e5", color: "#fff", fontWeight: 700, cursor: "pointer", opacity: busy || connected === null ? 0.6 : 1 }}>
-              {busy === "preview" ? "Getting live quote…" : "Preview orders"}
-            </button>
+              onChange={(event) => { setAmount(event.target.value); setPreview(null); setExecution(null); }} />
           </div>
-        </>
+          <button type="submit" disabled={busy !== null} className={styles.primaryAction}>
+            {busy === "preview" ? "Getting live quote…" : "Preview investment →"}
+          </button>
+        </form>
       )}
       {error && <div role="alert" style={{ marginTop: 12, color: "#b91c1c", fontSize: 13 }}>{error}</div>}
       {preview && (

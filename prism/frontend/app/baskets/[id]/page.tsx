@@ -30,6 +30,7 @@ export default function BasketSharePage() {
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const [myToken, setMyToken] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [signInRequest, setSignInRequest] = useState(0);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolveNote, setResolveNote] = useState("");
   const [resolveLoading, setResolveLoading] = useState(false);
@@ -181,7 +182,7 @@ export default function BasketSharePage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8f6f2", position: "relative" }}>
-      <Header />
+      <Header signInRequest={signInRequest} />
       <GridOverlay />
       <div style={{ position: "relative", zIndex: 10, maxWidth: 960, margin: "0 auto", padding: "110px 24px 80px" }}>
         <Link href="/baskets" style={{ color: "#9b9390", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 20 }}>
@@ -277,23 +278,22 @@ export default function BasketSharePage() {
           )}
         </section>
 
-        {!basket.resolved_at && <BasketTradePanel basketId={basket.id} token={myToken} onExecution={() => {
-          getBasket(basket.id, myToken ?? undefined).then(setBasket).catch(() => {});
-        }} />}
-
-        {!parsedBasket.editorial_hypothetical && (
-          <section style={sectionStyle}>
+        <div className={styles.thesisTradeGrid} style={basket.resolved_at ? { gridTemplateColumns: "1fr" } : undefined}>
+          <section className={styles.thesisCard}>
             <div style={sectionTitleStyle}>Thesis</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 18 }}>
-              <EditorialField label="Resolution Target" value={beliefSummary?.resolution_target || "—"} />
-              <EditorialField label="Mechanism" value={
-                Array.isArray(beliefSummary?.mechanism)
-                  ? (beliefSummary.mechanism as string[]).join(" • ")
-                  : (beliefSummary?.mechanism || "—")
-              } />
-            </div>
+            <h2 className={styles.thesisHeading}>What this basket predicts</h2>
+            <p className={styles.thesisStatement}>{beliefSummary?.core_belief || basket.core_belief || basket.summary}</p>
+            {beliefSummary?.resolution_target && beliefSummary.resolution_target !== (beliefSummary.core_belief || basket.core_belief || basket.summary) && (
+              <div className={styles.thesisTarget}>
+                <span>Resolution target</span>
+                <p>{beliefSummary.resolution_target}</p>
+              </div>
+            )}
           </section>
-        )}
+          {!basket.resolved_at && <BasketTradePanel basketId={basket.id} token={myToken} onSignIn={() => setSignInRequest((request) => request + 1)} onExecution={() => {
+            getBasket(basket.id, myToken ?? undefined).then(setBasket).catch(() => {});
+          }} />}
+        </div>
 
         <section style={sectionStyle}>
           <div style={sectionTitleStyle}>Holdings</div>
@@ -583,19 +583,6 @@ const sectionTitleStyle: React.CSSProperties = {
   fontFamily: "var(--font-mono), monospace",
   marginBottom: 12,
 };
-
-function EditorialField({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div style={{ color: "#9b9390", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--font-mono), monospace", marginBottom: 6 }}>
-        {label}
-      </div>
-      <div style={{ color: "#2e2924", fontSize: 15, lineHeight: 1.7 }}>
-        {value}
-      </div>
-    </div>
-  );
-}
 
 function formatCloseDate(value: string) {
   const date = new Date(value);
