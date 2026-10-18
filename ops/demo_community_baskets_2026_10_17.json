@@ -43,7 +43,8 @@
         "rationale": "Seattle exceeds two inches."
       }
     ],
-    "username": "demo_mossyline"
+    "username": "mossyline",
+    "profile_key": "demo_mossyline"
   },
   {
     "name": "Chinese AI challengers reach the frontier",
@@ -95,7 +96,8 @@
         "rationale": "Alibaba lands on the year-end Pareto frontier."
       }
     ],
-    "username": "demo_cirrus"
+    "username": "cirrus",
+    "profile_key": "demo_cirrus"
   },
   {
     "name": "OpenAI launches a clip-on wearable",
@@ -141,7 +143,8 @@
         "rationale": "The announcement is not a watch."
       }
     ],
-    "username": "demo_pocketfuture"
+    "username": "pocketfuture",
+    "profile_key": "demo_pocketfuture"
   },
   {
     "name": "Democrats win a broad Senate map",
@@ -187,7 +190,8 @@
         "rationale": "Democrats sweep Georgia, Michigan, North Carolina and Maine."
       }
     ],
-    "username": "demo_civicsignal"
+    "username": "civicsignal",
+    "profile_key": "demo_civicsignal"
   },
   {
     "name": "Israel adds new regional partners",
@@ -233,7 +237,8 @@
         "rationale": "At least two new countries normalize by the end of 2027."
       }
     ],
-    "username": "demo_crosswinds"
+    "username": "crosswinds",
+    "profile_key": "demo_crosswinds"
   },
   {
     "name": "Central-bank rate hikes spread globally",
@@ -279,7 +284,8 @@
         "rationale": "Australia raises rates by 1–25 basis points in November."
       }
     ],
-    "username": "demo_ratecascade"
+    "username": "ratecascade",
+    "profile_key": "demo_ratecascade"
   },
   {
     "name": "SpaceX keeps pushing Starship toward Mars",
@@ -325,7 +331,8 @@
         "rationale": "SpaceX exceeds 150 launches during 2026, a more ambitious annual cadence."
       }
     ],
-    "username": "demo_launchwatch"
+    "username": "launchwatch",
+    "profile_key": "demo_launchwatch"
   },
   {
     "name": "The U.S. returns astronauts to the Moon",
@@ -365,7 +372,8 @@
         "rationale": "Russia is not the next country to send humans to the Moon."
       }
     ],
-    "username": "demo_moonwalks"
+    "username": "moonwalks",
+    "profile_key": "demo_moonwalks"
   },
   {
     "name": "U.S. oil and gas output stays resilient",
@@ -411,7 +419,8 @@
         "rationale": "Pennsylvania marketed gas output exceeds 7.675792 Tcf."
       }
     ],
-    "username": "demo_wellhead"
+    "username": "wellhead",
+    "profile_key": "demo_wellhead"
   },
   {
     "name": "Data-center expansion meets power constraints",
@@ -451,7 +460,8 @@
         "rationale": "U.S. electricity prices rise more than 4.2% year over year in November."
       }
     ],
-    "username": "demo_gridatlas"
+    "username": "gridatlas",
+    "profile_key": "demo_gridatlas"
   },
   {
     "name": "Buffalo finally finishes the job",
@@ -491,7 +501,8 @@
         "rationale": "A championship completes the thesis."
       }
     ],
-    "username": "demo_fourthdown"
+    "username": "fourthdown",
+    "profile_key": "demo_fourthdown"
   },
   {
     "name": "Arsenal chases silverware on two fronts",
@@ -531,7 +542,8 @@
         "rationale": "The Champions League title completes the European leg."
       }
     ],
-    "username": "demo_northbank"
+    "username": "northbank",
+    "profile_key": "demo_northbank"
   },
   {
     "name": "Edmonton pushes for the Stanley Cup",
@@ -577,7 +589,8 @@
         "rationale": "The Stanley Cup completes the thesis."
       }
     ],
-    "username": "demo_iceorange"
+    "username": "iceorange",
+    "profile_key": "demo_iceorange"
   },
   {
     "name": "Toronto shocks the East",
@@ -617,7 +630,8 @@
         "rationale": "A Stanley Cup would complete the upset scenario."
       }
     ],
-    "username": "demo_iceblue"
+    "username": "iceblue",
+    "profile_key": "demo_iceblue"
   },
   {
     "name": "Oklahoma City stays atop the NBA",
@@ -657,7 +671,8 @@
         "rationale": "An NBA title completes the thesis."
       }
     ],
-    "username": "demo_thunderlane"
+    "username": "thunderlane",
+    "profile_key": "demo_thunderlane"
   },
   {
     "name": "Detroit wins the NFC",
@@ -697,7 +712,8 @@
         "rationale": "A Super Bowl title is the upside outcome."
       }
     ],
-    "username": "demo_motorcity"
+    "username": "motorcity",
+    "profile_key": "demo_motorcity"
   },
   {
     "name": "The Odyssey sweeps major Oscars",
@@ -743,7 +759,8 @@
         "rationale": "Adapted Screenplay broadens the awards profile."
       }
     ],
-    "username": "demo_filmreel"
+    "username": "filmreel",
+    "profile_key": "demo_filmreel"
   },
   {
     "name": "Psychedelic therapies reach FDA approval",
@@ -783,7 +800,8 @@
         "rationale": "MDMA approval before 2030 captures a longer regulatory path."
       }
     ],
-    "username": "demo_healthhorizon"
+    "username": "healthhorizon",
+    "profile_key": "demo_healthhorizon"
   },
   {
     "name": "Starbucks store and traffic recovery",
@@ -823,7 +841,8 @@
         "rationale": "The Q1 2027 store count gives a second expansion checkpoint."
       }
     ],
-    "username": "demo_cupcounter"
+    "username": "cupcounter",
+    "profile_key": "demo_cupcounter"
   },
   {
     "name": "Project Hail Mary breaks through at the Oscars",
@@ -863,6 +882,7 @@
         "rationale": "Adapted Screenplay captures the source-material adaptation."
       }
     ],
-    "username": "demo_stargazer"
+    "username": "stargazer",
+    "profile_key": "demo_stargazer"
   }
 ]

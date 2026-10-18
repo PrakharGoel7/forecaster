@@ -16,7 +16,7 @@ export default function BasketsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "positions">("newest");
   const [modeFilter, setModeFilter] = useState<"all" | "ai" | "manual">("all");
-  const [creatorFilter, setCreatorFilter] = useState<"all" | "celebrity" | "sample">("all");
+  const [creatorFilter, setCreatorFilter] = useState<"all" | "featured" | "sample">("all");
 
   useEffect(() => {
     listPublicBaskets(96).then(setBaskets).catch(() => {}).finally(() => setLoading(false));
@@ -24,7 +24,7 @@ export default function BasketsPage() {
 
   const filteredBaskets = (() => {
     let list = baskets.filter((basket) => {
-      if (creatorFilter === "celebrity" && !basket.user_id?.startsWith("prism:curated:")) return false;
+      if (creatorFilter === "featured" && !basket.user_id?.startsWith("prism:curated:")) return false;
       if (creatorFilter === "sample" && !basket.user_id?.startsWith("prism:demo:")) return false;
       if (modeFilter === "ai" && basket.mode === "manual") return false;
       if (modeFilter === "manual" && basket.mode !== "manual") return false;
@@ -98,7 +98,7 @@ export default function BasketsPage() {
           </div>
           <div style={{ width: 1, height: 20, background: "rgba(0,0,0,0.1)", margin: "0 4px" }} />
           <div style={{ display: "flex", gap: 6 }}>
-            {(["all", "celebrity", "sample"] as const).map((f) => (
+            {(["all", "featured", "sample"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => { setCreatorFilter(f); setPage(1); }}
@@ -109,7 +109,7 @@ export default function BasketsPage() {
                   padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer",
                 }}
               >
-                {f === "all" ? "All creators" : f === "celebrity" ? "Celebrity" : "Samples"}
+                {f === "all" ? "All creators" : f === "featured" ? "Featured" : "Samples"}
               </button>
             ))}
           </div>

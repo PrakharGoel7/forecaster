@@ -1,4 +1,4 @@
-"""Publish Prism-created sample baskets under clearly labeled demo usernames.
+"""Publish Prism-created sample baskets under clearly labeled sample profiles.
 
 Usage: DATABASE_URL=... python ops/publish_demo_community_baskets.py --fixture PATH [--dry-run]
 The fixture is validated against live Kalshi market data before any database write.
@@ -24,12 +24,17 @@ def validate_fixture(baskets: list[dict]) -> None:
         raise ValueError("Fixture contains no baskets")
     names = [basket["name"] for basket in baskets]
     handles = [basket["username"] for basket in baskets]
-    if len(names) != len(set(names)) or len(handles) != len(set(handles)):
-        raise ValueError("Basket titles and demo usernames must be unique")
+    profile_keys = [basket["profile_key"] for basket in baskets]
+    if (len(names) != len(set(names)) or len(handles) != len(set(handles))
+            or len(profile_keys) != len(set(profile_keys))):
+        raise ValueError("Basket titles, usernames, and profile keys must be unique")
     for basket in baskets:
         handle = basket["username"]
-        if not re.fullmatch(r"demo_[a-z0-9_]{3,19}", handle):
-            raise ValueError(f"Invalid demo username: {handle}")
+        profile_key = basket["profile_key"]
+        if not re.fullmatch(r"[a-z0-9_]{3,24}", handle) or handle.startswith("demo_"):
+            raise ValueError(f"Invalid sample username: {handle}")
+        if not re.fullmatch(r"demo_[a-z0-9_]{3,19}", profile_key):
+            raise ValueError(f"Invalid internal profile key: {profile_key}")
         rows = basket["rows"]
         if not 5 <= len(rows) <= 10:
             raise ValueError(f"Expected 5–10 markets: {basket['name']}")
@@ -55,11 +60,15 @@ def publish(baskets: list[dict], markets: dict[str, dict], dry_run: bool) -> lis
                 cur.execute("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS profile_kind TEXT NOT NULL DEFAULT 'member'")
                 for basket in baskets:
                     handle = basket["username"]
-                    owner_id = f"prism:demo:{handle}"
+                    owner_id = f"prism:demo:{basket['profile_key']}"
                     cur.execute("SELECT user_id FROM profiles WHERE username = %s", (handle,))
                     existing_profile = cur.fetchone()
                     if existing_profile and existing_profile[0] != owner_id:
                         raise RuntimeError(f"Username {handle!r} belongs to another profile")
+                    cur.execute("SELECT username FROM profiles WHERE user_id = %s", (owner_id,))
+                    owner_profile = cur.fetchone()
+                    if owner_profile and owner_profile[0] != handle:
+                        raise RuntimeError(f"Profile {owner_id!r} still uses username {owner_profile[0]!r}; run the username migration first")
                     now = datetime.now(timezone.utc)
                     bio = "Sample profile created by Prism. These market baskets were assembled by Prism; this is not a signed-up user or a record of trades."
                     cur.execute(
