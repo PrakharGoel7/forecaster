@@ -30,6 +30,9 @@ CURATED_HANDLES = {
     "Mark Cuban": "mark_cuban",
     "Kara Swisher": "kara_swisher",
     "Andrew Yang": "andrew_yang",
+    "José Alvarado": "jose_alvarado",
+    "Luka Modrić": "luka_modric",
+    "Bryson DeChambeau": "bryson_dechambeau",
 }
 MARKET_API = "https://api.elections.kalshi.com/trade-api/v2/markets/"
 

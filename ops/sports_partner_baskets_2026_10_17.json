@@ -1,0 +1,55 @@
+[
+  {
+    "name": "New York makes another NBA title run",
+    "person": "José Alvarado",
+    "domain": "Sports / NBA",
+    "thesis": "The Knicks win at least 50 games, reach the playoffs, and contend for the East and NBA titles in 2026–27.",
+    "summary": "New York wins at least 50 games and makes a serious run at the Eastern Conference and NBA titles.",
+    "tie": "https://news.kalshi.com/p/kalshi-jose-alvarado-free-buses-knicks-fans-nba-finals",
+    "fit": "A Prism-selected Knicks season scenario inspired by Alvarado's public Kalshi partnership and team connection.",
+    "risk": "Win thresholds overlap, and title and best-record outcomes are much less likely than making the playoffs. Quotes and depth can change before an order is placed.",
+    "rows": [
+      {"ticker": "KXNBAWINS-27NYK-50", "side": "YES", "weight": 20, "rationale": "A 50-win season is the baseline for a strong Knicks campaign."},
+      {"ticker": "KXNBAWINS-27NYK-55", "side": "YES", "weight": 15, "rationale": "A 55-win season tests a more dominant regular season."},
+      {"ticker": "KXNBAPLAYOFF-27-NYK", "side": "YES", "weight": 20, "rationale": "A playoff berth is the first step in the title-run thesis."},
+      {"ticker": "KXNBARECORD-27BEST-NYK", "side": "YES", "weight": 10, "rationale": "The league's best record expresses the upper end of regular-season strength."},
+      {"ticker": "KXNBAEAST-27-NYK", "side": "YES", "weight": 20, "rationale": "Winning the East is the direct path to the Finals."},
+      {"ticker": "KXNBA-27-NYK", "side": "YES", "weight": 15, "rationale": "An NBA title is the final outcome of the thesis."}
+    ]
+  },
+  {
+    "name": "Milan's domestic and European push",
+    "person": "Luka Modrić",
+    "domain": "Sports / Football",
+    "thesis": "AC Milan wins near-term fixtures, finishes in Serie A's top four with at least 65 points, and stays in contention for domestic and Europa League titles.",
+    "summary": "Milan wins key autumn matches, finishes in Serie A's top four, and pushes for league and Europa League titles.",
+    "tie": "https://news.kalshi.com/p/kalshi-croatia-football-federation-luka-modric-2026-world-cup-partnership",
+    "fit": "A Prism-selected AC Milan scenario inspired by Kalshi's public Modrić collaboration; AC Milan confirms his contract through June 2027.",
+    "risk": "The 65-point market is exceptionally thin and priced near $1. The match leg resolves within days, while the season futures run to 2027; execution and timing may differ sharply.",
+    "rows": [
+      {"ticker": "KXSERIEATOP-27TOP4-ACM", "side": "YES", "weight": 25, "rationale": "A top-four finish establishes Milan among the league leaders."},
+      {"ticker": "KXSERIEATEAMPOINTS-27-ACM65", "side": "YES", "weight": 10, "rationale": "At least 65 league points measures sustained season performance."},
+      {"ticker": "KXSERIEA-27-ACM", "side": "YES", "weight": 25, "rationale": "A Serie A title is the domestic upside of the thesis."},
+      {"ticker": "KXUEL-27-ACM", "side": "YES", "weight": 25, "rationale": "A Europa League title represents Milan's European upside."},
+      {"ticker": "KXUELGAME-26OCT22BOUACM-ACM", "side": "YES", "weight": 15, "rationale": "Milan beats Bournemouth in regulation plus stoppage time on October 22, an early European test."}
+    ]
+  },
+  {
+    "name": "LIV's core lineup returns in early 2027",
+    "person": "Bryson DeChambeau",
+    "domain": "Sports / Golf",
+    "thesis": "Bryson DeChambeau and five other established LIV golfers each compete in at least one LIV event during the first quarter of 2027.",
+    "summary": "Bryson DeChambeau and five other LIV golfers compete in the tour's first quarter of 2027.",
+    "tie": "https://news.kalshi.com/p/kalshi-j-balvin-advertising-campaign",
+    "fit": "A Prism-selected golf participation scenario inspired by DeChambeau's public Kalshi campaign.",
+    "risk": "Participation contracts depend on each golfer appearing at an event, not on winning. Withdrawals, schedule changes, and thin order books can affect execution.",
+    "rows": [
+      {"ticker": "KXLIVCOMPETE-27APR-BDEC", "side": "YES", "weight": 25, "rationale": "DeChambeau's appearance is the anchor of the lineup thesis."},
+      {"ticker": "KXLIVCOMPETE-27APR-JRAH", "side": "YES", "weight": 15, "rationale": "Jon Rahm's appearance broadens the core-player test."},
+      {"ticker": "KXLIVCOMPETE-27APR-THAT", "side": "YES", "weight": 15, "rationale": "Tyrrell Hatton adds another established player to the participation basket."},
+      {"ticker": "KXLIVCOMPETE-27APR-JNIE", "side": "YES", "weight": 15, "rationale": "Joaquín Niemann's appearance tests continuity of the LIV field."},
+      {"ticker": "KXLIVCOMPETE-27APR-CSMI", "side": "YES", "weight": 15, "rationale": "Cameron Smith adds a fifth player to the returning lineup."},
+      {"ticker": "KXLIVCOMPETE-27APR-DJOH", "side": "YES", "weight": 15, "rationale": "Dustin Johnson rounds out the six-player participation thesis."}
+    ]
+  }
+]
