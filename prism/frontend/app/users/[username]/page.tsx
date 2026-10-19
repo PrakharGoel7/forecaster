@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase";
 import type { SavedBasket, UserProfile } from "@/lib/types";
 
 function avatarColor(seed: string): string {
-  const palette = ["#4f46e5", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
+  const palette = ["#216a4a", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
   let hash = 0;
   for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   return palette[Math.abs(hash) % palette.length];
@@ -132,7 +132,7 @@ export default function UserProfilePage() {
         <GridOverlay />
         <div style={{ position: "relative", zIndex: 10, maxWidth: 900, margin: "0 auto", padding: "120px 24px" }}>
           <div style={{ color: "#9b9390", fontSize: 15 }}>User not found.</div>
-          <Link href="/baskets" style={{ color: "#4f46e5", fontSize: 13, textDecoration: "none", display: "inline-block", marginTop: 12 }}>
+          <Link href="/baskets" style={{ color: "#216a4a", fontSize: 13, textDecoration: "none", display: "inline-block", marginTop: 12 }}>
             ← Browse theses
           </Link>
         </div>
@@ -171,7 +171,7 @@ export default function UserProfilePage() {
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
             }}>
-              <span style={{ color: "#fff", fontSize: 26, fontWeight: 700 }}>◈</span>
+              <span style={{ color: "#fff", fontSize: 26, fontWeight: 700 }}>{(profile.display_name || profile.username).charAt(0).toUpperCase()}</span>
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -183,7 +183,7 @@ export default function UserProfilePage() {
                   {profile.display_name || `@${profile.username}`}
                 </h1>
                 {profile.profile_kind === "demo" && (
-                  <span style={{ color: "#7c3aed", background: "#f5f3ff", borderRadius: 999, padding: "4px 9px", fontSize: 11, fontWeight: 700 }}>
+                  <span style={{ color: "#a04b36", background: "#fff1e9", borderRadius: 999, padding: "4px 9px", fontSize: 11, fontWeight: 700 }}>
                     Sample profile
                   </span>
                 )}
@@ -198,9 +198,9 @@ export default function UserProfilePage() {
                     disabled={followLoading}
                     style={{
                       ...ghostBtnStyle,
-                      background: isFollowing ? "#4f46e5" : "transparent",
-                      color: isFollowing ? "#fff" : "#4f46e5",
-                      borderColor: "#4f46e5",
+                      background: isFollowing ? "#216a4a" : "transparent",
+                      color: isFollowing ? "#fff" : "#216a4a",
+                      borderColor: "#216a4a",
                     }}
                   >
                     {followLoading ? "…" : isFollowing ? "Following" : "Follow"}
@@ -222,7 +222,7 @@ export default function UserProfilePage() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 14 }}>
                   {tags.map(tag => (
                     <span key={tag} style={{
-                      background: "rgba(79,70,229,0.07)", color: "#4f46e5",
+                      background: "rgba(33,106,74,0.07)", color: "#216a4a",
                       fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500,
                     }}>{tag}</span>
                   ))}
@@ -298,12 +298,12 @@ export default function UserProfilePage() {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: "#ffffff", border: "1px solid rgba(79,70,229,0.15)",
+              background: "#ffffff", border: "1px solid rgba(33,106,74,0.15)",
               borderRadius: 20, padding: "32px", width: "100%", maxWidth: 480,
               boxShadow: "0 24px 80px rgba(0,0,0,0.25)", maxHeight: "90vh", overflowY: "auto",
             }}
           >
-            <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+            <div style={{ color: "#216a4a", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
               Profile
             </div>
             <div style={{ color: "#1c1814", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 20 }}>
@@ -331,9 +331,9 @@ export default function UserProfilePage() {
                   style={{
                     padding: "4px 10px", borderRadius: 999, fontSize: 12, cursor: "pointer",
                     fontWeight: 500, border: "1px solid",
-                    background: editTags.includes(tag) ? "#4f46e5" : "transparent",
-                    color: editTags.includes(tag) ? "#fff" : "#4f46e5",
-                    borderColor: "#4f46e5",
+                    background: editTags.includes(tag) ? "#216a4a" : "transparent",
+                    color: editTags.includes(tag) ? "#fff" : "#216a4a",
+                    borderColor: "#216a4a",
                   }}
                 >{tag}</button>
               ))}
@@ -367,7 +367,7 @@ export default function UserProfilePage() {
                 onClick={saveEdit}
                 disabled={editLoading}
                 style={{
-                  flex: 1, background: "#4f46e5", color: "#fff", border: "none",
+                  flex: 1, background: "#216a4a", color: "#fff", border: "none",
                   borderRadius: 10, padding: "11px", fontSize: 13, fontWeight: 700,
                   cursor: "pointer", opacity: editLoading ? 0.6 : 1,
                   fontFamily: "var(--font-mono), monospace", letterSpacing: "0.06em",
@@ -426,13 +426,13 @@ function SubstackIcon() {
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  color: "#4f46e5", fontSize: 11, textTransform: "uppercase",
+  color: "#216a4a", fontSize: 11, textTransform: "uppercase",
   letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 16,
 };
 
 const ghostBtnStyle: React.CSSProperties = {
-  background: "transparent", color: "#4f46e5",
-  border: "1px solid rgba(79,70,229,0.35)", borderRadius: 8,
+  background: "transparent", color: "#216a4a",
+  border: "1px solid rgba(33,106,74,0.35)", borderRadius: 8,
   padding: "6px 14px", fontSize: 12, fontWeight: 600,
   cursor: "pointer", fontFamily: "var(--font-mono), monospace",
   letterSpacing: "0.06em", transition: "all 0.15s",

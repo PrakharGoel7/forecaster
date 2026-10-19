@@ -19,7 +19,7 @@ function categoryAccent(category: string): string {
   if (c.includes("tech") || c.includes("ai") || c.includes("sci")) return "#2dd4bf";
   if (c.includes("weather") || c.includes("climate")) return "#7dd3fc";
   if (c.includes("entertain") || c.includes("award") || c.includes("oscar") || c.includes("music")) return "#f472b6";
-  return "#4f46e5";
+  return "#216a4a";
 }
 
 function priceColor(p: number): string {

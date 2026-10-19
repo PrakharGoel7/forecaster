@@ -46,7 +46,7 @@
   outline: none;
 }
 
-.portrait:focus-visible { box-shadow: 0 0 0 3px #4f46e5, 0 18px 34px rgba(38, 31, 85, 0.22); }
+.portrait:focus-visible { box-shadow: 0 0 0 3px #216a4a, 0 18px 34px rgba(38, 31, 85, 0.22); }
 
 .image {
   object-fit: cover;

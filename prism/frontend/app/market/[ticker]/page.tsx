@@ -158,13 +158,13 @@ export default function MarketPage() {
           <section style={{ background: "#101010", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 22, padding: 24, marginBottom: 20 }}>
             <button onClick={() => setShowHistory((open) => !open)} style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", color: "#f2ede7", background: "transparent", border: 0, padding: 0, cursor: "pointer", fontSize: 19, fontWeight: 700, textAlign: "left" }}>
               <span>Price history <span style={{ color: "#8c8680", fontSize: 13, fontWeight: 400 }}>· {primaryMarket.yes_sub_title || primaryMarket.ticker}</span></span>
-              <span style={{ color: "#8b83ff" }}>{showHistory ? "−" : "+"}</span>
+              <span style={{ color: "#d9f471" }}>{showHistory ? "−" : "+"}</span>
             </button>
             {showHistory && (
               <div style={{ marginTop: 20 }}>
                 <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
                   {([7, 30, 90, 365] as const).map((days) => (
-                    <button key={days} onClick={() => setHistoryDays(days)} style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: historyDays === days ? "#4f46e5" : "transparent", color: historyDays === days ? "#fff" : "#9b938b", cursor: "pointer", fontSize: 12 }}>
+                    <button key={days} onClick={() => setHistoryDays(days)} style={{ padding: "7px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: historyDays === days ? "#216a4a" : "transparent", color: historyDays === days ? "#fff" : "#9b938b", cursor: "pointer", fontSize: 12 }}>
                       {days === 365 ? "1Y" : `${days}D`}
                     </button>
                   ))}
@@ -197,10 +197,10 @@ export default function MarketPage() {
                   <div
                     key={market.ticker}
                     style={{
-                      border: `1px solid ${isSelected ? "rgba(79,70,229,0.42)" : "rgba(255,255,255,0.08)"}`,
+                      border: `1px solid ${isSelected ? "rgba(33,106,74,0.42)" : "rgba(255,255,255,0.08)"}`,
                       borderRadius: "18px",
                       padding: "18px",
-                      background: isSelected ? "rgba(79,70,229,0.08)" : "rgba(255,255,255,0.02)",
+                      background: isSelected ? "rgba(33,106,74,0.08)" : "rgba(255,255,255,0.02)",
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: "14px", alignItems: "start", marginBottom: "10px" }}>
@@ -216,8 +216,8 @@ export default function MarketPage() {
                         onClick={() => setSelectedMarket(market)}
                         style={{
                           borderRadius: "999px",
-                          border: `1px solid ${isSelected ? "#4f46e5" : "rgba(255,255,255,0.10)"}`,
-                          background: isSelected ? "rgba(79,70,229,0.12)" : "transparent",
+                          border: `1px solid ${isSelected ? "#216a4a" : "rgba(255,255,255,0.10)"}`,
+                          background: isSelected ? "rgba(33,106,74,0.12)" : "transparent",
                           color: isSelected ? "#ff8b5f" : "#8c847c",
                           padding: "7px 11px",
                           fontSize: "12px",
@@ -240,8 +240,8 @@ export default function MarketPage() {
                           }}
                           style={{
                             borderRadius: "10px",
-                            border: "1px solid rgba(79,70,229,0.24)",
-                            background: "rgba(79,70,229,0.08)",
+                            border: "1px solid rgba(33,106,74,0.24)",
+                            background: "rgba(33,106,74,0.08)",
                             color: "#ede9e3",
                             padding: "9px 12px",
                             fontSize: "12px",
@@ -261,8 +261,8 @@ export default function MarketPage() {
               <div style={{
                 marginTop: "14px",
                 borderRadius: "12px",
-                border: "1px solid rgba(79,70,229,0.18)",
-                background: "rgba(79,70,229,0.06)",
+                border: "1px solid rgba(33,106,74,0.18)",
+                background: "rgba(33,106,74,0.06)",
                 padding: "12px 14px",
                 color: "#c9beb2",
                 fontSize: "13px",
@@ -340,7 +340,7 @@ function SummaryPill({ children, muted }: { children: React.ReactNode; muted?: b
       padding: "8px 12px",
       borderRadius: "999px",
       border: `1px solid ${muted ? "#272727" : "#513528"}`,
-      background: muted ? "#111111" : "rgba(79,70,229,0.08)",
+      background: muted ? "#111111" : "rgba(33,106,74,0.08)",
       color: muted ? "#969089" : "#f08b64",
       fontSize: "13px",
       fontWeight: 600,

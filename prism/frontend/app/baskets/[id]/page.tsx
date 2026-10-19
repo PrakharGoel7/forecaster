@@ -99,10 +99,10 @@ export default function BasketSharePage() {
     const metadata: PredictionBasket = (() => { try { return JSON.parse(basket.basket_json); } catch { return {} as PredictionBasket; } })();
     const isEditorial = !!metadata.editorial_hypothetical;
     const text = isEditorial
-      ? `"${basket.title}" — a hypothetical Prism editorial concept, not endorsed by the person named`
+      ? `"${basket.title}" — a hypothetical Angles editorial concept, not endorsed by the person named`
       : metadata.demo_basket?.created_by === "Prism"
-        ? `"${basket.title}" — a sample prediction market basket created by Prism`
-        : `"${basket.title}" — my prediction market portfolio on @prismforecaster`;
+        ? `"${basket.title}" — a sample prediction market basket created by Angles`
+        : `"${basket.title}" — my prediction market portfolio on Angles`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank");
   }
 
@@ -117,13 +117,13 @@ export default function BasketSharePage() {
     setGeneratingImage(true);
     try {
       const blob = await generateShareImage(basket, JSON.parse(basket.basket_json));
-      const file = new File([blob], `prism-${basket.id}.png`, { type: "image/png" });
+      const file = new File([blob], `angles-${basket.id}.png`, { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: basket.title, text: `${basket.title} — prediction market portfolio` });
       } else {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `prism-${(basket.title || "portfolio").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+        a.download = `angles-${(basket.title || "portfolio").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
         a.click();
         URL.revokeObjectURL(a.href);
       }
@@ -171,7 +171,7 @@ export default function BasketSharePage() {
         <GridOverlay />
         <div style={{ position: "relative", zIndex: 10, maxWidth: 900, margin: "0 auto", padding: "120px 24px" }}>
           {basketError === "missing" ? "Basket unavailable. It may be private, removed, or this link may be incorrect." :
-            basketError === "temporary" ? <div>Could not load this basket right now. <button onClick={() => { setBasketError(null); setRetryNonce(n => n + 1); }} style={{ color: "#4f46e5", background: "none", border: 0, cursor: "pointer", font: "inherit", textDecoration: "underline" }}>Try again</button></div> :
+            basketError === "temporary" ? <div>Could not load this basket right now. <button onClick={() => { setBasketError(null); setRetryNonce(n => n + 1); }} style={{ color: "#216a4a", background: "none", border: 0, cursor: "pointer", font: "inherit", textDecoration: "underline" }}>Try again</button></div> :
             "Loading basket…"}
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function BasketSharePage() {
           ← Back to theses
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-          <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace" }}>
+          <div style={{ color: "#216a4a", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace" }}>
             Prediction Market Thesis
           </div>
           {basket.resolved_at && (
@@ -207,17 +207,17 @@ export default function BasketSharePage() {
         </h1>
         {basket.username && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ color: "#fff", fontSize: 9, fontWeight: 700 }}>◈</span>
+            <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#216a4a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "#fff", fontSize: 9, fontWeight: 700 }}>{(basket.display_name || basket.username).charAt(0).toUpperCase()}</span>
             </div>
             <Link href={`/users/${basket.username}`} style={{ color: "#6e675f", fontSize: 13, textDecoration: "none", fontFamily: "var(--font-mono), monospace" }}>
               {basket.display_name || `@${basket.username}`}
             </Link>
             {parsedBasket.editorial_hypothetical && (
-              <span style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700 }}>Market selections by Prism</span>
+              <span style={{ color: "#a04b36", fontSize: 11, fontWeight: 700 }}>Market selections by Angles</span>
             )}
             {parsedBasket.demo_basket?.created_by === "Prism" && (
-              <span style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700 }}>Sample basket by Prism</span>
+              <span style={{ color: "#a04b36", fontSize: 11, fontWeight: 700 }}>Sample basket by Angles</span>
             )}
           </div>
         )}
@@ -226,7 +226,7 @@ export default function BasketSharePage() {
         </p>
         {parsedBasket.editorial_hypothetical && (
           <p style={{ color: "#6e675f", fontSize: 13, lineHeight: 1.6, margin: "-12px 0 24px", maxWidth: 780 }}>
-            Prism selected the markets in this hypothetical basket. {parsedBasket.editorial_hypothetical.inspiration_person} did not create, review, or endorse these positions.
+            Angles selected the markets in this hypothetical basket. {parsedBasket.editorial_hypothetical.inspiration_person} did not create, review, or endorse these positions.
           </p>
         )}
         {basket.is_public && (
@@ -299,7 +299,7 @@ export default function BasketSharePage() {
           <div style={sectionTitleStyle}>Holdings</div>
           {(() => {
             const total = parsedBasket.total_notional || parsedBasket.holdings.reduce((s: number, h: { weight_dollars: number }) => s + h.weight_dollars, 0) || 1;
-            const colors = ["#4f46e5","#4338ca","#7c73f0","#312e9e","#a5a0f4","#6159eb","#2dd4bf","#f59e0b"];
+            const colors = ["#216a4a","#194d38","#7c73f0","#312e9e","#a5a0f4","#6159eb","#2dd4bf","#f59e0b"];
             return (
               <div style={{ marginBottom: 18 }}>
                 <div style={{ display: "flex", height: 6, borderRadius: 999, overflow: "hidden", gap: 2, marginBottom: 10 }}>
@@ -314,7 +314,7 @@ export default function BasketSharePage() {
             {(parsedBasket as PredictionBasket).holdings.map((holding, index) => (
               <div key={holding.ticker} className={styles.holdingRow}>
                 <div className={styles.holdingMain}>
-                  <span className={styles.holdingDot} style={{ background: ["#4f46e5","#4338ca","#7c73f0","#312e9e","#a5a0f4","#6159eb","#2dd4bf","#f59e0b"][index % 8] }} />
+                  <span className={styles.holdingDot} style={{ background: ["#216a4a","#194d38","#7c73f0","#312e9e","#a5a0f4","#6159eb","#2dd4bf","#f59e0b"][index % 8] }} />
                   <div className={styles.holdingContent}>
                     <div className={styles.holdingQuestion}>{holding.question}</div>
                     <div className={styles.holdingMeta}>
@@ -372,7 +372,7 @@ export default function BasketSharePage() {
         <div style={{ marginTop: 28, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           {beliefSummary?.core_belief && (
             <Link href={`/trading?belief=${encodeURIComponent(beliefSummary.core_belief)}`} style={{
-              background: "#4f46e5",
+              background: "#216a4a",
               color: "#fff",
               padding: "10px 18px",
               borderRadius: 12,
@@ -576,7 +576,7 @@ const sectionStyle: React.CSSProperties = {
 };
 
 const sectionTitleStyle: React.CSSProperties = {
-  color: "#4f46e5",
+  color: "#216a4a",
   fontSize: 11,
   textTransform: "uppercase",
   letterSpacing: "0.16em",
@@ -735,19 +735,35 @@ async function generateShareImage(basket: SavedBasket, parsedBasket: PredictionB
   for (let x = 0; x <= W; x += 54) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
   for (let y = 0; y <= H; y += 54) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
-  // Indigo left accent
-  ctx.fillStyle = "#4f46e5";
+  // Brand accent
+  ctx.fillStyle = "#193028";
   ctx.fillRect(PAD, PAD, 5, 52);
 
-  // PRISM header
-  ctx.fillStyle = "#4f46e5";
-  ctx.font = "bold 30px monospace";
-  ctx.fillText("◈  PRISM", PAD + 18, PAD + 33);
+  // Angles header
+  ctx.fillStyle = "#193028";
+  rrect(ctx, PAD + 18, PAD + 3, 38, 38, 9);
+  ctx.fill();
+  ctx.strokeStyle = "#d9f471";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  for (const [x, y] of [[43, 10], [49, 23], [50, 34]]) {
+    ctx.beginPath();
+    ctx.moveTo(PAD + 25, PAD + 34);
+    ctx.lineTo(PAD + x, PAD + y);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#f38164";
+  ctx.beginPath();
+  ctx.arc(PAD + 25, PAD + 34, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#193028";
+  ctx.font = "bold 33px Arial";
+  ctx.fillText("angles", PAD + 66, PAD + 33);
   ctx.fillStyle = "#9b9390";
   ctx.font = "20px monospace";
   ctx.fillText("PREDICTION MARKET ETF", PAD + 18, PAD + 58);
   if (parsedBasket.demo_basket?.created_by === "Prism") {
-    ctx.fillText("SAMPLE BASKET BY PRISM", PAD + 18, PAD + 89);
+    ctx.fillText("SAMPLE BASKET BY ANGLES", PAD + 18, PAD + 89);
   }
 
   // Divider
@@ -772,7 +788,7 @@ async function generateShareImage(basket: SavedBasket, parsedBasket: PredictionB
   // Holdings
   const holdings = parsedBasket.holdings;
   const total = parsedBasket.total_notional || holdings.reduce((s, h) => s + h.weight_dollars, 0) || 1;
-  const colors = ["#4f46e5", "#4338ca", "#7c73f0", "#312e9e", "#a5a0f4"];
+  const colors = ["#216a4a", "#194d38", "#7c73f0", "#312e9e", "#a5a0f4"];
 
   curY = Math.max(curY + 36, 620);
 
@@ -789,7 +805,7 @@ async function generateShareImage(basket: SavedBasket, parsedBasket: PredictionB
   curY += 30;
 
   // Holdings label
-  ctx.fillStyle = "#4f46e5";
+  ctx.fillStyle = "#216a4a";
   ctx.font = "bold 18px monospace";
   ctx.fillText("HOLDINGS", PAD, curY);
   curY += 26;
@@ -825,7 +841,7 @@ async function generateShareImage(basket: SavedBasket, parsedBasket: PredictionB
   // Footer URL
   ctx.fillStyle = "#9b9390";
   ctx.font = "22px monospace";
-  const host = typeof window !== "undefined" ? window.location.host : "prism.markets";
+  const host = typeof window !== "undefined" ? window.location.host : "forecaster-black.vercel.app";
   const hostW = ctx.measureText(host).width;
   ctx.fillText(host, W - PAD - hostW, H - PAD + 20);
 

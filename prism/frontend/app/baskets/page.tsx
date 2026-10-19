@@ -86,8 +86,8 @@ export default function BasketsPage() {
                 key={f}
                 onClick={() => { setModeFilter(f); setPage(1); }}
                 style={{
-                  borderRadius: 999, border: `1px solid ${modeFilter === f ? "rgba(79,70,229,0.4)" : "rgba(0,0,0,0.08)"}`,
-                  background: modeFilter === f ? "rgba(79,70,229,0.1)" : "rgba(0,0,0,0.03)",
+                  borderRadius: 999, border: `1px solid ${modeFilter === f ? "rgba(33,106,74,0.4)" : "rgba(0,0,0,0.08)"}`,
+                  background: modeFilter === f ? "rgba(33,106,74,0.1)" : "rgba(0,0,0,0.03)",
                   color: modeFilter === f ? "#1c1814" : "#6e675f",
                   padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer",
                 }}
@@ -103,8 +103,8 @@ export default function BasketsPage() {
                 key={f}
                 onClick={() => { setCreatorFilter(f); setPage(1); }}
                 style={{
-                  borderRadius: 999, border: `1px solid ${creatorFilter === f ? "rgba(79,70,229,0.4)" : "rgba(0,0,0,0.08)"}`,
-                  background: creatorFilter === f ? "rgba(79,70,229,0.1)" : "rgba(0,0,0,0.03)",
+                  borderRadius: 999, border: `1px solid ${creatorFilter === f ? "rgba(33,106,74,0.4)" : "rgba(0,0,0,0.08)"}`,
+                  background: creatorFilter === f ? "rgba(33,106,74,0.1)" : "rgba(0,0,0,0.03)",
                   color: creatorFilter === f ? "#1c1814" : "#6e675f",
                   padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer",
                 }}
@@ -120,8 +120,8 @@ export default function BasketsPage() {
                 key={s}
                 onClick={() => setSort(s)}
                 style={{
-                  borderRadius: 999, border: `1px solid ${sort === s ? "rgba(79,70,229,0.4)" : "rgba(0,0,0,0.08)"}`,
-                  background: sort === s ? "rgba(79,70,229,0.1)" : "rgba(0,0,0,0.03)",
+                  borderRadius: 999, border: `1px solid ${sort === s ? "rgba(33,106,74,0.4)" : "rgba(0,0,0,0.08)"}`,
+                  background: sort === s ? "rgba(33,106,74,0.1)" : "rgba(0,0,0,0.03)",
                   color: sort === s ? "#1c1814" : "#6e675f",
                   padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer",
                 }}
@@ -179,7 +179,7 @@ export default function BasketsPage() {
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  color: "#4f46e5",
+  color: "#216a4a",
   fontSize: 11,
   textTransform: "uppercase",
   letterSpacing: "0.16em",

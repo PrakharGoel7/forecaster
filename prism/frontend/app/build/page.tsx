@@ -12,8 +12,8 @@ export default function BuildPage() {
       <div style={{ position: "relative", zIndex: 10, maxWidth: 880, margin: "0 auto", padding: "110px 24px 80px" }}>
 
         <div style={{ marginBottom: 52, maxWidth: 600 }}>
-          <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
-            Build on Prism
+          <div style={{ color: "#216a4a", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 12 }}>
+            Build on Angles
           </div>
           <h1 style={{ color: "#1c1814", fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1.04, letterSpacing: "-0.05em", margin: "0 0 14px" }}>
             How do you want to build?
@@ -29,32 +29,32 @@ export default function BuildPage() {
           <Link href="/trading/manual" style={{ textDecoration: "none", display: "flex" }}>
             <div
               style={{
-                background: "#ffffff", border: "2px solid rgba(79,70,229,0.45)",
+                background: "#ffffff", border: "2px solid rgba(33,106,74,0.45)",
                 borderRadius: 24, padding: 28, cursor: "pointer",
                 transition: "box-shadow 0.15s, border-color 0.15s",
                 display: "flex", flexDirection: "column", flex: 1,
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(0,0,0,0.09)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(79,70,229,0.3)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(33,106,74,0.3)";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLElement).style.boxShadow = "none";
                 (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,0,0,0.07)";
               }}
             >
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(79,70,229,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, fontSize: 22, color: "#4f46e5" }}>⊞</div>
-              <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>Start here · Manual builder</div>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(33,106,74,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, fontSize: 22, color: "#216a4a" }}>⊞</div>
+              <div style={{ color: "#216a4a", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>Start here · Manual builder</div>
               <div style={{ color: "#1c1814", fontSize: 22, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 10 }}>Pick your contracts</div>
               <p style={{ color: "#6e675f", fontSize: 14, lineHeight: 1.7, margin: "0 0 24px", flex: 1 }}>
                 Browse Kalshi markets, choose YES or NO contracts, set your own weights, and save a public or private basket.
               </p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
                 {["Manual control", "Market browser", "Custom weights"].map((tag) => (
-                  <span key={tag} style={{ background: "rgba(79,70,229,0.08)", color: "#4f46e5", fontSize: 11, padding: "4px 10px", borderRadius: 999, fontWeight: 600, border: "1px solid rgba(79,70,229,0.15)" }}>{tag}</span>
+                  <span key={tag} style={{ background: "rgba(33,106,74,0.08)", color: "#216a4a", fontSize: 11, padding: "4px 10px", borderRadius: 999, fontWeight: 600, border: "1px solid rgba(33,106,74,0.15)" }}>{tag}</span>
                 ))}
               </div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#4f46e5", color: "#fff", padding: "11px 18px", borderRadius: 12, fontWeight: 700, fontSize: 14, alignSelf: "flex-start" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#216a4a", color: "#fff", padding: "11px 18px", borderRadius: 12, fontWeight: 700, fontSize: 14, alignSelf: "flex-start" }}>
                 Open manual builder →
               </div>
             </div>
@@ -78,11 +78,11 @@ export default function BuildPage() {
                 (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,0,0,0.07)";
               }}
             >
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, fontSize: 22 }}>◈</div>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, fontSize: 22 }}>∠</div>
               <div style={{ color: "#6e675f", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>Optional · AI assist</div>
               <div style={{ color: "#1c1814", fontSize: 22, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 10 }}>Describe a future</div>
               <p style={{ color: "#6e675f", fontSize: 14, lineHeight: 1.7, margin: "0 0 24px", flex: 1 }}>
-                Tell Prism what you believe will happen. It can suggest related contracts and draft a basket for you to review.
+                Tell Angles what you believe will happen. It can suggest related contracts and draft a basket for you to review.
               </p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
                 {["Conversational", "AI-guided", "Optional"].map((tag) => (

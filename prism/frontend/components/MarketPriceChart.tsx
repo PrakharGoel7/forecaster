@@ -30,9 +30,9 @@ export default function MarketPriceChart({ history }: { history: MarketHistory }
           <text x={PL - 6} y={y(price) + 4} textAnchor="end" fontSize="10" fill="#8c8680">{Math.round(price * 100)}%</text>
         </g>
       ))}
-      {lines.map((line, i) => <polyline key={i} points={line.join(" ")} fill="none" stroke="#8b83ff" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />)}
-      {points.length === 1 && <circle cx={x(first)} cy={y(points[0].yes_price)} r="4" fill="#8b83ff" />}
-      <circle cx={x(last)} cy={y(points[points.length - 1].yes_price)} r="4" fill="#8b83ff">
+      {lines.map((line, i) => <polyline key={i} points={line.join(" ")} fill="none" stroke="#d9f471" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />)}
+      {points.length === 1 && <circle cx={x(first)} cy={y(points[0].yes_price)} r="4" fill="#d9f471" />}
+      <circle cx={x(last)} cy={y(points[points.length - 1].yes_price)} r="4" fill="#d9f471">
         <title>{`${(points[points.length - 1].yes_price * 100).toFixed(1)}% · ${points[points.length - 1].timestamp}`}</title>
       </circle>
       <text x={PL} y={H - 7} fontSize="10" fill="#8c8680">{dateLabel(first)}</text>

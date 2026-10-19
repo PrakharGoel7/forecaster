@@ -11,7 +11,7 @@ import type { SavedBasket, Creator } from "@/lib/types";
 import styles from "./home.module.css";
 
 function avatarColor(seed: string): string {
-  const palette = ["#4f46e5", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
+  const palette = ["#216a4a", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
   let hash = 0;
   for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   return palette[Math.abs(hash) % palette.length];
@@ -36,7 +36,7 @@ export default function HomePage() {
       <div style={{ position: "relative", zIndex: 10, maxWidth: 1140, margin: "0 auto", padding: "120px 24px 80px" }}>
         <div className={styles.hero}>
         <div className={styles.heroCopy}>
-          <div style={eyebrowStyle}>Prism</div>
+          <div style={eyebrowStyle}>Angles</div>
           <h1 style={{
             color: "#1c1814",
             fontSize: "clamp(40px, 6vw, 72px)",
@@ -47,7 +47,7 @@ export default function HomePage() {
             See what the community<br />is betting on.
           </h1>
           <p style={{ color: "#6e675f", fontSize: 18, lineHeight: 1.65, margin: "0 0 32px", maxWidth: 520 }}>
-            Prism is a social platform for prediction market portfolios. Browse community baskets, follow convictions, or build and share your own.
+            Angles is a social platform for prediction market portfolios. Browse community baskets, follow convictions, or build and share your own.
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Link href="/baskets" style={primaryLinkStyle}>
@@ -135,16 +135,16 @@ export default function HomePage() {
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                         <div style={{ width: 34, height: 34, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>◈</span>
+                          <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>{(c.display_name || c.username).charAt(0).toUpperCase()}</span>
                         </div>
                         <div>
-                          <div style={{ color: "#4f46e5", fontSize: 13, fontWeight: 700 }}>{c.display_name || `@${c.username}`}</div>
-                          {c.profile_kind === "demo" && <div style={{ color: "#7c3aed", fontSize: 10, fontWeight: 700 }}>Sample profile</div>}
+                          <div style={{ color: "#216a4a", fontSize: 13, fontWeight: 700 }}>{c.display_name || `@${c.username}`}</div>
+                          {c.profile_kind === "demo" && <div style={{ color: "#a04b36", fontSize: 10, fontWeight: 700 }}>Sample profile</div>}
                           <div style={{ color: "#9b9390", fontSize: 11 }}>{c.follower_count} follower{c.follower_count !== 1 ? "s" : ""} · {c.basket_count} ths.</div>
                         </div>
                       </div>
                       {tags.slice(0, 3).map(t => (
-                        <span key={t} style={{ display: "inline-block", background: "rgba(79,70,229,0.07)", color: "#4f46e5", fontSize: 10, padding: "2px 7px", borderRadius: 999, marginRight: 4, marginBottom: 2, fontWeight: 500 }}>{t}</span>
+                        <span key={t} style={{ display: "inline-block", background: "rgba(33,106,74,0.07)", color: "#216a4a", fontSize: 10, padding: "2px 7px", borderRadius: 999, marginRight: 4, marginBottom: 2, fontWeight: 500 }}>{t}</span>
                       ))}
                     </div>
                   </Link>
@@ -157,7 +157,7 @@ export default function HomePage() {
         {/* ── Build CTA banner ── */}
         <div style={{
           marginTop: 72,
-          background: "#4f46e5",
+          background: "#216a4a",
           borderRadius: 28,
           padding: "44px 48px",
           display: "flex",
@@ -175,7 +175,7 @@ export default function HomePage() {
               fontFamily: "var(--font-mono), monospace",
               marginBottom: 10,
             }}>
-              Build on Prism
+              Build on Angles
             </div>
             <div style={{
               color: "#ffffff",
@@ -194,7 +194,7 @@ export default function HomePage() {
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
             <Link href="/trading/manual" style={{
               background: "#ffffff",
-              color: "#4f46e5",
+              color: "#216a4a",
               fontWeight: 700,
               fontSize: 14,
               padding: "12px 22px",
@@ -225,7 +225,7 @@ export default function HomePage() {
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  color: "#4f46e5",
+  color: "#216a4a",
   fontSize: 11,
   textTransform: "uppercase",
   letterSpacing: "0.16em",
@@ -234,7 +234,7 @@ const eyebrowStyle: React.CSSProperties = {
 };
 
 const primaryLinkStyle: React.CSSProperties = {
-  background: "#4f46e5",
+  background: "#216a4a",
   color: "#ffffff",
   fontWeight: 700,
   fontSize: 15,

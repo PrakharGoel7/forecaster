@@ -8,7 +8,7 @@ import { getCreators } from "@/lib/api";
 import type { Creator } from "@/lib/types";
 
 function avatarColor(seed: string): string {
-  const palette = ["#4f46e5", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
+  const palette = ["#216a4a", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
   let hash = 0;
   for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   return palette[Math.abs(hash) % palette.length];
@@ -46,14 +46,14 @@ function CreatorCard({ creator }: { creator: Creator }) {
             display: "flex", alignItems: "center", justifyContent: "center",
             flexShrink: 0,
           }}>
-            <span style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>◈</span>
+            <span style={{ color: "#fff", fontSize: 16, fontWeight: 700 }}>{(creator.display_name || creator.username).charAt(0).toUpperCase()}</span>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: "#4f46e5", fontSize: 14, fontWeight: 700, marginBottom: 2 }}>
+            <div style={{ color: "#216a4a", fontSize: 14, fontWeight: 700, marginBottom: 2 }}>
               {creator.display_name || `@${creator.username}`}
             </div>
             {creator.profile_kind === "demo" && (
-              <div style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Sample profile · created by Prism</div>
+              <div style={{ color: "#a04b36", fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Sample profile · created by Angles</div>
             )}
             {creator.display_name && <div style={{ color: "#9b9390", fontSize: 11, marginBottom: 4 }}>@{creator.username}</div>}
             {creator.bio && (
@@ -72,8 +72,8 @@ function CreatorCard({ creator }: { creator: Creator }) {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 12 }}>
             {tags.map(tag => (
               <span key={tag} style={{
-                background: "rgba(79,70,229,0.07)",
-                color: "#4f46e5",
+                background: "rgba(33,106,74,0.07)",
+                color: "#216a4a",
                 fontSize: 11,
                 padding: "3px 8px",
                 borderRadius: 999,
@@ -181,11 +181,11 @@ export default function CreatorsPage() {
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  color: "#4f46e5", fontSize: 11, textTransform: "uppercase",
+  color: "#216a4a", fontSize: 11, textTransform: "uppercase",
   letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10,
 };
 
 const primaryLinkStyle: React.CSSProperties = {
-  background: "#4f46e5", color: "#ffffff", fontWeight: 700,
+  background: "#216a4a", color: "#ffffff", fontWeight: 700,
   fontSize: 14, padding: "11px 22px", borderRadius: 10, textDecoration: "none",
 };

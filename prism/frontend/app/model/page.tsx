@@ -5,14 +5,14 @@ const ETF_STEPS = [
   {
     id: "01",
     title: "Belief Elicitor",
-    color: "#4f46e5",
+    color: "#216a4a",
     description: "Clarifies the user's future thesis in instant or thinking mode, producing a structured brief with a resolution target, timeframe, mechanism, and key drivers.",
   },
   {
     id: "02",
     title: "Domain Analyst",
     color: "#a78bfa",
-    description: "Maps the thesis across major domains and causal chains so Prism can separate direct exposure from indirect implications, hedges, and falsifiers.",
+    description: "Maps the thesis across major domains and causal chains so Angles can separate direct exposure from indirect implications, hedges, and falsifiers.",
   },
   {
     id: "03",
@@ -101,14 +101,14 @@ export default function ModelPage() {
         {/* Page header */}
         <div style={{ marginBottom: "52px" }}>
           <h1 style={{ fontSize: "56px", fontWeight: 700, color: "#ede9e3", letterSpacing: "-0.03em" }}>
-            How Prism Works
+            How Angles Works
           </h1>
         </div>
 
         <div style={{ maxWidth: "760px" }}>
           <ColumnHeader
             label="Prediction Market ETFs"
-            subtitle="Prism converts a freeform belief about the future into a weighted, shareable thematic basket of Kalshi contracts."
+            subtitle="Angles converts a freeform belief about the future into a weighted, shareable thematic basket of Kalshi contracts."
             accent="#a78bfa"
           />
           <PipelineColumn steps={ETF_STEPS} />

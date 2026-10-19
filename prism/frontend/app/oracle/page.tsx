@@ -180,7 +180,7 @@ export default function OraclePage() {
                 <div style={{
                   fontFamily: "var(--font-mono), monospace", fontSize: "10px",
                   fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase",
-                  color: "#4f46e5", marginBottom: "10px",
+                  color: "#d9f471", marginBottom: "10px",
                   display: "flex", alignItems: "center", gap: "8px",
                 }}>
                   <span className="blink" style={{ fontSize: "7px" }}>●</span>
@@ -235,15 +235,15 @@ export default function OraclePage() {
                     onClick={submitBelief}
                     disabled={!belief.trim() || isLoading}
                     style={{
-                      background: belief.trim() ? "#4f46e5" : "#181818",
+                      background: belief.trim() ? "#216a4a" : "#181818",
                       color: "#fff", border: "none", borderRadius: "10px",
                       padding: "11px 24px", fontSize: "12px",
                       fontFamily: "var(--font-mono), monospace", fontWeight: 600,
                       letterSpacing: "0.06em", transition: "background 0.15s",
                       opacity: isLoading ? 0.5 : 1,
                     }}
-                    onMouseEnter={e => { if (belief.trim()) e.currentTarget.style.background = "#4338ca"; }}
-                    onMouseLeave={e => { if (belief.trim()) e.currentTarget.style.background = "#4f46e5"; }}
+                    onMouseEnter={e => { if (belief.trim()) e.currentTarget.style.background = "#194d38"; }}
+                    onMouseLeave={e => { if (belief.trim()) e.currentTarget.style.background = "#216a4a"; }}
                   >
                     {isLoading ? "…" : "analyze →"}
                   </button>
@@ -280,7 +280,7 @@ export default function OraclePage() {
                     <div style={{
                       fontFamily: "var(--font-mono), monospace", fontSize: "9px",
                       fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
-                      color: msg.role === "oracle" ? "#4f46e5" : "#3a3835",
+                      color: msg.role === "oracle" ? "#d9f471" : "#3a3835",
                       marginBottom: "6px",
                     }}>
                       {msg.role === "oracle" ? "Oracle" : "You"}
@@ -308,7 +308,7 @@ export default function OraclePage() {
                 {isLoading && (
                   <div style={{
                     fontFamily: "var(--font-mono), monospace", fontSize: "11px",
-                    color: "#4f46e5", display: "flex", alignItems: "center", gap: "8px",
+                    color: "#d9f471", display: "flex", alignItems: "center", gap: "8px",
                     marginBottom: "24px",
                   }}>
                     <span className="blink" style={{ fontSize: "7px" }}>●</span>
@@ -349,7 +349,7 @@ export default function OraclePage() {
                     onClick={sendMessage}
                     disabled={!chatInput.trim() || isLoading}
                     style={{
-                      background: chatInput.trim() ? "#4f46e5" : "#181818",
+                      background: chatInput.trim() ? "#216a4a" : "#181818",
                       color: "#fff", border: "none", borderRadius: "8px",
                       padding: "8px 16px", fontSize: "11px",
                       fontFamily: "var(--font-mono), monospace", fontWeight: 600,
@@ -425,7 +425,7 @@ export default function OraclePage() {
                           marginTop: "1px",
                         }}>
                           {status === "done"    && <span style={{ color: "#4ade80", fontSize: "12px" }}>✓</span>}
-                          {status === "running" && <span className="blink" style={{ color: "#4f46e5", fontSize: "8px" }}>●</span>}
+                          {status === "running" && <span className="blink" style={{ color: "#d9f471", fontSize: "8px" }}>●</span>}
                           {status === "waiting" && <span style={{ color: "#1e1e1e", fontSize: "8px" }}>●</span>}
                         </div>
 
@@ -438,7 +438,7 @@ export default function OraclePage() {
                           }}>
                             {STAGE_LABELS[stage]}
                             {status === "running" && (
-                              <span style={{ color: "#4f46e5" }}> …</span>
+                              <span style={{ color: "#d9f471" }}> …</span>
                             )}
                           </div>
 
@@ -455,7 +455,7 @@ export default function OraclePage() {
                                 >
                                   <span style={{
                                     fontFamily: "var(--font-mono), monospace", fontSize: "8px",
-                                    fontWeight: 700, color: d.relevance === "high" ? "#4f46e5" : "#5b9cf6",
+                                    fontWeight: 700, color: d.relevance === "high" ? "#d9f471" : "#f38164",
                                     letterSpacing: "0.08em", flexShrink: 0,
                                   }}>
                                     {d.relevance.toUpperCase()}
@@ -543,7 +543,7 @@ export default function OraclePage() {
                     <div style={{
                       fontFamily: "var(--font-mono), monospace", fontSize: "9px",
                       fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
-                      color: msg.role === "oracle" ? "#4f46e5" : "#3a3835", marginBottom: "4px",
+                      color: msg.role === "oracle" ? "#d9f471" : "#3a3835", marginBottom: "4px",
                     }}>
                       {msg.role === "oracle" ? "Oracle" : "You"}
                     </div>
@@ -568,7 +568,7 @@ export default function OraclePage() {
                 background: "#0f0f0f", border: "1px solid #1c1c1c",
                 borderRadius: "16px", overflow: "hidden", position: "sticky", top: "76px",
               }}>
-                <div style={{ height: "2px", background: "linear-gradient(90deg, #4f46e5, #5b9cf6 60%, transparent)" }} />
+                <div style={{ height: "2px", background: "linear-gradient(90deg, #d9f471, #f38164 60%, transparent)" }} />
                 <div style={{ padding: "20px" }}>
                   <SectionLabel dot="orange">Domain Map</SectionLabel>
 
@@ -584,7 +584,7 @@ export default function OraclePage() {
                           <span style={{
                             fontFamily: "var(--font-mono), monospace", fontSize: "8px",
                             fontWeight: 700, letterSpacing: "0.1em",
-                            color: d.relevance === "high" ? "#4f46e5" : "#5b9cf6",
+                            color: d.relevance === "high" ? "#d9f471" : "#f38164",
                             flexShrink: 0,
                           }}>
                             {d.relevance.toUpperCase()}
@@ -668,7 +668,7 @@ function SectionLabel({
     }}>
       <span
         className="blink"
-        style={{ fontSize: "6px", color: dot === "orange" ? "#4f46e5" : "#5b9cf6", animationDelay: dot === "blue" ? "0.7s" : "0s" }}
+        style={{ fontSize: "6px", color: dot === "orange" ? "#d9f471" : "#f38164", animationDelay: dot === "blue" ? "0.7s" : "0s" }}
       >●</span>
       {children}
     </div>
@@ -724,7 +724,7 @@ function MarketCard({
           fontFamily: "var(--font-mono), monospace", fontSize: "10px",
         }}>
           <span style={{ color: "#2a2826" }}>YES  <span style={{ color: "#ede9e3", fontWeight: 700 }}>{(rec.price * 100).toFixed(0)}¢</span></span>
-          <span style={{ color: "#2a2826" }}>Closes  <span style={{ color: "#4f46e5" }}>{rec.close_date}</span></span>
+          <span style={{ color: "#2a2826" }}>Closes  <span style={{ color: "#d9f471" }}>{rec.close_date}</span></span>
           <span style={{ color: "#2a2826" }}>Score  <span style={{ color: "#9b9790" }}>{rec.score}/10</span></span>
         </div>
 
@@ -742,7 +742,7 @@ function MarketCard({
             fontFamily: "var(--font-mono), monospace", fontSize: "10px",
             color: "#3a3835", transition: "all 0.15s",
           }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#4f46e5"; e.currentTarget.style.borderColor = "rgba(79,70,229,0.3)"; }}
+          onMouseEnter={e => { e.currentTarget.style.color = "#d9f471"; e.currentTarget.style.borderColor = "rgba(33,106,74,0.3)"; }}
           onMouseLeave={e => { e.currentTarget.style.color = "#3a3835"; e.currentTarget.style.borderColor = "#1e1e1e"; }}
         >
           forecast →

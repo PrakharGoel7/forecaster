@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { BrandMark } from "@/components/BrandMark";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
@@ -172,17 +173,11 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
             }}
             style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", flexShrink: 0 }}
           >
-            <div style={{
-              width: "28px", height: "28px", borderRadius: "7px",
-              background: "linear-gradient(135deg, #f0f0fe 0%, #e0e0fc 100%)",
-              border: "1px solid rgba(79,70,229,0.2)", display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: "13px", color: "#4f46e5",
-              boxShadow: "0 0 12px rgba(79,70,229,0.1)",
-            }}>◈</div>
+            <BrandMark size={29} />
             <span style={{
-              fontFamily: "var(--font-mono), monospace", fontWeight: 700,
-              fontSize: "13px", letterSpacing: "0.22em", color: "#1c1814",
-            }}>PRISM</span>
+              fontFamily: "var(--font-jakarta), system-ui, sans-serif", fontWeight: 800,
+              fontSize: "18px", letterSpacing: "-0.055em", color: "#193028",
+            }}>angles</span>
           </Link>
 
           {/* Nav links */}
@@ -232,7 +227,7 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
                     onClick={e => { e.preventDefault(); hardNavigate(`/users/${profile.username}`); }}
                     style={{
                       fontFamily: "var(--font-mono), monospace", fontSize: "11px",
-                      color: "#4f46e5", letterSpacing: "0.04em", textDecoration: "none",
+                      color: "#216a4a", letterSpacing: "0.04em", textDecoration: "none",
                       fontWeight: 600,
                     }}
                   >
@@ -247,14 +242,14 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
                     {user.email}
                   </span>
                 )}
-                <Link href="/account" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", color: path === "/account" ? "#4f46e5" : "#6e675f", textDecoration: "none", fontWeight: 600 }}>
+                <Link href="/account" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", color: path === "/account" ? "#216a4a" : "#6e675f", textDecoration: "none", fontWeight: 600 }}>
                   Portfolio
                 </Link>
                 <button onClick={signOut} style={{
                   fontFamily: "var(--font-mono), monospace", fontSize: "10px",
                   fontWeight: 600, letterSpacing: "0.08em",
                   color: "#a8a29a", background: "transparent",
-                  border: "1px solid rgba(79,70,229,0.2)", borderRadius: "6px",
+                  border: "1px solid rgba(33,106,74,0.2)", borderRadius: "6px",
                   padding: "5px 12px", cursor: "pointer",
                   transition: "color 0.15s, border-color 0.15s",
                 }}
@@ -269,7 +264,7 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
                 fontFamily: "var(--font-mono), monospace", fontSize: "10px",
                 fontWeight: 600, letterSpacing: "0.08em",
                 color: "#a8a29a", background: "transparent",
-                border: "1px solid rgba(79,70,229,0.2)", borderRadius: "6px",
+                border: "1px solid rgba(33,106,74,0.2)", borderRadius: "6px",
                 padding: "5px 12px", cursor: "pointer",
                 transition: "color 0.15s, border-color 0.15s",
               }}
@@ -296,7 +291,7 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: "#ffffff", border: "1px solid rgba(79,70,229,0.2)",
+              background: "#ffffff", border: "1px solid rgba(33,106,74,0.2)",
               borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "380px",
               boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
             }}
@@ -352,7 +347,7 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
                   return (
                 <button onClick={submit} disabled={loading || !ready}
                   style={{
-                    width: "100%", background: ready ? "#4f46e5" : "#f0ede9",
+                    width: "100%", background: ready ? "#216a4a" : "#f0ede9",
                     color: "#fff", border: "none", borderRadius: "8px",
                     padding: "10px", fontSize: "12px",
                     fontFamily: "var(--font-mono), monospace",
@@ -361,8 +356,8 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
                     opacity: ready ? 1 : 0.4,
                     transition: "background 0.15s",
                   }}
-                  onMouseEnter={e => { if (ready) e.currentTarget.style.background = "#4338ca"; }}
-                  onMouseLeave={e => { if (ready) e.currentTarget.style.background = "#4f46e5"; }}
+                  onMouseEnter={e => { if (ready) e.currentTarget.style.background = "#194d38"; }}
+                  onMouseLeave={e => { if (ready) e.currentTarget.style.background = "#216a4a"; }}
                 >
                   {loading ? "…" : mode === "signin" ? "Sign in →" : "Create account →"}
                 </button>
@@ -387,14 +382,14 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: "#ffffff", border: "1px solid rgba(79,70,229,0.2)",
+              background: "#ffffff", border: "1px solid rgba(33,106,74,0.2)",
               borderRadius: "20px", padding: "36px 32px", width: "100%", maxWidth: "400px",
               boxShadow: "0 24px 80px rgba(0,0,0,0.25)", textAlign: "center",
             }}
           >
-            <div style={{ fontSize: 40, marginBottom: 12 }}>◈</div>
-            <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
-              Welcome to Prism
+            <div style={{ marginBottom: 12 }}><BrandMark size={48} /></div>
+            <div style={{ color: "#216a4a", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+              Welcome to Angles
             </div>
             <div style={{ color: "#1c1814", fontSize: 22, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>
               @{welcomeUsername}
@@ -406,7 +401,7 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
               <button
                 onClick={() => { setShowWelcomeModal(false); hardNavigate("/trading"); }}
                 style={{
-                  background: "#4f46e5", color: "#fff", border: "none", borderRadius: 10,
+                  background: "#216a4a", color: "#fff", border: "none", borderRadius: 10,
                   padding: "12px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer",
                   fontFamily: "var(--font-mono), monospace", letterSpacing: "0.06em",
                 }}
@@ -416,8 +411,8 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
               <button
                 onClick={() => { setShowWelcomeModal(false); hardNavigate("/trading/manual"); }}
                 style={{
-                  background: "transparent", color: "#4f46e5",
-                  border: "1px solid rgba(79,70,229,0.25)", borderRadius: 10,
+                  background: "transparent", color: "#216a4a",
+                  border: "1px solid rgba(33,106,74,0.25)", borderRadius: 10,
                   padding: "12px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer",
                   fontFamily: "var(--font-mono), monospace", letterSpacing: "0.06em",
                 }}
@@ -452,13 +447,13 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: "#ffffff", border: "1px solid rgba(79,70,229,0.2)",
+              background: "#ffffff", border: "1px solid rgba(33,106,74,0.2)",
               borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "380px",
               boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
             }}
           >
             <div style={{ marginBottom: 20 }}>
-              <div style={{ color: "#4f46e5", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
+              <div style={{ color: "#216a4a", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 8 }}>
                 One more step
               </div>
               <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 6 }}>
@@ -501,7 +496,7 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
               disabled={usernameLoading || usernameInput.length < 3}
               style={{
                 width: "100%",
-                background: usernameInput.length >= 3 ? "#4f46e5" : "#f0ede9",
+                background: usernameInput.length >= 3 ? "#216a4a" : "#f0ede9",
                 color: "#fff", border: "none", borderRadius: "8px",
                 padding: "10px", fontSize: "12px",
                 fontFamily: "var(--font-mono), monospace",
@@ -510,8 +505,8 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
                 opacity: usernameInput.length >= 3 ? 1 : 0.4,
                 transition: "background 0.15s",
               }}
-              onMouseEnter={e => { if (usernameInput.length >= 3) e.currentTarget.style.background = "#4338ca"; }}
-              onMouseLeave={e => { if (usernameInput.length >= 3) e.currentTarget.style.background = "#4f46e5"; }}
+              onMouseEnter={e => { if (usernameInput.length >= 3) e.currentTarget.style.background = "#194d38"; }}
+              onMouseLeave={e => { if (usernameInput.length >= 3) e.currentTarget.style.background = "#216a4a"; }}
             >
               {usernameLoading ? "…" : "Set username →"}
             </button>

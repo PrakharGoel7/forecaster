@@ -17,7 +17,7 @@
 }
 
 .priceEyebrow {
-  color: #4f46e5;
+  color: #216a4a;
   font: 700 10px var(--font-mono), monospace;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -42,7 +42,7 @@
 .priceRefresh {
   border: 0;
   background: none;
-  color: #4f46e5;
+  color: #216a4a;
   font: 600 11px var(--font-mono), monospace;
   padding: 8px 0 0;
   cursor: pointer;
@@ -211,7 +211,7 @@
 }
 
 .holdingSide {
-  color: #4f46e5;
+  color: #216a4a;
   font-weight: 700;
 }
 
@@ -224,7 +224,7 @@
 
 .holdingDetails summary {
   width: fit-content;
-  color: #4f46e5;
+  color: #216a4a;
   cursor: pointer;
   font-weight: 600;
 }

@@ -29,7 +29,7 @@ function formatTimeframe(value: string): string {
 }
 
 function avatarColor(seed: number): string {
-  const palette = ["#4f46e5", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
+  const palette = ["#216a4a", "#2563eb", "#16a34a", "#9333ea", "#d97706", "#0891b2", "#db2777"];
   return palette[seed % palette.length];
 }
 
@@ -49,7 +49,7 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
   const editorial = parsed?.editorial_hypothetical;
   const isDemo = parsed?.demo_basket?.created_by === "Prism";
   const hasPersonProfile = Boolean(editorial && basket.display_name && basket.user_id !== "prism:editorial");
-  const authorName = hasPersonProfile ? basket.display_name : editorial ? `Inspired by ${editorial.inspiration_person}` : basket.display_name || (basket.username ? `@${basket.username}` : "Prism");
+  const authorName = hasPersonProfile ? basket.display_name : editorial ? `Inspired by ${editorial.inspiration_person}` : basket.display_name || (basket.username ? `@${basket.username}` : "Angles");
   const color = avatarColor(basket.id);
 
   return (
@@ -83,18 +83,18 @@ export function BasketCard({ basket }: { basket: SavedBasket }) {
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
             }}>
-              <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>◈</span>
+              <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>{(authorName || "A").charAt(0).toUpperCase()}</span>
             </div>
             <div>
               <div style={{
-                color: basket.username && (!editorial || hasPersonProfile) ? "#4f46e5" : "#1c1814",
+                color: basket.username && (!editorial || hasPersonProfile) ? "#216a4a" : "#1c1814",
                 fontSize: 13, fontWeight: 600, lineHeight: 1.2,
                 cursor: basket.username && (!editorial || hasPersonProfile) ? "pointer" : "default",
               }}>
                 {authorName}
               </div>
               <div style={{ color: "#a8a29a", fontSize: 11, lineHeight: 1.2 }}>
-                {editorial ? `Market selections by Prism · ${timeAgo(basket.created_at)}` : isDemo ? `Sample basket by Prism · ${timeAgo(basket.created_at)}` : timeAgo(basket.created_at)}
+                {editorial ? `Market selections by Angles · ${timeAgo(basket.created_at)}` : isDemo ? `Sample basket by Angles · ${timeAgo(basket.created_at)}` : timeAgo(basket.created_at)}
               </div>
             </div>
           </div>

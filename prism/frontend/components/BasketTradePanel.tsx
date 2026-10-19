@@ -135,7 +135,7 @@ export function BasketTradePanel({ basketId, token, onExecution, onSignIn }: { b
         <div role="status" style={{ marginTop: 18, padding: 16, background: execution.status === "filled" ? "#f0fdf4" : "#fffbeb", borderRadius: 12, fontSize: 13 }}>
           <strong style={{ display: "block", marginBottom: 5 }}>Order status: {execution.status.replaceAll("_", " ")}</strong>
           <span style={{ color: "#6e675f" }}>Investment #{execution.investment_id}. {execution.status === "pending_reconciliation" ? "Kalshi has not confirmed the outcome yet. Check your trade history before trying again." : "See your portfolio for confirmed fills and position values."}</span>
-          <div style={{ marginTop: 8 }}><Link href="/account" style={{ color: "#4f46e5" }}>View portfolio and trades →</Link></div>
+          <div style={{ marginTop: 8 }}><Link href="/account" style={{ color: "#216a4a" }}>View portfolio and trades →</Link></div>
           {execution.orders.map((order, i) => <div key={`${order.client_order_id}-${i}`} style={{ marginTop: 6, color: "#6e675f" }}>{order.ticker}: {order.status} · {order.filled_contracts} filled · {money(order.filled_cost_dollars)}{order.error ? ` · ${order.error}` : ""}</div>)}
         </div>
       )}

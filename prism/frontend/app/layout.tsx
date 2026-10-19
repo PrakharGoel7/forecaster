@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Prism — See through the noise",
-  description: "AI forecasting on live prediction markets",
+  title: "Angles — Prediction market portfolios",
+  description: "Explore, build, and trade thematic baskets of prediction markets.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

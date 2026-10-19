@@ -5,6 +5,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import GridOverlay from "@/components/GridOverlay";
 import { BasketCard } from "@/components/BasketCard";
+import { BrandMark } from "@/components/BrandMark";
 import { getFeed } from "@/lib/api";
 import { createClient } from "@/lib/supabase";
 import type { SavedBasket } from "@/lib/types";
@@ -82,7 +83,7 @@ function EmptyState({ title, body, cta }: { title: string; body: string; cta: { 
       background: "#ffffff", border: "1px solid rgba(0,0,0,0.08)",
       borderRadius: 22, padding: "56px 40px", textAlign: "center", maxWidth: 480, margin: "0 auto",
     }}>
-      <div style={{ fontSize: 36, marginBottom: 16 }}>◈</div>
+      <div style={{ marginBottom: 16 }}><BrandMark size={40} /></div>
       <div style={{ color: "#1c1814", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 8 }}>
         {title}
       </div>
@@ -90,7 +91,7 @@ function EmptyState({ title, body, cta }: { title: string; body: string; cta: { 
         {body}
       </div>
       <Link href={cta.href} style={{
-        background: "#4f46e5", color: "#fff", fontWeight: 700,
+        background: "#216a4a", color: "#fff", fontWeight: 700,
         fontSize: 14, padding: "11px 22px", borderRadius: 10,
         textDecoration: "none", display: "inline-block",
       }}>
@@ -101,6 +102,6 @@ function EmptyState({ title, body, cta }: { title: string; body: string; cta: { 
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  color: "#4f46e5", fontSize: 11, textTransform: "uppercase",
+  color: "#216a4a", fontSize: 11, textTransform: "uppercase",
   letterSpacing: "0.16em", fontFamily: "var(--font-mono), monospace", marginBottom: 10,
 };
