@@ -224,15 +224,6 @@ export default function Header({ signInRequest = 0 }: { signInRequest?: number }
 
           {/* Right side */}
           <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
-            <div style={{
-              display: "flex", alignItems: "center", gap: "8px",
-              fontFamily: "var(--font-mono), monospace",
-              fontSize: "9px", color: "#c8c2bc", letterSpacing: "0.12em",
-            }}>
-              <span className="blink" style={{ color: "#4f46e5", fontSize: "7px" }}>●</span>
-              LIVE
-            </div>
-
             {user ? (
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 {profile ? (
