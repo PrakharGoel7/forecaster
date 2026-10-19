@@ -122,7 +122,9 @@ export default function HomePage() {
             }}>
               {creators.map(c => {
                 const color = avatarColor(c.username);
-                const tags: string[] = Array.isArray(c.domain_tags) ? c.domain_tags : [];
+                const tags: string[] = Array.isArray(c.domain_tags)
+                  ? c.domain_tags.filter(tag => tag !== "Prism-curated concepts")
+                  : [];
                 return (
                   <Link key={c.user_id} href={`/users/${c.username}`} style={{ textDecoration: "none" }}>
                     <div style={{
@@ -140,7 +142,7 @@ export default function HomePage() {
                         <div>
                           <div style={{ color: "#216a4a", fontSize: 13, fontWeight: 700 }}>{c.display_name || `@${c.username}`}</div>
                           {c.profile_kind === "demo" && <div style={{ color: "#a04b36", fontSize: 10, fontWeight: 700 }}>Sample profile</div>}
-                          <div style={{ color: "#9b9390", fontSize: 11 }}>{c.follower_count} follower{c.follower_count !== 1 ? "s" : ""} · {c.basket_count} ths.</div>
+                          <div style={{ color: "#9b9390", fontSize: 11 }}>{c.follower_count} follower{c.follower_count !== 1 ? "s" : ""} · {c.basket_count} {c.basket_count === 1 ? "thesis" : "theses"}</div>
                         </div>
                       </div>
                       {tags.slice(0, 3).map(t => (
