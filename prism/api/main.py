@@ -135,6 +135,8 @@ def _require_admin_access(request: Request) -> None:
 _raw_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001")
 _origins = list({o.strip() for o in _raw_origins.split(",") if o.strip()} | {
     "https://forecaster-black.vercel.app",
+    "https://angles.markets",
+    "https://www.angles.markets",
 })
 
 app.add_middleware(
